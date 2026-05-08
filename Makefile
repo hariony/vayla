@@ -9,7 +9,7 @@ RESET  := \033[0m
 help: ## Show this help
 	@echo ""
 	@echo "$(CYAN)╔══════════════════════════════════════╗$(RESET)"
-	@echo "$(CYAN)║        PDP - Project Commands        ║$(RESET)"
+	@echo "$(CYAN)║      corekit - Project Commands      ║$(RESET)"
 	@echo "$(CYAN)╚══════════════════════════════════════╝$(RESET)"
 	@echo ""
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -19,8 +19,8 @@ help: ## Show this help
 # ── Network ───────────────────────────
 
 network: ## Create external Docker network
-	docker network inspect pdp-network >/dev/null 2>&1 || docker network create pdp-network
-	@echo "$(GREEN)✔ pdp-network ready$(RESET)"
+	docker network inspect corekit-network >/dev/null 2>&1 || docker network create corekit-network
+	@echo "$(GREEN)✔ corekit-network ready$(RESET)"
 
 # ── Installation ──────────────────────
 
@@ -61,9 +61,9 @@ configure-env: ## Configure Laravel .env for PostgreSQL
 	@sed -i 's/DB_CONNECTION=.*/DB_CONNECTION=pgsql/' laravel/.env
 	@sed -i 's/DB_HOST=.*/DB_HOST=postgres/' laravel/.env
 	@sed -i 's/DB_PORT=.*/DB_PORT=5432/' laravel/.env
-	@sed -i 's/DB_DATABASE=.*/DB_DATABASE=pdp/' laravel/.env
-	@sed -i 's/DB_USERNAME=.*/DB_USERNAME=pdp/' laravel/.env
-	@sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=pdp/' laravel/.env
+	@sed -i 's/DB_DATABASE=.*/DB_DATABASE=corekit/' laravel/.env
+	@sed -i 's/DB_USERNAME=.*/DB_USERNAME=corekit/' laravel/.env
+	@sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=corekit/' laravel/.env
 	@echo "$(GREEN)✔ .env configured$(RESET)"
 
 init: network ## Re-initialize (after git clone)
@@ -106,7 +106,7 @@ shell: ## Shell into app container (Alpine → sh)
 	docker compose exec app sh
 
 shell-db: ## Shell into PostgreSQL
-	docker compose exec postgres psql -U pdp -d pdp
+	docker compose exec postgres psql -U corekit -d corekit
 
 tinker: ## Laravel Tinker
 	docker compose exec app php artisan tinker
