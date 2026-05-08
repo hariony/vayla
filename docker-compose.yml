@@ -1,0 +1,58 @@
+services:
+  app:
+    image: corekit-laravel:dev
+    pull_policy: never
+    container_name: corekit-app
+    build:
+      context: ./laravel
+      dockerfile: Dockerfile
+    ports:
+      - '${APP_PORT:-8040}:8080'
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: corekit
+      DB_PASSWORD: corekit
+      DB_DATABASE: corekit
+    env_file: ./laravel/.env
+    volumes:
+      - './laravel:/var/www/html'
+    depends_on:
+      - postgres
+    networks:
+      - corekit-network
+
+  postgres:
+    image: postgres:16
+    container_name: corekit-db
+    volumes:
+      - corekit-db:/var/lib/postgresql/data
+    ports:
+      - '${DB_PORT:-5435}:5432'
+    environment:
+      POSTGRES_USER: corekit
+      POSTGRES_PASSWORD: corekit
+      POSTGRES_DB: corekit
+    networks:
+      - corekit-network
+
+  node:
+    image: node:20
+    container_name: corekit-node
+    working_dir: /var/www/html
+    volumes:
+      - ./laravel:/var/www/html
+    ports:
+      - '5173:5173'
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    networks:
+      - corekit-network
+
+volumes:
+  corekit-db:
+
+networks:
+  corekit-network:
+    external: true
