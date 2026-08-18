@@ -1,44 +1,44 @@
 services:
   app:
-    image: corekit-laravel:dev
+    image: vayla-laravel:dev
     pull_policy: never
-    container_name: corekit-app
+    container_name: vayla-app
     build:
       context: ./laravel
       dockerfile: Dockerfile
     ports:
-      - '${APP_PORT:-8040}:8080'
+      - '${APP_PORT:-8070}:8080'
     environment:
       DB_HOST: postgres
       DB_PORT: 5432
       DB_USERNAME: corekit
       DB_PASSWORD: corekit
-      DB_DATABASE: corekit
+      DB_DATABASE: vayla_db
     env_file: ./laravel/.env
     volumes:
       - './laravel:/var/www/html'
     depends_on:
       - postgres
     networks:
-      - corekit-network
+      - vayla-network
 
   postgres:
     image: postgres:16
-    container_name: corekit-db
+    container_name: vayla-db
     volumes:
-      - corekit-db:/var/lib/postgresql/data
+      - vayla-db:/var/lib/postgresql/data
     ports:
-      - '${DB_PORT:-5435}:5432'
+      - '${DB_PORT:-5437}:5432'
     environment:
       POSTGRES_USER: corekit
       POSTGRES_PASSWORD: corekit
-      POSTGRES_DB: corekit
+      POSTGRES_DB: vayla_db
     networks:
-      - corekit-network
+      - vayla-network
 
   node:
     image: node:20
-    container_name: corekit-node
+    container_name: vayla-node
     working_dir: /var/www/html
     volumes:
       - ./laravel:/var/www/html
@@ -48,11 +48,11 @@ services:
       - CHOKIDAR_USEPOLLING=true
     command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
     networks:
-      - corekit-network
+      - vayla-network
 
 volumes:
-  corekit-db:
+  vayla-db:
 
 networks:
-  corekit-network:
+  vayla-network:
     external: true

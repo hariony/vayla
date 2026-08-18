@@ -1,4 +1,13 @@
-.PHONY: help install init up down restart build logs shell shell-db tinker migrate fresh seed rollback npm-dev npm-build npm-install artisan composer test cache clean network configure-env
+.PHONY: help install init wait-db db-schema up down restart build logs shell shell-db tinker migrate fresh seed rollback npm-dev npm-build npm-install artisan composer test cache clean network configure-env
+
+# Project
+PROJECT   := vayla
+NETWORK   := $(PROJECT)-network
+DB_NAME   := vayla_db
+DB_USER   := corekit
+DB_PASS   := corekit
+DB_SCHEMA := vayla
+APP_PORT  ?= 8070
 
 # Colors
 GREEN  := \033[0;32m
@@ -9,7 +18,7 @@ RESET  := \033[0m
 help: ## Show this help
 	@echo ""
 	@echo "$(CYAN)╔══════════════════════════════════════╗$(RESET)"
-	@echo "$(CYAN)║      corekit - Project Commands      ║$(RESET)"
+	@echo "$(CYAN)║       $(PROJECT) - Project Commands       ║$(RESET)"
 	@echo "$(CYAN)╚══════════════════════════════════════╝$(RESET)"
 	@echo ""
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -19,8 +28,8 @@ help: ## Show this help
 # ── Network ───────────────────────────
 
 network: ## Create external Docker network
-	docker network inspect corekit-network >/dev/null 2>&1 || docker network create corekit-network
-	@echo "$(GREEN)✔ corekit-network ready$(RESET)"
+	docker network inspect $(NETWORK) >/dev/null 2>&1 || docker network create $(NETWORK)
+	@echo "$(GREEN)✔ $(NETWORK) ready$(RESET)"
 
 # ── Installation ──────────────────────
 
@@ -39,7 +48,13 @@ install: network ## Full install: Laravel 13 + Inertia + Vue 3 + Bootstrap
 	@$(MAKE) --no-print-directory configure-env
 	@echo "$(CYAN)▶ Starting services...$(RESET)"
 	docker compose up -d
-	@sleep 3
+	@$(MAKE) --no-print-directory wait-db
+	@echo "$(CYAN)▶ Installing PHP dependencies...$(RESET)"
+	@if [ ! -f laravel/vendor/autoload.php ]; then \
+		docker compose exec -T app composer install --no-interaction --prefer-dist; \
+	else \
+		echo "$(YELLOW)✔ vendor/ already present, skipping$(RESET)"; \
+	fi
 	@echo "$(CYAN)▶ Generating app key...$(RESET)"
 	docker compose exec app php artisan key:generate --ansi
 	@echo "$(CYAN)▶ Installing Inertia (server-side)...$(RESET)"
@@ -49,32 +64,58 @@ install: network ## Full install: Laravel 13 + Inertia + Vue 3 + Bootstrap
 	docker compose exec node npm install vue@3 @inertiajs/vue3 @vitejs/plugin-vue bootstrap @popperjs/core sass
 	@echo "$(CYAN)▶ Building assets...$(RESET)"
 	docker compose exec node npm run build
+	@$(MAKE) --no-print-directory db-schema
 	@echo "$(CYAN)▶ Running migrations...$(RESET)"
-	docker compose exec app php artisan migrate
+	docker compose exec -T app php artisan migrate --force
 	@echo ""
 	@echo "$(GREEN)✅ Installation complete!$(RESET)"
-	@echo "$(YELLOW)   App:  http://localhost:8040$(RESET)"
+	@echo "$(YELLOW)   App:  http://localhost:$(APP_PORT)$(RESET)"
 	@echo "$(YELLOW)   Dev:  run 'make npm-dev' for HMR$(RESET)"
 	@echo ""
 
 configure-env: ## Configure Laravel .env for PostgreSQL
-	@sed -i 's/DB_CONNECTION=.*/DB_CONNECTION=pgsql/' laravel/.env
-	@sed -i 's/DB_HOST=.*/DB_HOST=postgres/' laravel/.env
-	@sed -i 's/DB_PORT=.*/DB_PORT=5432/' laravel/.env
-	@sed -i 's/DB_DATABASE=.*/DB_DATABASE=corekit/' laravel/.env
-	@sed -i 's/DB_USERNAME=.*/DB_USERNAME=corekit/' laravel/.env
-	@sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=corekit/' laravel/.env
+	@if [ ! -s laravel/.env ] && [ -f laravel/.env.example ]; then \
+		cp laravel/.env.example laravel/.env; \
+		echo "$(YELLOW)✔ .env created from .env.example$(RESET)"; \
+	fi
+	@sed -i.bak \
+		-e 's|^DB_CONNECTION=.*|DB_CONNECTION=pgsql|' \
+		-e 's|^DB_HOST=.*|DB_HOST=postgres|' \
+		-e 's|^DB_PORT=.*|DB_PORT=5432|' \
+		-e 's|^DB_DATABASE=.*|DB_DATABASE=$(DB_NAME)|' \
+		-e 's|^DB_USERNAME=.*|DB_USERNAME=$(DB_USER)|' \
+		-e 's|^DB_PASSWORD=.*|DB_PASSWORD=$(DB_PASS)|' \
+		-e 's|^DB_SCHEMA=.*|DB_SCHEMA=$(DB_SCHEMA)|' \
+		laravel/.env
+	@rm -f laravel/.env.bak
 	@echo "$(GREEN)✔ .env configured$(RESET)"
+
+wait-db: ## Wait until PostgreSQL accepts connections
+	@echo "$(CYAN)▶ Waiting for PostgreSQL...$(RESET)"
+	@i=0; until docker compose exec -T postgres pg_isready -U $(DB_USER) -d $(DB_NAME) >/dev/null 2>&1; do \
+		i=$$((i+1)); \
+		if [ $$i -gt 30 ]; then echo "$(YELLOW)⚠ PostgreSQL still not ready after 60s$(RESET)"; exit 1; fi; \
+		sleep 2; \
+	done
+	@echo "$(GREEN)✔ PostgreSQL ready$(RESET)"
+
+db-schema: ## Create the PostgreSQL schema used by DB_SCHEMA
+	@docker compose exec -T postgres psql -q -U $(DB_USER) -d $(DB_NAME) \
+		-c 'SET client_min_messages TO WARNING; CREATE SCHEMA IF NOT EXISTS "$(DB_SCHEMA)" AUTHORIZATION $(DB_USER);' >/dev/null
+	@echo "$(GREEN)✔ schema $(DB_SCHEMA) ready$(RESET)"
 
 init: network ## Re-initialize (after git clone)
 	docker compose build
 	docker compose up -d
-	docker compose exec app composer install
+	@$(MAKE) --no-print-directory wait-db
+	docker compose exec -T app composer install --no-interaction --prefer-dist
 	docker compose exec app cp -n /var/www/html/.env.example /var/www/html/.env || true
 	@$(MAKE) --no-print-directory configure-env
 	docker compose exec app php artisan key:generate
 	docker compose exec node npm install
 	docker compose exec node npm run build
+	@$(MAKE) --no-print-directory db-schema
+	docker compose exec -T app php artisan migrate --force
 	@echo "$(GREEN)✅ Project initialized!$(RESET)"
 
 # ── Docker ────────────────────────────
@@ -106,7 +147,7 @@ shell: ## Shell into app container (Alpine → sh)
 	docker compose exec app sh
 
 shell-db: ## Shell into PostgreSQL
-	docker compose exec postgres psql -U corekit -d corekit
+	docker compose exec postgres psql -U $(DB_USER) -d $(DB_NAME)
 
 tinker: ## Laravel Tinker
 	docker compose exec app php artisan tinker

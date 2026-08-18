@@ -63,6 +63,9 @@ RUN apk add --no-cache \
 # pdo, mbstring et opcache sont déjà compilés en dur dans l'image
 # php:8.5-fpm-alpine (docker-php-ext-install échouerait sur ces 3-là).
 
+# --- Composer (dev : requis par `make composer`, `make install`, `make init`) ---
+COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
+
 # --- Configuration Nginx ---
 COPY docker/nginx/nginx.conf      /etc/nginx/nginx.conf
 COPY docker/nginx/default.conf    /etc/nginx/http.d/default.conf
