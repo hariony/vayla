@@ -16,7 +16,9 @@ RUN composer install \
 
 COPY . .
 
-RUN composer dump-autoload --optimize --no-dev --no-scripts
+RUN rm -f bootstrap/cache/*.php \
+    && composer dump-autoload --optimize --no-dev --no-scripts \
+    && php artisan package:discover --ansi
 
 # ============================================================
 # Stage 2 — Assets frontend (Vite / Node)
@@ -31,9 +33,9 @@ COPY resources/ ./resources/
 RUN npm ci && npm run build
 
 # ============================================================
-# Stage 3 — Image finale (PHP 8.4-FPM + Nginx + Supervisor)
+# Stage 3 — Image finale (PHP 8.5-FPM + Nginx + Supervisor)
 # ============================================================
-FROM php:8.4-fpm-alpine
+FROM php:8.5-fpm-alpine
 
 # --- Dépendances système + extensions PHP pour Laravel + PostgreSQL ---
 RUN apk add --no-cache \
@@ -54,13 +56,12 @@ RUN apk add --no-cache \
         --with-jpeg \
         --with-webp \
     && docker-php-ext-install -j$(nproc) \
-        pdo \
         pdo_pgsql \
-        mbstring \
         gd \
         bcmath \
-        intl \
-        opcache
+        intl
+# pdo, mbstring et opcache sont déjà compilés en dur dans l'image
+# php:8.5-fpm-alpine (docker-php-ext-install échouerait sur ces 3-là).
 
 # --- Configuration Nginx ---
 COPY docker/nginx/nginx.conf      /etc/nginx/nginx.conf

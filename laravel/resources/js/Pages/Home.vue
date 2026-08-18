@@ -1,10 +1,10 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
-defineProps({
+const props = defineProps({
     appName: { type: String, default: 'CoreKit' },
     laravelVersion: { type: String, default: '13.x' },
-    phpVersion: { type: String, default: '8.4' },
+    phpVersion: { type: String, default: '8.5' },
 })
 
 const features = [
@@ -46,12 +46,12 @@ const features = [
     },
 ]
 
-const stats = [
-    { value: '13', label: 'Laravel' },
-    { value: '8.4', label: 'PHP' },
+const stats = computed(() => [
+    { value: props.laravelVersion, label: 'Laravel' },
+    { value: props.phpVersion, label: 'PHP' },
     { value: '3', label: 'Vue' },
     { value: '16', label: 'Postgres' },
-]
+])
 
 const copied = ref(false)
 const installCmd = 'git clone https://github.com/your-org/corekit.git\ncd corekit && make install'
@@ -202,13 +202,13 @@ const copy = async () => {
                 <span class="ck-eyebrow">Stack</span>
                 <h2 class="ck-h2">Construit avec ce qui marche.</h2>
                 <div class="ck-stack">
-                    <span class="ck-chip">Laravel 13</span>
+                    <span class="ck-chip">Laravel {{ laravelVersion }}</span>
                     <span class="ck-chip">Inertia.js</span>
                     <span class="ck-chip">Vue 3</span>
                     <span class="ck-chip">Bootstrap 5</span>
                     <span class="ck-chip">Vite 8</span>
                     <span class="ck-chip">PostgreSQL 16</span>
-                    <span class="ck-chip">PHP 8.4</span>
+                    <span class="ck-chip">PHP {{ phpVersion }}</span>
                     <span class="ck-chip">Docker</span>
                     <span class="ck-chip">Nginx</span>
                     <span class="ck-chip">Supervisor</span>

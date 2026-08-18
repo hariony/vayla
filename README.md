@@ -4,7 +4,7 @@ Squelette full-stack prêt à l'emploi pour démarrer rapidement des SaaS,
 CRM, ERP ou back-offices, livré entièrement dockerisé.
 
 ![Laravel](https://img.shields.io/badge/Laravel-13-FF2D20?logo=laravel&logoColor=white)
-![PHP](https://img.shields.io/badge/PHP-8.4-777BB4?logo=php&logoColor=white)
+![PHP](https://img.shields.io/badge/PHP-8.5-777BB4?logo=php&logoColor=white)
 ![Vue](https://img.shields.io/badge/Vue-3-42b883?logo=vue.js&logoColor=white)
 ![Inertia](https://img.shields.io/badge/Inertia.js-3-9553E9)
 ![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)
@@ -31,12 +31,12 @@ CRM, ERP ou back-offices, livré entièrement dockerisé.
 
 | Couche       | Technologie                                  |
 | ------------ | -------------------------------------------- |
-| Backend      | Laravel 13 (PHP 8.4)                         |
+| Backend      | Laravel 13 (PHP 8.5)                         |
 | Front        | Vue 3 + Inertia.js 3                         |
 | UI           | Bootstrap 5 + Sass (Tailwind 4 dispo)        |
 | Build        | Vite 8 + `laravel-vite-plugin`               |
 | Base         | PostgreSQL 16                                |
-| Runtime      | PHP-FPM 8.4 + Nginx + Supervisor (Alpine)    |
+| Runtime      | PHP-FPM 8.5 + Nginx + Supervisor (Alpine)    |
 | Orchestration| Docker Compose                               |
 
 ---
@@ -110,7 +110,7 @@ L'image applicative est construite en **multi-stage** :
 
 1. `composer-deps` : install Composer optimisée, sans dev
 2. `frontend-deps` : build Vite des assets dans `public/build`
-3. Image finale : PHP 8.4 Alpine + Nginx + Supervisor avec extensions
+3. Image finale : PHP 8.5 Alpine + Nginx + Supervisor avec extensions
    `pdo_pgsql`, `gd`, `intl`, `bcmath`, `opcache`, `mbstring`
 
 ---
