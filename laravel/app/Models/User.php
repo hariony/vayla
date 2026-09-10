@@ -7,6 +7,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -22,6 +23,19 @@ class User extends Authenticatable
      *
      * @return array<string, string>
      */
+    /**
+     * Les identités sociales rattachées à ce compte.
+     *
+     * Un même compte peut en porter plusieurs — Google et Apple, par
+     * exemple — sans qu'aucun doublon d'utilisateur ne soit créé.
+     *
+     * @return MorphMany<SocialAccount, $this>
+     */
+    public function socialAccounts(): MorphMany
+    {
+        return $this->morphMany(SocialAccount::class, 'compte');
+    }
+
     protected function casts(): array
     {
         return [

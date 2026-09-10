@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Owner;
 use App\Models\User;
 
 return [
@@ -42,6 +43,22 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
+        /*
+         * Les propriétaires ont leur propre garde plutôt qu'une ligne dans
+         * `users` : un propriétaire **est** l'entité authentifiable du
+         * domaine — il porte des logements, des réservations, une facture —
+         * et le faire pointer sur un utilisateur générique aurait ajouté une
+         * jointure à chaque écran pour ne rien exprimer de plus.
+         *
+         * Deux gardes distinctes veulent aussi dire deux sessions distinctes :
+         * un administrateur connecté ne devient jamais propriétaire par
+         * accident, et l'inverse non plus.
+         */
+        'proprietaire' => [
+            'driver' => 'session',
+            'provider' => 'owners',
+        ],
     ],
 
     /*
@@ -65,6 +82,11 @@ return [
         'users' => [
             'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', User::class),
+        ],
+
+        'owners' => [
+            'driver' => 'eloquent',
+            'model' => Owner::class,
         ],
 
         // 'users' => [

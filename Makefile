@@ -189,6 +189,15 @@ composer: ## Run composer command (usage: make composer cmd="require package/nam
 # ── Testing ───────────────────────────
 
 test: ## Run tests
+	# `config:clear` d'abord : l'entrypoint compile la configuration à chaque
+	# démarrage du conteneur, et un config.php compilé ignore les <server
+	# force="true"> de phpunit.xml — la suite tournerait alors sur PostgreSQL
+	# et RefreshDatabase viderait la base de développement.
+	docker compose exec app php artisan config:clear
+	# `route:clear` pour la même raison : l'entrypoint compile aussi les routes.
+	# Une route supprimée reste alors servie, et la suite échoue sur un 500
+	# « Call to undefined method » qui ne désigne pas sa cause.
+	docker compose exec app php artisan route:clear
 	docker compose exec app php artisan test
 
 # ── Maintenance ───────────────────────

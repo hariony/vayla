@@ -2,24 +2,31 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
     /**
-     * Seed the application's database.
+     * L'ordre compte : les annonces référencent destinations, photos et
+     * équipements. AmenitySeeder pose le vocabulaire, ListingSeeder s'y
+     * rattache — et lève si une clé n'existe pas, plutôt que de créer une
+     * annonce silencieusement amputée.
+     *
+     * ListingSeeder ne pose que des annonces de démonstration. Le jour où de
+     * vraies annonces arrivent, il ne doit plus tourner en production.
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        $this->call([
+            PhotoSeeder::class,
+            CategorySeeder::class,
+            DestinationSeeder::class,
+            AmenitySeeder::class,
+            ListingSeeder::class,
+            OwnerSeeder::class,
+            UnavailabilitySeeder::class,
+            BookingSeeder::class,
+            StayConfirmationSeeder::class,
         ]);
     }
 }

@@ -35,4 +35,40 @@ return [
         ],
     ],
 
+    /*
+     * Les fournisseurs d'identité (Socialite).
+     *
+     * **Aucune valeur en dur** : tout vient de `.env`, et `.env.example` ne
+     * porte que des clés vides. Un fournisseur sans identifiants est
+     * simplement absent des écrans — voir `SocialProvider` et le partage
+     * Inertia — plutôt que d'afficher un bouton qui mène à une erreur.
+     *
+     * `redirect` est laissé configurable : l'URL de rappel doit correspondre
+     * **au caractère près** à celle déclarée chez le fournisseur, et elle
+     * diffère entre local, recette et production.
+     */
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI', '/auth/google/callback'),
+    ],
+
+    'facebook' => [
+        'client_id' => env('FACEBOOK_CLIENT_ID'),
+        'client_secret' => env('FACEBOOK_CLIENT_SECRET'),
+        'redirect' => env('FACEBOOK_REDIRECT_URI', '/auth/facebook/callback'),
+    ],
+
+    /*
+     * Apple : le « secret » n'est pas une chaîne fixe mais un **JWT signé**
+     * avec une clé `.p8`, valable six mois au maximum. Il se régénère ; le
+     * poser une fois pour toutes dans `.env` condamne la connexion Apple à
+     * s'arrêter sans prévenir. Voir `docs/architecture/social-auth.md`.
+     */
+    'apple' => [
+        'client_id' => env('APPLE_CLIENT_ID'),
+        'client_secret' => env('APPLE_CLIENT_SECRET'),
+        'redirect' => env('APPLE_REDIRECT_URI', '/auth/apple/callback'),
+    ],
+
 ];

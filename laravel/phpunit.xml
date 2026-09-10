@@ -19,13 +19,48 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
+        <!--
+            Même piège que pour la base : docker-compose exporte APP_ENV=local
+            comme vraie variable du conteneur, Laravel la lit via $_SERVER, et
+            <env> n'écrit que dans putenv()/$_ENV. Sans la ligne <server>
+            ci-dessous, `runningUnitTests()` est faux : la protection CSRF
+            reste active et tout POST de test répond 419.
+        -->
+        <server name="APP_ENV" value="testing" force="true"/>
+        <!-- **Le même piège, une troisième fois.** `BCRYPT_ROUNDS` est
+             présent dans l'environnement du conteneur : la ligne `<env>`
+             plus bas n'écrit que dans `putenv()`/`$_ENV`, et Laravel lit
+             `$_SERVER` en premier — le hachage restait donc à douze tours.
+             Depuis que le seeder pose un mot de passe par propriétaire et que
+             `RefreshDatabase` le rejoue à chaque test, la suite passait de
+             25 s à plus de trois minutes. Quatre tours suffisent à vérifier
+             qu'un hachage est fait et relu. -->
+        <server name="BCRYPT_ROUNDS" value="4" force="true"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
-        <env name="DB_CONNECTION" value="sqlite"/>
-        <env name="DB_DATABASE" value=":memory:"/>
-        <env name="DB_URL" value=""/>
+        <!--
+            Ces quatre lignes protègent la base de développement.
+
+            docker-compose exporte DB_CONNECTION, DB_DATABASE et DB_SCHEMA
+            comme vraies variables d'environnement du conteneur. Laravel les
+            lit via $_SERVER (ServerConstAdapter, premier adaptateur consulté),
+            et <env> de PHPUnit n'écrit QUE dans putenv() et $_ENV — même avec
+            force="true". Sans les <server> ci-dessous, la suite tourne donc
+            sur PostgreSQL et RefreshDatabase VIDE la base de développement.
+
+            Vérification : `php artisan test` ne doit jamais changer le nombre
+            de lignes de la base pgsql.
+        -->
+        <server name="DB_CONNECTION" value="sqlite" force="true"/>
+        <server name="DB_DATABASE" value=":memory:" force="true"/>
+        <server name="DB_SCHEMA" value="" force="true"/>
+        <server name="DB_URL" value="" force="true"/>
+        <env name="DB_CONNECTION" value="sqlite" force="true"/>
+        <env name="DB_DATABASE" value=":memory:" force="true"/>
+        <env name="DB_SCHEMA" value="" force="true"/>
+        <env name="DB_URL" value="" force="true"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>

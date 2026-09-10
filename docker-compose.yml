@@ -43,10 +43,20 @@ services:
     volumes:
       - ./laravel:/var/www/html
     ports:
-      - '5173:5173'
+      # 5174 : 5173 est pris par un autre projet sur cette machine, et un
+      # port non publié fait servir les assets du voisin (voir vite.config.js).
+      - '5174:5174'
     environment:
       - CHOKIDAR_USEPOLLING=true
-    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    # Vite ne doit pas dépendre d'un aller-retour vers le registre npm pour
+    # démarrer. Un `npm install` inconditionnel au démarrage bloque le serveur
+    # de développement tant qu'il n'a pas répondu — et quand il se fige, le
+    # port 5174 accepte la connexion sans que rien n'écoute derrière :
+    # le navigateur affiche ERR_CONNECTION_RESET sur @vite/client, la page
+    # reste blanche, et rien n'indique que la cause est npm.
+    # On n'installe donc que si les dépendances manquent ; après un changement
+    # de package.json, `make npm-install`.
+    command: sh -c "[ -x node_modules/.bin/vite ] || npm install --no-audit --no-fund; npm run dev -- --host 0.0.0.0"
     networks:
       - vayla-network
 

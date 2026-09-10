@@ -1,0 +1,539 @@
+/* =========================================================
+   Vayla — système de design
+   Direction : « terre & lagon ». Blanc franc, une seule
+   famille de caractères, des angles généreux.
+
+   DEUX couleurs, DEUX métiers — la règle qui tient tout :
+     · la terre de latérite porte la marque, l'envie, l'action ;
+     · le lagon ne dit qu'une chose, « vérifié », et
+       n'apparaît NULLE PART ailleurs. C'est ce qui rend
+       l'échelle de confiance lisible d'un coup d'oeil.
+   Une seule dalle de couleur pleine dans toute la page :
+   la section propriétaires, en terre.
+   ========================================================= */
+
+:root {
+    /* ── Terre de latérite — la marque. Madagascar, l'Île Rouge. ── */
+    --terre-700: #6E2213;
+    --terre-600: #9E3520;   /* texte sur blanc : contraste 7,4:1 */
+    --terre-500: #C9452A;   /* la couleur de marque */
+    --terre-400: #E06A4B;
+    --terre-300: #EE9576;
+    --terre-200: #F7C2AC;
+    --terre-100: #FBE1D6;
+    --terre-050: #FEF4EF;
+
+    /* ── Lagon — la preuve. Réservé à la vérification. ──
+       Ne jamais employer ces jetons pour décorer : dès qu'ils
+       apparaissent ailleurs, la jauge de confiance perd son sens. */
+    --lagon-700: #06514A;
+    --lagon-600: #08705F;   /* texte sur blanc : contraste 5,9:1 */
+    --lagon-500: #0E9080;   /* aplats et pictogrammes */
+    --lagon-400: #24B39C;
+    --lagon-300: #6BD3BF;
+    --lagon-200: #A9E7D9;
+    --lagon-100: #D3F3EB;
+    --lagon-050: #EDFAF6;
+
+    /* Le gris du « déclaré, pas encore vérifié » */
+    --unverified: #B8B0A8;
+
+    /* Encre — un noir chaud, il tient avec la latérite */
+    --ink:     #1A1512;
+    --ink-2:   #322A26;
+    --ink-3:   #4E443E;
+
+    /* Blanc et ses deux nuances de repos */
+    --white:   #FFFFFF;
+    --off:     #FBFAF9;
+    --off-2:   #F4F1ED;
+
+    --text:    #1A1512;
+    --text-2:  #5A514B;
+    --text-3:  #857B74;
+
+    /* Filets — fins, chauds, discrets */
+    --line:      #EDE9E5;
+    --line-2:    #DFD9D3;
+    --line-dark: rgba(255, 255, 255, .18);
+
+    /* Angles généreux : la rupture la plus visible avec l'ancien 4 px */
+    --r-xs:   8px;
+    --r-sm:   12px;
+    --r-md:   18px;
+    --r-lg:   26px;
+    --r-xl:   36px;
+    --r-pill: 999px;
+
+    --sh-1: 0 1px 2px rgba(26, 21, 18, .05), 0 6px 16px -10px rgba(26, 21, 18, .14);
+    --sh-2: 0 2px 4px rgba(26, 21, 18, .04), 0 18px 44px -18px rgba(26, 21, 18, .20);
+    --sh-3: 0 4px 8px rgba(26, 21, 18, .04), 0 40px 80px -34px rgba(26, 21, 18, .34);
+    --sh-terre: 0 18px 44px -18px rgba(201, 69, 42, .45);
+    --sh-lagon: 0 14px 34px -14px rgba(14, 144, 128, .5);
+
+    --ease:     cubic-bezier(.22, 1, .36, 1);
+    --ease-out: cubic-bezier(.16, 1, .3, 1);
+
+    --gutter: clamp(1.15rem, 4vw, 3rem);
+    --header-h: 78px;
+
+    --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E");
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+    scroll-behavior: smooth;
+    scroll-padding-top: calc(var(--header-h) + 1rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+    }
+}
+
+body {
+    margin: 0;
+    font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.62;
+    color: var(--text);
+    background: var(--white);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+}
+
+/* Grain très léger : de la matière, pas une texture */
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background-image: var(--grain);
+    opacity: .022;
+    pointer-events: none;
+    mix-blend-mode: multiply;
+}
+
+::selection { background: var(--terre-500); color: #fff; }
+
+/* ---------- Typographie : une famille, du poids pour tout dire ---------- */
+
+.display {
+    font-weight: 800;
+    line-height: 1.02;
+    letter-spacing: -.045em;
+    margin: 0;
+    text-wrap: balance;
+}
+
+/* Le minimum est calé sur « Vérifiés avant vous. » : cette ligne porte le
+   surlignage, elle est en nowrap et ne doit pas déborder à 390 px.
+   La troisième rangée vit en em du titre (.hero__line--minor) : toucher
+   ces bornes la réduit dans le même rapport, sans réglage séparé. */
+.display--xl { font-size: clamp(2.1rem, 5.8vw, 5rem); }
+.display--lg { font-size: clamp(2.1rem, 4.8vw, 3.9rem); line-height: 1.04; letter-spacing: -.04em; }
+.display--md { font-size: clamp(1.5rem, 2.6vw, 2.2rem); line-height: 1.14; letter-spacing: -.032em; }
+.display--sm { font-size: clamp(1.15rem, 1.7vw, 1.4rem); line-height: 1.22; letter-spacing: -.024em; font-weight: 700; }
+
+/* L'italique maigre : le contrepoint du gras, la seule autre voix */
+.display em {
+    font-style: italic;
+    font-weight: 300;
+    letter-spacing: -.03em;
+}
+
+.display .accent { color: var(--terre-500); }
+
+/* Surlignage fuchsia : une vraie barre, pas un pseudo-élément — GSAP
+   doit pouvoir la tracer au chargement. */
+.uline {
+    position: relative;
+    display: inline-block;
+    white-space: nowrap;
+}
+.uline__bar {
+    position: absolute;
+    left: -.05em;
+    right: -.05em;
+    bottom: .05em;
+    height: .3em;
+    border-radius: var(--r-pill);
+    background: var(--terre-200);
+    opacity: .65;
+    transform-origin: left center;
+}
+.uline__txt { position: relative; }
+
+/* Sur-titre : petit, gras, espacé. Remplace l'ancienne étiquette mono. */
+.eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: .55rem;
+    font-size: .7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--terre-500);
+}
+
+.eyebrow--muted { color: var(--text-3); }
+.eyebrow--light { color: rgba(255, 255, 255, .82); }
+/* Le seul sur-titre qui a le droit au lagon : celui de la section confiance. */
+.eyebrow--lagon { color: var(--lagon-600); }
+
+.eyebrow::before {
+    content: '';
+    width: .42rem;
+    height: .42rem;
+    border-radius: 50%;
+    background: currentColor;
+    flex: none;
+}
+
+.eyebrow--bare::before { display: none; }
+
+.lede {
+    font-size: clamp(1.02rem, 1.35vw, 1.18rem);
+    line-height: 1.68;
+    color: var(--text-2);
+    text-wrap: pretty;
+}
+
+.num { font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+
+/* L'euro à côté de l'ariary : toujours secondaire, jamais seul.
+   L'ariary est le prix — le voyageur règle en ariary sur place — et l'euro
+   n'est là que pour donner un ordre de grandeur à qui ne sait pas ce que
+   valent 185 000 Ar. Neutre : la terre porte la marque et l'action, le lagon
+   ne dit que « vérifié ». Un prix n'est ni l'un ni l'autre. */
+.eur {
+    display: block;
+    margin-top: .1rem;
+    font-size: .78em;
+    font-weight: 600;
+    letter-spacing: -.01em;
+    color: var(--text-3);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.eur--inline { display: inline; margin-top: 0; margin-left: .35rem; }
+
+/* ---------- Trame ---------- */
+
+.shell {
+    width: 100%;
+    max-width: 1400px;
+    margin-inline: auto;
+    padding-inline: var(--gutter);
+}
+
+.shell--tight { max-width: 1000px; }
+
+.section { padding-block: clamp(4rem, 7.5vw, 7rem); }
+.section--flush { padding-top: 0; }
+
+/* Bandeau de section : titre à gauche, action à droite */
+.bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1.25rem 2rem;
+    margin-bottom: clamp(1.75rem, 3.5vw, 2.75rem);
+}
+
+.bar__lede { margin: .9rem 0 0; max-width: 46ch; }
+
+/* ---------- Boutons ---------- */
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .55rem;
+    padding: .95rem 1.5rem;
+    border: 1.5px solid transparent;
+    border-radius: var(--r-pill);
+    font-family: inherit;
+    font-size: .92rem;
+    font-weight: 700;
+    letter-spacing: -.01em;
+    line-height: 1;
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color .25s, color .25s, border-color .25s,
+                box-shadow .35s var(--ease), transform .35s var(--ease);
+}
+
+.btn:active { transform: translateY(1px) scale(.99); }
+.btn:focus-visible { outline: 2px solid var(--terre-500); outline-offset: 3px; }
+
+/* **Un bouton désactivé se lit, il ne s'efface pas — et il ne se déguise pas
+   en bouton actif non plus.** Il n'y avait aucune règle ici : un « Valider »
+   désactivé gardait la terre pleine et son `cursor: pointer`, donc il appelait
+   un clic qui ne faisait rien. C'est le faux signal que la maison s'interdit,
+   et il valait pour tous les boutons du site.
+
+   Ce qui dit « pas encore », c'est le **changement de famille de couleur** —
+   neutre au lieu de terre — pas une opacité réduite : à 30 %, le bouton
+   disparaît au lieu de dire ce qui manque. Le texte reste donc franchement
+   lisible, et c'est la phrase en dessous qui nomme ce qui bloque. */
+.btn:disabled,
+.btn[disabled],
+.btn[aria-disabled='true'] {
+    background: var(--off-2);
+    border-color: var(--line-2);
+    color: var(--ink-3);
+    box-shadow: none;
+    transform: none;
+    cursor: not-allowed;
+}
+.btn:disabled:hover,
+.btn[disabled]:hover,
+.btn[aria-disabled='true']:hover {
+    background: var(--off-2);
+    border-color: var(--line-2);
+    color: var(--ink-3);
+    transform: none;
+}
+
+.btn--terre {
+    background: var(--terre-500);
+    color: #fff;
+    box-shadow: var(--sh-terre);
+}
+.btn--terre:hover { background: var(--terre-600); transform: translateY(-2px); }
+
+.btn--ink { background: var(--ink); color: #fff; }
+.btn--ink:hover { background: var(--terre-500); transform: translateY(-2px); }
+
+.btn--white { background: #fff; color: var(--ink); }
+.btn--white:hover { background: var(--terre-050); color: var(--terre-600); transform: translateY(-2px); }
+
+.btn--outline { border-color: var(--line-2); color: var(--ink); background: #fff; }
+.btn--outline:hover { border-color: var(--ink); background: var(--ink); color: #fff; }
+
+.btn--outline-light { border-color: rgba(255, 255, 255, .45); color: #fff; }
+.btn--outline-light:hover { border-color: #fff; background: #fff; color: var(--terre-600); }
+
+.btn--ghost { color: var(--ink); background: transparent; }
+.btn--ghost:hover { background: var(--off-2); }
+
+.btn--sm { padding: .68rem 1.1rem; font-size: .84rem; }
+.btn--lg { padding: 1.15rem 2rem; font-size: 1rem; }
+
+/* ---------- Pastilles ---------- */
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .38rem .78rem;
+    border-radius: var(--r-pill);
+    font-size: .76rem;
+    font-weight: 600;
+    letter-spacing: -.005em;
+    line-height: 1.3;
+    background: var(--off-2);
+    color: var(--text-2);
+    white-space: nowrap;
+}
+
+.chip--terre { background: var(--terre-050); color: var(--terre-600); }
+.chip--lagon { background: var(--lagon-050); color: var(--lagon-600); }
+.chip--ink  { background: var(--ink); color: #fff; }
+.chip--line { background: #fff; border: 1px solid var(--line-2); color: var(--text-2); }
+
+/* ---------- Carte ---------- */
+
+.card {
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: var(--r-lg);
+    transition: transform .5s var(--ease);
+}
+
+/* ---------- Jauge de confiance : la signature de la maison ---------- */
+
+.gauge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.gauge__seg {
+    width: 15px;
+    height: 4px;
+    border-radius: var(--r-pill);
+    background: var(--line-2);
+    transition: background-color .4s var(--ease), width .4s var(--ease);
+}
+
+/* Le premier segment reste gris : « déclarée » n'est pas une
+   vérification. Le vert ne commence qu'au niveau 2, quand
+   quelqu'un a réellement contrôlé quelque chose. */
+.gauge__seg.is-on:nth-child(1) { background: var(--unverified); }
+.gauge__seg.is-on:nth-child(2) { background: var(--lagon-300); }
+.gauge__seg.is-on:nth-child(3) { background: var(--lagon-500); }
+.gauge__seg.is-on:nth-child(4) { background: var(--lagon-700); }
+
+.gauge--light .gauge__seg { background: rgba(255, 255, 255, .28); }
+.gauge--light .gauge__seg.is-on { background: #fff; }
+
+.gauge--lg .gauge__seg { width: 26px; height: 6px; }
+
+/* ---------- Entrée de page ---------- */
+
+@keyframes rise {
+    from { opacity: 0; transform: translateY(22px); }
+    to   { opacity: 1; transform: none; }
+}
+
+.rise {
+    animation: rise .9s var(--ease-out) both;
+    animation-delay: var(--d, 0ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .rise { animation: none; }
+}
+
+/* ---------- Divers ---------- */
+
+.sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Défilement horizontal sans ascenseur visible (rail de catégories) */
+.no-bar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+.no-bar::-webkit-scrollbar { display: none; }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Les écrans d'accès — connexion, inscription, code
+
+   Le cadre (fond, monogramme tracé, sortie vers l'accueil) est dans
+   `Components/AccessShell.vue` ; ce qui suit est ce que les formulaires y
+   posent. Sept écrans portaient les mêmes règles sous sept préfixes
+   (`.rg__`, `.lg__`, `.cd__`, `.or__`…) et avaient commencé à diverger :
+   deux rayons de bordure, trois tailles de titre, deux hauteurs de champ.
+
+   La hauteur de champ n'est pas négociable : **2,75 rem, la cible tactile
+   minimale**. Un champ plus fin se rate au doigt, et un champ raté sur un
+   écran de connexion est un abandon.
+   ───────────────────────────────────────────────────────────────────────── */
+
+.acces__panel {
+    max-width: var(--as-col, 30rem);
+    margin: 0 auto;
+    padding: clamp(1.5rem, 4vw, 2.25rem);
+    border: 1px solid var(--line-2);
+    border-radius: var(--r-lg);
+    background: rgba(255, 255, 255, .78);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 2px 24px -18px rgba(23, 20, 28, .5);
+    text-align: left;
+}
+
+.acces__form { display: grid; gap: 1.1rem; }
+.acces__field { display: grid; gap: .35rem; }
+.acces__label { font-size: .82rem; font-weight: 700; color: var(--ink); }
+
+.acces__input {
+    width: 100%;
+    min-height: 2.75rem;
+    padding: .7rem .9rem;
+    border: 1px solid var(--line-2);
+    border-radius: var(--r-md);
+    background: var(--white);
+    font: inherit;
+    font-size: 1rem;
+    color: var(--ink);
+}
+.acces__input:focus-visible { outline: 2px solid var(--terre-500); outline-offset: 1px; }
+
+.acces__help { margin: 0; font-size: .78rem; color: var(--text-3); }
+
+/* Une règle de saisie se coche à mesure qu'on la remplit : « huit caractères
+   au minimum » qui reste gris pendant qu'on tape n'apprend rien. */
+.acces__rule { margin: 0; font-size: .78rem; color: var(--text-3); }
+/* L'encre, jamais le lagon : le lagon ne dit que « vérifié ». Le teindre pour
+   « ce champ est bon » rendrait l'échelle de confiance illisible d'un coup
+   d'œil, et c'est déjà le choix qu'avaient fait les trois écrans d'origine. */
+.acces__rule.is-ok { color: var(--ink); font-weight: 600; }
+
+.acces__err {
+    margin: 0;
+    padding: .7rem 1rem;
+    border: 1px solid var(--terre-300);
+    border-radius: var(--r-md);
+    background: var(--terre-050);
+    font-size: .88rem;
+    font-weight: 600;
+    color: var(--terre-700);
+}
+
+.acces__ok {
+    margin: 0 0 1rem;
+    padding: .7rem 1rem;
+    border: 1px solid var(--line-2);
+    border-radius: var(--r-md);
+    background: var(--off);
+    font-size: .88rem;
+    color: var(--text-2);
+}
+
+.acces__see { display: flex; align-items: center; gap: .55rem; font-size: .88rem; color: var(--text-2); cursor: pointer; }
+.acces__see input { width: 1.1rem; height: 1.1rem; accent-color: var(--terre-500); }
+
+.acces__go { width: 100%; }
+
+/* Un bouton désactivé se lit, il ne s'efface pas : la phrase dit ce qui
+   manque, au lieu de laisser deviner pourquoi rien ne se passe. */
+.acces__why { margin: 0; font-size: .8rem; text-align: center; color: var(--text-3); }
+
+/* Le « ou » entre les fournisseurs et le champ : un filet de part et d'autre,
+   parce que deux blocs qui se suivent sans rupture se lisent comme une seule
+   suite de gestes à enchaîner — alors qu'il faut en choisir un. */
+.acces__ou {
+    display: flex;
+    align-items: center;
+    gap: .8rem;
+    margin: 1.1rem 0;
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--text-3);
+}
+.acces__ou::before,
+.acces__ou::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--line-2);
+}
+
+.acces__link { font-weight: 700; color: var(--terre-600); text-decoration: underline; text-underline-offset: .2em; }
+.acces__sep { margin: 0 .5rem; color: var(--line-2); }
+
+@media (prefers-reduced-motion: reduce) {
+    .acces__panel { backdrop-filter: none; background: var(--white); }
+}
