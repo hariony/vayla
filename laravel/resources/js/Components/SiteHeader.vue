@@ -1,8 +1,28 @@
 <script setup>
 /**
- * En-tête. Au repos : marque, navigation, appel à publier. Dès qu'on
- * défile au-delà du moteur du hero, le résumé de recherche vient s'y
- * encastrer — la recherche ne quitte jamais l'écran.
+ * En-tête. Au repos : marque, navigation, deux contrôles. Dès qu'on défile
+ * au-delà du moteur du hero, le résumé de recherche vient s'y encastrer — la
+ * recherche ne quitte jamais l'écran.
+ *
+ * **« Demander un séjour » a été retiré, et c'était un lien mort.** Il pointait
+ * sur `#demande`, la section « le sens inverse » de l'accueil, dont le propre
+ * bouton pointe encore sur lui-même : la barre promettait une action qui
+ * n'existait nulle part. Et surtout, on ne demande pas un séjour dans
+ * l'abstrait — on le demande **pour un logement**, sur
+ * `/logements/{slug}/reserver`, une fois qu'on en a choisi un. Un appel à
+ * l'action posé avant ce choix court-circuite l'étape qui donne son sens à
+ * tout le reste.
+ *
+ * **Il ne reste donc qu'une action, et c'est « Devenir hôte ».** C'est le seul
+ * geste que la barre puisse honnêtement porter partout : le voyageur a le
+ * moteur de recherche sous les yeux, le propriétaire n'a que ce chemin. La
+ * terre lui revient — elle est la couleur de l'envie et de l'action, et il n'y
+ * a plus rien d'autre à mettre en concurrence.
+ *
+ * **« Propriétaires » sort de la navigation avec lui.** Les deux menaient à
+ * la même ancre, à trente pixels d'écart : deux libellés pour une destination,
+ * exactement ce qu'on a retiré de `/connexion`. C'est le bouton qui reste, il
+ * dit ce qu'on y fait.
  */
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
@@ -30,7 +50,6 @@ const LINKS = [
     { to: '/logements', label: 'Logements' },
     { hash: 'confiance', label: 'Confiance' },
     { to: '/destinations', label: 'Destinations' },
-    { hash: 'proprietaires', label: 'Propriétaires' },
 ]
 
 const anchor = (hash) => (props.home ? `#${hash}` : `/#${hash}`)
@@ -74,7 +93,6 @@ const links = computed(() =>
     }))
 )
 
-const demande = computed(() => anchor('demande'))
 const proprietaires = computed(() => anchor('proprietaires'))
 
 const onScroll = () => {
@@ -137,9 +155,8 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
                      porte, celui qui découvre lit d'abord la page. Le libellé
                      suit la session — voir `espace` — parce qu'un lien qui
                      propose de se connecter à qui l'est déjà fait douter. -->
-                <Link :href="espace.href" class="hdr__ghost hdr__login">{{ espace.label }}</Link>
-                <a v-if="recrute" :href="proprietaires" class="hdr__ghost">Devenir hôte</a>
-                <a :href="demande" class="btn btn--sm btn--ink hdr__cta">Demander un séjour</a>
+                <Link :href="espace.href" class="hdr__ctrl hdr__login">{{ espace.label }}</Link>
+                <a v-if="recrute" :href="proprietaires" class="hdr__ctrl hdr__host">Devenir hôte</a>
 
                 <button
                     class="hdr__burger"
@@ -164,8 +181,9 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
                 class="hdr__drawer-link"
                 @click="menuOpen = false"
             >{{ l.label }}</component>
-            <a :href="demande" class="btn btn--terre hdr__drawer-cta" @click="menuOpen = false">
-                Demander un séjour
+            <a v-if="recrute" :href="proprietaires" class="btn btn--terre hdr__drawer-cta"
+               @click="menuOpen = false">
+                Devenir hôte
             </a>
 
             <!-- Le carrefour, pas l'espace propriétaire directement : le
@@ -272,32 +290,80 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
     flex: none;
 }
 
-.hdr__ghost {
+/* **Les deux entrées de la barre sont des contrôles, et se voient comme tels.**
+   C'étaient deux libellés posés nus, que seul le survol distinguait du texte —
+   la règle de la maison ne s'en accommode pas, et ici moins qu'ailleurs :
+   depuis le retrait de l'appel à l'action, ce sont les seuls objets cliquables
+   de la barre. Ils partagent la hauteur du bouton de menu — 2,625 rem, soit
+   42 px, la cible tactile minimale — et sa pilule, si bien que le bord droit
+   de l'en-tête tient sur une seule ligne optique. */
+.hdr__ctrl {
     display: none;
-    padding: .68rem 1rem;
+    align-items: center;
+    min-height: 2.625rem;
+    padding: 0 1.05rem;
+    border: 1px solid transparent;
     border-radius: var(--r-pill);
     font-size: .9rem;
     font-weight: 700;
     letter-spacing: -.012em;
-    color: var(--ink);
     text-decoration: none;
-    transition: background-color .25s;
+    white-space: nowrap;
+    transition:
+        border-color .3s var(--ease),
+        background-color .3s var(--ease),
+        color .3s var(--ease),
+        box-shadow .3s var(--ease),
+        transform .3s var(--ease);
 }
-.hdr__ghost:hover { background: var(--off-2); }
+.hdr__ctrl:focus-visible { outline: 2px solid var(--terre-500); outline-offset: 2px; }
 
-.hdr__cta { display: none; }
+/* Blanc translucide et flou d'arrière-plan : au repos l'en-tête est
+   transparent au-dessus du hero, et un fond plein y ferait une tache. C'est
+   déjà le traitement de la sortie des écrans d'accès — même objet, même
+   langage. */
+.hdr__login {
+    border-color: var(--line-2);
+    background: rgba(255, 255, 255, .72);
+    backdrop-filter: blur(14px);
+    color: var(--ink);
+}
+.hdr__login:hover {
+    border-color: var(--terre-300);
+    background: #fff;
+    color: var(--terre-600);
+}
+
+/* **La terre revient à la seule action qui reste.** Elle est la couleur de
+   l'envie et de l'action, et il n'y a plus rien pour la lui disputer dans la
+   barre. L'ombre est teintée de la même terre : une ombre neutre sous un objet
+   coloré le fait flotter au lieu de le poser. */
+.hdr__host {
+    border-color: var(--terre-500);
+    background: var(--terre-500);
+    color: #fff;
+    box-shadow: 0 10px 24px -14px rgba(201, 69, 42, .8);
+}
+.hdr__host:hover {
+    border-color: var(--terre-600);
+    background: var(--terre-600);
+    transform: translateY(-1px);
+    box-shadow: 0 14px 30px -14px rgba(201, 69, 42, .85);
+}
 
 /* « Connexion » reste visible quand « Devenir hôte » disparaît : c'est le
    seul lien de la barre dont un utilisateur perdu a besoin, et le renvoyer
-   dans le tiroir lui demande un geste de plus. Double classe pour passer
-   devant le `display: none` de `.hdr__ghost`, qui vient après dans la
-   feuille — jouer sur l'ordre se serait défait au premier déplacement. */
-.hdr__ghost.hdr__login { display: inline-flex; padding-inline: .8rem; }
+   dans le tiroir lui demande un geste de plus. Sous 460 px, en revanche, la
+   barre porte déjà la marque et le menu : le tiroir prend le relais. */
+@media (min-width: 461px) {
+    .hdr__login { display: inline-flex; }
+}
 
-@media (max-width: 460px) {
-    /* Sous 460 px la barre porte déjà la marque, le CTA et le menu : le
-       tiroir prend le relais. */
-    .hdr__ghost.hdr__login { display: none; }
+/* Le mouvement au survol est un agrément, pas une information : il tombe
+   quand on l'a refusé, la couleur suffit à dire que c'est actif. */
+@media (prefers-reduced-motion: reduce) {
+    .hdr__ctrl { transition: none; }
+    .hdr__host:hover { transform: none; }
 }
 
 .hdr__burger {
@@ -360,8 +426,7 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
 .hdr__drawer[hidden] { display: none; }
 
 @media (min-width: 720px) {
-    .hdr__ghost { display: inline-flex; }
-    .hdr__cta { display: inline-flex; }
+    .hdr__host { display: inline-flex; }
 }
 
 @media (min-width: 1000px) {
