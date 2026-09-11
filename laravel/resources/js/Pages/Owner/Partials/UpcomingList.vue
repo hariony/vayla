@@ -16,7 +16,7 @@ defineProps({
 
 <template>
     <section class="up">
-        <h2 class="up__title">Séjours à venir</h2>
+        <h2 class="espace__section up__title">Séjours à venir</h2>
 
         <p v-if="!stays.length" class="up__empty">Aucun séjour accepté pour l'instant.</p>
 
@@ -38,7 +38,7 @@ defineProps({
 </template>
 
 <style scoped>
-.up__title { margin: 0 0 1rem; font-size: 1.3rem; font-weight: 800; letter-spacing: -.032em; color: var(--ink); }
+.up__title { margin: 0 0 1rem; }
 
 .up__empty {
     margin: 0;

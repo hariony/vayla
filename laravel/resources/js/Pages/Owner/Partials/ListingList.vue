@@ -30,7 +30,7 @@ const periodes = (n) => (n ? `${n} période${n > 1 ? 's' : ''} fermée${n > 1 ? 
 
 <template>
     <section class="ol">
-        <h2 class="ol__title">Mes logements</h2>
+        <h2 class="espace__section ol__title">Mes logements</h2>
 
         <ul class="ol__list">
             <li v-for="l in listings" :key="l.slug" class="ol__card">
@@ -81,7 +81,7 @@ const periodes = (n) => (n ? `${n} période${n > 1 ? 's' : ''} fermée${n > 1 ? 
 </template>
 
 <style scoped>
-.ol__title { margin: 0 0 1rem; font-size: 1.3rem; font-weight: 800; letter-spacing: -.032em; color: var(--ink); }
+.ol__title { margin: 0 0 1rem; }
 
 .ol__list { margin: 0; padding: 0; list-style: none; display: grid; gap: .7rem; }
 

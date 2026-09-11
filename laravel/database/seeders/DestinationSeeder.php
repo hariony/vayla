@@ -38,10 +38,27 @@ class DestinationSeeder extends Seeder
             $photoKey = $destination['photo'];
             unset($destination['photo']);
 
-            Destination::updateOrCreate(
-                ['slug' => $destination['slug']],
+            // Créer ce qui manque, ne jamais réécrire : le back-office édite
+            // les destinations, et la base fait foi. Seule une photo perdue
+            // est reposée — une destination sans photo retombe sur un dessin.
+            $existante = Destination::query()->where('slug', $destination['slug'])->first();
+
+            if ($existante) {
+                if (! $existante->photo_id && isset($photos[$photoKey])) {
+                    $existante->update(['photo_id' => $photos[$photoKey]]);
+                }
+            }
+
+            $cible = $existante ?? Destination::create(
                 $destination + ['photo_id' => $photos[$photoKey] ?? null]
             );
+
+            // La couverture est la première photo de la galerie : une
+            // destination semée sans galerie la reçoit, jamais au-delà — le
+            // reste de la galerie appartient à l'équipe.
+            if ($cible->photo_id && ! $cible->galerie()->exists()) {
+                $cible->galerie()->attach($cible->photo_id, ['position' => 0]);
+            }
         }
     }
 }

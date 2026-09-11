@@ -12,6 +12,7 @@ import { ref } from 'vue'
 import HeroBackdrop from '@/Components/HeroBackdrop.vue'
 import CanopyLayer from '@/Components/CanopyLayer.vue'
 import SearchPanel from '@/Components/SearchPanel.vue'
+import { useTextes } from '@/Composables/useTextes.js'
 
 defineProps({
     destinations: { type: Array, default: () => [] },
@@ -28,6 +29,9 @@ const focusSearch = () => {
 }
 
 defineExpose({ focusSearch })
+
+// Les textes viennent du back-office ; l'original reste dans `SiteTextCatalog`.
+const { t, riche } = useTextes()
 </script>
 
 <template>
@@ -46,28 +50,24 @@ defineExpose({ focusSearch })
             </p>
 
             <h1 class="display display--xl hero__title">
-                <span class="hero__line" data-hero-line>Location de villas et appartements meublés.</span>
-                <span class="hero__line hero__line--minor" data-hero-line><span class="uline"><i class="uline__bar" data-underline aria-hidden="true"></i><span class="uline__txt">Vérifiés avant vous.</span></span></span>
+                <span class="hero__line" data-hero-line>{{ t('accueil.hero.titre') }}</span>
+                <span class="hero__line hero__line--minor" data-hero-line><span class="uline"><i class="uline__bar" data-underline aria-hidden="true"></i><span class="uline__txt">{{ t('accueil.hero.titre_souligne') }}</span></span></span>
             </h1>
 
-            <p class="lede hero__lede" data-hero-item>
-                Chaque logement affiche jusqu'où nous sommes allés pour le vérifier.
-                Déclaré, contact confirmé, visité en visio, séjour confirmé — c'est
-                écrit sur l'annonce, avant le prix.
-            </p>
+            <p class="lede hero__lede" data-hero-item v-html="riche('accueil.hero.accroche')" />
 
             <ul class="hero__stats" data-hero-item>
                 <li class="hero__stat">
                     <span class="hero__stat-n num" :data-count="trustLevels.length">{{ trustLevels.length }}</span>
-                    <span class="hero__stat-l">niveaux de vérification</span>
+                    <span class="hero__stat-l">{{ t('accueil.hero.stat_niveaux') }}</span>
                 </li>
                 <li class="hero__stat">
                     <span class="hero__stat-n num" :data-count="destinations.length">{{ destinations.length }}</span>
-                    <span class="hero__stat-l">destinations ouvertes</span>
+                    <span class="hero__stat-l">{{ t('accueil.hero.stat_destinations') }}</span>
                 </li>
                 <li class="hero__stat">
                     <span class="hero__stat-n">Ar</span>
-                    <span class="hero__stat-l">prix en ariary, sans conversion</span>
+                    <span class="hero__stat-l">{{ t('accueil.hero.stat_prix') }}</span>
                 </li>
             </ul>
         </div>

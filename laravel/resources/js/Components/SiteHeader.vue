@@ -15,17 +15,29 @@
  *
  * **Il ne reste donc qu'une action, et c'est « Devenir hôte ».** C'est le seul
  * geste que la barre puisse honnêtement porter partout : le voyageur a le
- * moteur de recherche sous les yeux, le propriétaire n'a que ce chemin. La
- * terre lui revient — elle est la couleur de l'envie et de l'action, et il n'y
- * a plus rien d'autre à mettre en concurrence.
+ * moteur de recherche sous les yeux, le propriétaire n'a que ce chemin.
+ *
+ * **Elle garde l'encre, et « Connexion » redevient du texte.** La terre était
+ * disponible — plus rien ne la lui disputait — mais une barre fixe qui suit la
+ * page entière n'est pas l'endroit où la dépenser : elle appartient au moteur
+ * de recherche et aux boutons du contenu, ceux qui font vraiment avancer. Un
+ * seul objet plein, noir, et à côté un mot : le poids visuel dit lequel des
+ * deux est une action, sans que la barre pèse sur ce qu'on lit dessous.
  *
  * **« Propriétaires » sort de la navigation avec lui.** Les deux menaient à
  * la même ancre, à trente pixels d'écart : deux libellés pour une destination,
  * exactement ce qu'on a retiré de `/connexion`. C'est le bouton qui reste, il
  * dit ce qu'on y fait.
+ *
+ * **Connecté, le mot « Connexion » devient la pastille du compte** — voir
+ * `AccountMenu`. Elle est visible à **toutes** les largeurs, contrairement au
+ * mot qu'elle remplace : c'est le seul endroit du site public d'où l'on peut
+ * se déconnecter, et le renvoyer dans le tiroir sur un téléphone reviendrait à
+ * le cacher là où il sert le plus.
  */
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
+import AccountMenu from './AccountMenu.vue'
 import GoogleOneTap from './GoogleOneTap.vue'
 import VaylaMark from './VaylaMark.vue'
 import SearchPanel from './SearchPanel.vue'
@@ -84,6 +96,15 @@ const espace = computed(() => {
 
 /** « Devenir hôte » n'a aucun sens pour quelqu'un qui l'est déjà. */
 const recrute = computed(() => ! page.props.auth?.owner)
+
+/**
+ * Connecté, le mot cède la place au compte.
+ *
+ * Un lien « Mes réservations » ne disait ni **qui** est connecté ni comment
+ * sortir : sur un téléphone partagé, c'est la session de quelqu'un d'autre
+ * qu'on prend pour la sienne. La pastille dit les deux — voir `AccountMenu`.
+ */
+const connecte = computed(() => Boolean(page.props.auth?.user || page.props.auth?.owner))
 
 const links = computed(() =>
     LINKS.map((l) => ({
@@ -152,11 +173,15 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
 
             <div class="hdr__actions">
                 <!-- Avant « Devenir hôte » : celui qui revient cherche une
-                     porte, celui qui découvre lit d'abord la page. Le libellé
-                     suit la session — voir `espace` — parce qu'un lien qui
-                     propose de se connecter à qui l'est déjà fait douter. -->
-                <Link :href="espace.href" class="hdr__ctrl hdr__login">{{ espace.label }}</Link>
-                <a v-if="recrute" :href="proprietaires" class="hdr__ctrl hdr__host">Devenir hôte</a>
+                     porte, celui qui découvre lit d'abord la page.
+
+                     Déconnecté, c'est un mot ; connecté, c'est le compte —
+                     proposer de se connecter à qui l'est déjà fait douter,
+                     et un simple lien vers son espace ne dit ni qui est
+                     connecté ni comment sortir. -->
+                <AccountMenu v-if="connecte" />
+                <Link v-else :href="espace.href" class="hdr__login">{{ espace.label }}</Link>
+                <a v-if="recrute" :href="proprietaires" class="btn btn--sm btn--ink hdr__host">Devenir hôte</a>
 
                 <button
                     class="hdr__burger"
@@ -290,66 +315,32 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
     flex: none;
 }
 
-/* **Les deux entrées de la barre sont des contrôles, et se voient comme tels.**
-   C'étaient deux libellés posés nus, que seul le survol distinguait du texte —
-   la règle de la maison ne s'en accommode pas, et ici moins qu'ailleurs :
-   depuis le retrait de l'appel à l'action, ce sont les seuls objets cliquables
-   de la barre. Ils partagent la hauteur du bouton de menu — 2,625 rem, soit
-   42 px, la cible tactile minimale — et sa pilule, si bien que le bord droit
-   de l'en-tête tient sur une seule ligne optique. */
-.hdr__ctrl {
+/* **Un mot, pas un objet.** « Connexion » reste un lien de texte : la barre est
+   fixe, elle suit la page entière, et deux pastilles côte à côte y pèsent en
+   permanence sur ce qu'on est en train de lire. Le contraste entre le bouton
+   plein et le mot suffit à dire lequel des deux est une action — c'est la
+   hiérarchie qui informe ici, pas le contour. */
+.hdr__login {
     display: none;
     align-items: center;
     min-height: 2.625rem;
-    padding: 0 1.05rem;
-    border: 1px solid transparent;
+    padding: 0 .8rem;
     border-radius: var(--r-pill);
     font-size: .9rem;
     font-weight: 700;
     letter-spacing: -.012em;
+    color: var(--ink);
     text-decoration: none;
     white-space: nowrap;
-    transition:
-        border-color .3s var(--ease),
-        background-color .3s var(--ease),
-        color .3s var(--ease),
-        box-shadow .3s var(--ease),
-        transform .3s var(--ease);
+    transition: background-color .25s var(--ease), color .25s var(--ease);
 }
-.hdr__ctrl:focus-visible { outline: 2px solid var(--terre-500); outline-offset: 2px; }
+.hdr__login:hover { background: var(--off-2); color: var(--terre-600); }
+.hdr__login:focus-visible { outline: 2px solid var(--terre-500); outline-offset: 2px; }
 
-/* Blanc translucide et flou d'arrière-plan : au repos l'en-tête est
-   transparent au-dessus du hero, et un fond plein y ferait une tache. C'est
-   déjà le traitement de la sortie des écrans d'accès — même objet, même
-   langage. */
-.hdr__login {
-    border-color: var(--line-2);
-    background: rgba(255, 255, 255, .72);
-    backdrop-filter: blur(14px);
-    color: var(--ink);
-}
-.hdr__login:hover {
-    border-color: var(--terre-300);
-    background: #fff;
-    color: var(--terre-600);
-}
-
-/* **La terre revient à la seule action qui reste.** Elle est la couleur de
-   l'envie et de l'action, et il n'y a plus rien pour la lui disputer dans la
-   barre. L'ombre est teintée de la même terre : une ombre neutre sous un objet
-   coloré le fait flotter au lieu de le poser. */
-.hdr__host {
-    border-color: var(--terre-500);
-    background: var(--terre-500);
-    color: #fff;
-    box-shadow: 0 10px 24px -14px rgba(201, 69, 42, .8);
-}
-.hdr__host:hover {
-    border-color: var(--terre-600);
-    background: var(--terre-600);
-    transform: translateY(-1px);
-    box-shadow: 0 14px 30px -14px rgba(201, 69, 42, .85);
-}
+/* Le bouton reprend `.btn--ink` — le noir du site, qui passe à la terre au
+   survol. Il prend la hauteur du bouton de menu, 2,625 rem soit 42 px : le
+   bord droit de l'en-tête tient alors sur une seule ligne optique. */
+.hdr__host { display: none; min-height: 2.625rem; }
 
 /* « Connexion » reste visible quand « Devenir hôte » disparaît : c'est le
    seul lien de la barre dont un utilisateur perdu a besoin, et le renvoyer
@@ -357,13 +348,6 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
    barre porte déjà la marque et le menu : le tiroir prend le relais. */
 @media (min-width: 461px) {
     .hdr__login { display: inline-flex; }
-}
-
-/* Le mouvement au survol est un agrément, pas une information : il tombe
-   quand on l'a refusé, la couleur suffit à dire que c'est actif. */
-@media (prefers-reduced-motion: reduce) {
-    .hdr__ctrl { transition: none; }
-    .hdr__host:hover { transform: none; }
 }
 
 .hdr__burger {

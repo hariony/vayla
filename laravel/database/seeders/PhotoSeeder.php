@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Photo;
+use Illuminate\Support\Arr;
 use Illuminate\Database\Seeder;
 
 /**
@@ -26,14 +27,33 @@ class PhotoSeeder extends Seeder
     public function run(): void
     {
         foreach ($this->photos() as $photo) {
-            Photo::updateOrCreate(['key' => $photo['key']], $photo);
+            $existante = Photo::query()->where('key', $photo['key'])->first();
+
+            if (! $existante) {
+                Photo::create($photo);
+
+                continue;
+            }
+
+            // **La légende, l'auteur et la page d'origine se corrigent dans la
+            // photothèque du back-office** : les réécrire à chaque `make seed`
+            // effacerait en silence le travail de l'équipe — la règle des
+            // autres référentiels. La licence et les fichiers restent ceux du
+            // catalogue, que la photothèque ne touche pas pour Commons.
+            $existante->fill(Arr::except($photo, ['caption', 'author', 'source_url']))->save();
         }
 
         // Une photo retirée du catalogue doit disparaître de la base, sinon
         // elle continue d'apparaître dans les « Crédits photo » du pied de
         // page alors qu'elle n'est plus affichée nulle part : on créditerait
         // un auteur pour une image qu'on ne publie plus.
+        //
+        // **Seulement dans `lieux`, le dossier que ce seeder possède.** La
+        // suppression visait toute la table : un `make seed` effaçait les
+        // photos téléversées par les propriétaires (`annonces`) et par
+        // l'équipe (`destinations`), en laissant leurs fichiers orphelins.
         Photo::query()
+            ->where('folder', 'lieux')
             ->whereNotIn('key', array_column($this->photos(), 'key'))
             ->delete();
     }

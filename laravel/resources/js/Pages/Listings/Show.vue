@@ -23,6 +23,8 @@ import { Head, Link } from '@inertiajs/vue3'
 import SiteHeader from '@/Components/SiteHeader.vue'
 import SiteFooter from '@/Components/SiteFooter.vue'
 import ListingCard from '@/Components/ListingCard.vue'
+import SectionDock from '@/Components/SectionDock.vue'
+import { useSectionRail } from '@/Composables/useSectionRail.js'
 
 import CapacityBar from './Partials/CapacityBar.vue'
 import Gallery from './Partials/Gallery.vue'
@@ -51,6 +53,34 @@ const props = defineProps({
 const root = ref(null)
 useFicheMotion(root)
 
+/**
+ * Les six endroits où l'on va vraiment sur une fiche.
+ *
+ * **Six, pas huit.** La description et les règles de séjour sont dans le flux,
+ * juste après ce qui les amène ; les lister aurait fait un sommaire complet
+ * plutôt qu'un raccourci, et un rail qu'on parcourt pour choisir n'est plus un
+ * raccourci. L'ordre est **celui de la page** — un repère de position qui
+ * n'aurait pas l'ordre du texte désignerait la mauvaise ligne en descendant.
+ */
+const RUBRIQUES = [
+    { id: 'photos', label: 'Photos', icone: 'photos' },
+    { id: 'energie', label: 'Énergie', icone: 'energie' },
+    { id: 'verification', label: 'Vérification', icone: 'verification' },
+    { id: 'avis', label: 'Avis', icone: 'avis' },
+    { id: 'equipements', label: 'Équipements', icone: 'equipements' },
+    { id: 'calendrier', label: 'Calendrier', icone: 'calendrier' },
+]
+
+/**
+ * Le repérage, tenu **une fois** par la page.
+ *
+ * Deux surfaces l'affichent — le rail de la colonne et les boutons posés sur
+ * la photographie — et elles ne peuvent pas diverger, puisqu'elles lisent le
+ * même état. Chacune appelant le composable aurait posé deux jeux de
+ * `ScrollTrigger` sur les mêmes sections.
+ */
+const rail = useSectionRail(RUBRIQUES)
+
 const l = computed(() => props.fiche.listing)
 const calendrier = computed(() => props.fiche.calendar)
 
@@ -75,6 +105,14 @@ const niveau = computed(() => props.trustLevels[l.value.trust - 1])
 
         <main class="fiche">
             <div class="shell">
+                <!-- Le couloir des raccourcis : une bande de toute la hauteur
+                     de la fiche, dans laquelle ils collent au défilement. Elle
+                     s'arrête avec la fiche — c'est ce qui les arrête au-dessus
+                     du pied de page. -->
+                <div class="fiche__couloir">
+                    <SectionDock :sections="RUBRIQUES" :pilote="rail" />
+                </div>
+
                 <nav class="fiche__crumbs" aria-label="Fil d'Ariane" data-fiche-head>
                     <Link href="/logements" class="fiche__crumb">Logements</Link>
                     <span aria-hidden="true">·</span>
@@ -101,14 +139,24 @@ const niveau = computed(() => props.trustLevels[l.value.trust - 1])
                     Les photographies, elles, sont réelles et créditées.
                 </p>
 
-                <Gallery
-                    :photos="fiche.gallery"
-                    :title="l.title"
-                    :trust="l.trust"
-                    :trust-name="niveau?.name"
-                />
+                <div id="photos" class="fiche__ancre">
+                    <Gallery
+                        :photos="fiche.gallery"
+                        :title="l.title"
+                        :trust="l.trust"
+                        :trust-name="niveau?.name"
+                    >
+                        <!-- La forme étroite des mêmes raccourcis : sous
+                             1180 px, la gouttière ne peut plus rien accueillir
+                             sans recouvrir le texte. -->
+                        <template #surcouche>
+                            <SectionDock :sections="RUBRIQUES" :pilote="rail" variante="photo" />
+                        </template>
+                    </Gallery>
+                </div>
 
-                <div class="fiche__body">
+
+                <div class="fiche__body" data-rail-portee>
                     <div class="fiche__main">
                         <div class="fiche__intro" data-anim>
                             <!-- « Logement entier · Villa » plutôt que « Villa
@@ -127,15 +175,15 @@ const niveau = computed(() => props.trustLevels[l.value.trust - 1])
                             <p class="fiche__prose">{{ fiche.description }}</p>
                         </section>
 
-                        <div class="fiche__section">
+                        <div id="energie" class="fiche__section">
                             <EnergyPanel :groups="fiche.amenities" />
                         </div>
 
-                        <div class="fiche__section fiche__section--trust">
+                        <div id="verification" class="fiche__section fiche__section--trust">
                             <TrustPanel :level="l.trust" :trust-levels="trustLevels" />
                         </div>
 
-                        <div class="fiche__section fiche__section--wide">
+                        <div id="avis" class="fiche__section fiche__section--wide">
                             <Confirmations
                                 :summary="fiche.confirmed"
                                 :confirmations="fiche.confirmations"
@@ -143,7 +191,7 @@ const niveau = computed(() => props.trustLevels[l.value.trust - 1])
                             />
                         </div>
 
-                        <section class="fiche__section" data-anim>
+                        <section id="equipements" class="fiche__section" data-anim>
                             <h2 class="fiche__h2">
                                 Équipements
                                 <span class="fiche__h2-n num" :data-count="l.amenityCount">{{ l.amenityCount }}</span>
@@ -151,7 +199,7 @@ const niveau = computed(() => props.trustLevels[l.value.trust - 1])
                             <AmenityGroups :groups="fiche.amenities" />
                         </section>
 
-                        <div class="fiche__section fiche__section--wide">
+                        <div id="calendrier" class="fiche__section fiche__section--wide">
                             <AvailabilitySection
                                 :dates="dates"
                                 :calendar="calendrier"
@@ -316,6 +364,45 @@ const niveau = computed(() => props.trustLevels[l.value.trust - 1])
     gap: clamp(1.6rem, 3vw, 2.4rem) clamp(1.2rem, 2vw, 1.8rem);
 }
 
+/* La photographie porte les raccourcis dans sa forme étroite : ils s'y
+   positionnent en absolu, donc ce bloc devient leur référence. */
+.fiche__ancre { position: relative; }
+
+/* **Le couloir des raccourcis.** Au-delà de 1180 px, la fiche laisse à gauche
+   une bande que le contenu n'occupe pas : les raccourcis fixes y vivent,
+   toujours visibles, sans jamais passer sur une ligne de texte. Les laisser
+   flotter dans la seule gouttière les collait au bord de la photographie —
+   et, sur un écran de 1440 px, les posait dessus.
+   5,5 rem : le dock fait 6 rem depuis le bord de `.shell`, la gouttière en
+   donne 3 ; il reste 2,5 rem d'air entre les légendes et la photographie. */
+@media (min-width: 1180px) {
+    .fiche { --couloir: 5.5rem; }
+    .fiche > .shell {
+        position: relative;
+        padding-left: calc(var(--gutter) + var(--couloir));
+    }
+}
+
+/* **La descente maximale des raccourcis est la fin de la fiche.** Ils
+   étaient en `position: fixed` : fixés à la fenêtre, ils ignoraient la page et
+   finissaient posés sur le pied de page. Ils collent maintenant (`sticky`) à
+   l'intérieur de cette bande, qui a exactement la hauteur de `.shell` : quand
+   la fiche se termine, la bande se termine, et ils remontent avec elle au
+   lieu de passer sur les crédits photo. Aucun calcul, aucun écouteur — le
+   navigateur fait la butée.
+   Elle se pose dans la marge gauche de `.shell`, là où le couloir réserve la
+   place : plus de `(100vw - 1400px) / 2` à tenir à jour. */
+.fiche__couloir { display: none; }
+
+@media (min-width: 1180px) {
+    .fiche__couloir {
+        position: absolute;
+        inset: 0 auto 0 .9rem;
+        display: block;
+        width: 6rem;
+    }
+}
+
 @media (min-width: 1000px) {
     .fiche__body { grid-template-columns: minmax(0, 1fr) 340px; }
 
@@ -325,4 +412,5 @@ const niveau = computed(() => props.trustLevels[l.value.trust - 1])
         align-self: start;
     }
 }
+
 </style>

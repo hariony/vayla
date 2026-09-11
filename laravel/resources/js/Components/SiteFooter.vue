@@ -4,7 +4,8 @@
  * elle se termine sur un mot géant en dégradé fuchsia.
  */
 import { computed } from 'vue'
-import { Link } from '@inertiajs/vue3'
+import { Link, usePage } from '@inertiajs/vue3'
+import { useTextes } from '@/Composables/useTextes.js'
 import VaylaMark from './VaylaMark.vue'
 
 // Les licences CC BY et CC BY-SA imposent de créditer l'auteur et de
@@ -20,54 +21,49 @@ const props = defineProps({
 const anchor = (hash) => (props.home ? `#${hash}` : `/#${hash}`)
 
 /**
- * `to` = une page qui existe (visite Inertia). Les autres restent inertes :
- * mieux vaut un lien mort visible qu'une page vide promise. Ils s'activeront
- * au fur et à mesure.
+ * Les colonnes du pied de page : les **écrans** du site, écrits ici, et les
+ * **pages éditoriales publiées**, tenues depuis le back-office (prop partagée
+ * `pied`).
+ *
+ * **Plus aucun lien vers `#`.** Le pied de page en portait cinq — tarifs,
+ * guide, à propos, contact, conditions — qui ne menaient nulle part : c'est la
+ * règle « aucun lien inventé » que l'en-tête avait fait respecter. Une page en
+ * brouillon n'apparaît pas ; publiée, elle prend sa place dans sa colonne.
  */
-const COLUMNS = [
-    {
-        title: 'Voyageurs',
-        links: [
-            { label: 'Rechercher un logement', to: '/logements' },
-            { label: 'Déposer une demande de séjour', hash: 'demande' },
-            { label: 'Comment ça marche', hash: 'confiance' },
-            { label: 'Sécurité et confiance', hash: 'confiance' },
-        ],
-    },
-    {
-        title: 'Propriétaires',
-        links: [
-            { label: 'Publier un logement', to: '/proprietaire/inscription' },
-            { label: 'Faire vérifier mon annonce', hash: 'proprietaires' },
-            // L'entrée du compte, et non l'ancre de recrutement : un
-            // propriétaire déjà inscrit qui a perdu son lien WhatsApp n'avait
-            // aucun chemin depuis le site.
-            { label: 'Accéder à mon espace', to: '/proprietaire' },
-            { label: 'Tarifs et abonnements' },
-            { label: 'Guide du propriétaire' },
-        ],
-    },
-    {
-        title: 'Vayla',
-        links: [
-            { label: 'À propos' },
-            { label: 'Destinations couvertes', to: '/destinations' },
-            { label: 'Nous contacter' },
-            { label: 'Conditions d\'utilisation' },
-        ],
-    },
-]
+const ECRANS = {
+    voyageurs: [
+        { label: 'Rechercher un logement', to: '/logements' },
+        { label: 'Déposer une demande de séjour', to: '/demande' },
+        { label: 'Sécurité et confiance', hash: 'confiance' },
+    ],
+    proprietaires: [
+        { label: 'Publier un logement', to: '/proprietaire/inscription' },
+        // L'entrée du compte, et non l'ancre de recrutement : un propriétaire
+        // déjà inscrit qui a perdu son lien WhatsApp n'avait aucun chemin.
+        { label: 'Accéder à mon espace', to: '/proprietaire' },
+    ],
+    vayla: [
+        { label: 'Destinations couvertes', to: '/destinations' },
+    ],
+}
 
-const columns = computed(() =>
-    COLUMNS.map((c) => ({
-        title: c.title,
-        links: c.links.map((l) => ({
-            label: l.label,
-            href: l.to ?? (l.hash ? anchor(l.hash) : '#'),
-            page: Boolean(l.to),
-        })),
-    }))
-)
+const TITRES = { voyageurs: 'Voyageurs', proprietaires: 'Propriétaires', vayla: 'Vayla' }
+
+const page = usePage()
+const pied = computed(() => page.props.pied ?? {})
+
+const columns = computed(() => Object.keys(TITRES).map((cle) => ({
+    title: TITRES[cle],
+    links: [
+        ...ECRANS[cle].map((l) => ({ label: l.label, href: l.to ?? anchor(l.hash), page: Boolean(l.to) })),
+        ...(pied.value[cle] ?? []).map((p) => ({ label: p.titre, href: p.href, page: true })),
+    ],
+})))
+
+// Les pages légales ont leur ligne, en bas : on les cherche là.
+const legales = computed(() => pied.value.legal ?? [])
+
+const { riche } = useTextes()
 
 const year = new Date().getFullYear()
 
@@ -90,14 +86,12 @@ const generees = computed(() => props.credits.filter((c) => c.generated))
                         <VaylaMark class="ft__mark" />
                         <span>vayla</span>
                     </component>
-                    <p class="ft__pitch">
-                        Des locations meublées vérifiées, partout à Madagascar.
-                        On contrôle avant vous, pour que vous réserviez sans
-                        retenir votre souffle.
-                    </p>
-                    <a :href="anchor('proprietaires')" class="btn btn--sm btn--terre">
+                    <p class="ft__pitch" v-html="riche('pied.accroche')" />
+                    <!-- Le même geste que la colonne Propriétaires : l'inscription, pas
+                         l'ancre de recrutement de l'accueil, qui n'existe pas ailleurs. -->
+                    <Link href="/proprietaire/inscription" class="btn btn--sm btn--terre">
                         Publier un logement
-                    </a>
+                    </Link>
                 </div>
 
                 <div v-for="c in columns" :key="c.title" class="ft__col">
@@ -120,14 +114,20 @@ const generees = computed(() => props.credits.filter((c) => c.generated))
                     <span class="ft__credits-n num">{{ credits.length }}</span>
                 </summary>
                 <p class="ft__credits-lede">
-                    Photographies des lieux issues de Wikimedia Commons, sous licence libre.
+                    Photographies des lieux, créditées à leurs auteurs — la plupart issues
+                    de Wikimedia Commons, sous licence libre.
                 </p>
                 <ul class="ft__credits-list">
+                    <!-- Une photo téléversée par l'équipe n'a pas toujours de page
+                         source ni de page de licence : on ne pose pas de lien
+                         qui ne mène nulle part. -->
                     <li v-for="c in photographies" :key="c.key">
-                        <a :href="c.source" target="_blank" rel="noopener noreferrer">{{ c.caption }}</a>
+                        <a v-if="c.source" :href="c.source" target="_blank" rel="noopener noreferrer">{{ c.caption }}</a>
+                        <span v-else>{{ c.caption }}</span>
                         <span class="ft__credits-meta">
                             {{ c.author }} ·
-                            <a :href="c.licence_url" target="_blank" rel="noopener noreferrer">{{ c.licence }}</a>
+                            <a v-if="c.licence_url" :href="c.licence_url" target="_blank" rel="noopener noreferrer">{{ c.licence }}</a>
+                            <template v-else>{{ c.licence }}</template>
                         </span>
                     </li>
                 </ul>
@@ -152,6 +152,9 @@ const generees = computed(() => props.credits.filter((c) => c.generated))
 
             <div class="ft__bottom">
                 <span class="num">© {{ year }} Vayla — Madagascar</span>
+                <nav v-if="legales.length" class="ft__legal" aria-label="Informations légales">
+                    <Link v-for="l in legales" :key="l.href" :href="l.href">{{ l.titre }}</Link>
+                </nav>
                 <span class="num ft__note">
                     Conçu par
                     <a href="https://genius-at-work.com" target="_blank" rel="noopener noreferrer">Genius at work</a>
@@ -304,6 +307,8 @@ const generees = computed(() => props.credits.filter((c) => c.generated))
 .ft__credits-list li { display: flex; flex-direction: column; gap: .1rem; }
 .ft__credits-list a { color: var(--text-2); text-decoration: none; border-bottom: 1px solid var(--line-2); }
 .ft__credits-list a:hover { color: var(--terre-600); border-bottom-color: currentColor; }
+.ft__legal { display: flex; flex-wrap: wrap; gap: .3rem 1.1rem; }
+.ft__legal a { color: inherit; text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: .2em; }
 .ft__credits-meta { color: var(--text-3); font-size: .76rem; }
 
 @media (min-width: 720px) {

@@ -30,7 +30,7 @@ defineProps({
     <OwnerShell>
         <header class="ml__head">
             <div>
-                <h1 class="ml__title">Mes logements</h1>
+                <h1 class="espace__titre">Mes logements</h1>
                 <p class="ml__lede">Vous remplissez la fiche, Vayla la vérifie avant qu'elle soit visible.</p>
             </div>
             <Link href="/proprietaire/logements/nouveau" class="btn btn--terre btn--lg ml__new">
@@ -71,6 +71,9 @@ defineProps({
                     <h2 class="ml__name">{{ l.title }}</h2>
                     <p class="ml__place">{{ l.place }}</p>
                     <p class="ml__consigne">{{ l.consigne }}</p>
+                    <p v-if="l.reviewNote" class="ml__renvoi">
+                        <strong>Vayla vous demande&nbsp;:</strong> {{ l.reviewNote }}
+                    </p>
 
                     <p class="ml__facts num">
                         {{ nombre(l.price) }} Ar / nuit · {{ l.guests }} pers. max ·
@@ -108,7 +111,6 @@ defineProps({
     gap: 1rem;
     margin-bottom: 1.75rem;
 }
-.ml__title { margin: 0; font-size: clamp(1.6rem, 4vw, 2.1rem); font-weight: 800; letter-spacing: -.045em; color: var(--ink); }
 .ml__lede { margin: .35rem 0 0; max-width: 46ch; font-size: .92rem; line-height: 1.55; color: var(--text-2); }
 .ml__new { flex: none; }
 
@@ -169,6 +171,18 @@ defineProps({
 .ml__name { margin: .5rem 0 0; font-size: 1.1rem; font-weight: 800; letter-spacing: -.028em; color: var(--ink); }
 .ml__place { margin: .1rem 0 0; font-size: .85rem; color: var(--text-3); }
 .ml__consigne { margin: .5rem 0 0; max-width: 52ch; font-size: .86rem; line-height: 1.5; color: var(--text-2); }
+.ml__renvoi {
+    margin: .55rem 0 0;
+    max-width: 52ch;
+    padding: .55rem .75rem;
+    border-left: 3px solid var(--terre-500);
+    border-radius: 0 var(--r-xs) var(--r-xs) 0;
+    background: var(--terre-050);
+    font-size: .84rem;
+    line-height: 1.5;
+    color: var(--ink);
+}
+.ml__renvoi strong { color: var(--terre-700); font-weight: 700; }
 .ml__facts { margin: .55rem 0 0; font-size: .84rem; color: var(--text-3); }
 
 .ml__trust { display: inline-flex; align-items: center; gap: .45rem; margin: .5rem 0 0; font-size: .8rem; font-weight: 700; color: var(--lagon-600); }

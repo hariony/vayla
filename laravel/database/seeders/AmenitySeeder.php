@@ -30,9 +30,13 @@ class AmenitySeeder extends Seeder
 {
     public function run(): void
     {
+        // **Créer ce qui manque, ne jamais réécrire.** Depuis que le
+        // back-office édite ce référentiel, la base fait foi : un `make seed`
+        // qui rétablirait les libellés d'origine effacerait en silence le
+        // travail de l'équipe.
         foreach ($this->amenities() as $group => $rows) {
             foreach (array_values($rows) as $position => $row) {
-                Amenity::updateOrCreate(
+                Amenity::firstOrCreate(
                     ['key' => $row[0]],
                     [
                         'label' => $row[1],

@@ -10,18 +10,21 @@ use App\Repositories\Contracts\BookingMessageRepositoryInterface;
 use App\Repositories\Contracts\CategoryRepositoryInterface;
 use App\Repositories\Contracts\DestinationRepositoryInterface;
 use App\Repositories\Contracts\ListingRepositoryInterface;
+use App\Repositories\Contracts\OfficeRepositoryInterface;
 use App\Repositories\Contracts\OutboundMessageRepositoryInterface;
 use App\Repositories\Contracts\OwnerRepositoryInterface;
 use App\Repositories\Contracts\PhotoRepositoryInterface;
 use App\Repositories\Contracts\UnavailabilityRepositoryInterface;
 use App\Repositories\DestinationRepository;
 use App\Repositories\ListingRepository;
+use App\Repositories\OfficeRepository;
 use App\Repositories\OutboundMessageRepository;
 use App\Repositories\OwnerRepository;
 use App\Repositories\PhotoRepository;
 use App\Repositories\UnavailabilityRepository;
-use App\Services\Currency\ConfigExchangeRate;
 use App\Services\Currency\ExchangeRateProvider;
+use App\Services\Currency\SettingExchangeRate;
+use App\Services\Settings\SettingsService;
 use App\Services\Verification\LogCodeSender;
 use App\Services\Verification\MailCodeSender;
 use App\Services\Verification\SmsCodeSender;
@@ -50,10 +53,12 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(UnavailabilityRepositoryInterface::class, UnavailabilityRepository::class);
         $this->app->bind(BookingMessageRepositoryInterface::class, BookingMessageRepository::class);
         $this->app->bind(OutboundMessageRepositoryInterface::class, OutboundMessageRepository::class);
+        $this->app->bind(OfficeRepositoryInterface::class, OfficeRepository::class);
 
         // Le taux de change vient de la configuration. Le remplacer par une
         // API de change se fait ici, et nulle part ailleurs.
-        $this->app->bind(ExchangeRateProvider::class, ConfigExchangeRate::class);
+        $this->app->bind(ExchangeRateProvider::class, SettingExchangeRate::class);
+        $this->app->scoped(SettingsService::class);
 
         /*
          * Les canaux du code à usage unique, dans l'ordre où on les

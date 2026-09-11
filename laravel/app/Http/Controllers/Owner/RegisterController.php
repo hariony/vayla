@@ -138,7 +138,7 @@ class RegisterController extends Controller
             Auth::guard('proprietaire')->login($owner, remember: true);
             $request->session()->regenerate();
 
-            return redirect()->route('owner.home')->with('succes', 'Vous êtes connecté.');
+            return redirect()->route('owner.home');
         }
 
         $request->session()->put(self::CLE_VERIFIEE, $donnees['email']);

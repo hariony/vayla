@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\ClimateZone;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Destination extends Model
@@ -27,6 +28,17 @@ class Destination extends Model
     public function photo(): BelongsTo
     {
         return $this->belongsTo(Photo::class);
+    }
+
+    /**
+     * La galerie, dans l'ordre. La position 0 est la couverture, et
+     * `photo_id` n'en est que la copie — voir `synchroniserCouverture()`.
+     */
+    public function galerie(): BelongsToMany
+    {
+        return $this->belongsToMany(Photo::class, 'destination_photo')
+            ->withPivot('position')
+            ->orderBy('destination_photo.position');
     }
 
     public function listings(): HasMany

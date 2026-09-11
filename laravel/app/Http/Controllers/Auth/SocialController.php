@@ -144,10 +144,16 @@ class SocialController extends Controller
         // rappelle sur WhatsApp pour la vérification : sans numéro, son annonce
         // ne dépasserait jamais le niveau 1. Il passe donc par la fiche, comme
         // celui qui arrive par un code.
-        return redirect()->intended(route($espace->destination()))->with(
-            'succes',
-            $nouveau ? 'Votre compte est ouvert.' : 'Vous êtes connecté.'
-        );
+        /*
+         * **On n'annonce que ce qui n'est pas déjà visible.** « Vous êtes
+         * connecté » répétait ce que l'écran montre tout seul — l'espace, le
+         * nom dans le menu du compte — en travers d'un bandeau noir qu'il faut
+         * lire avant d'atteindre ce qu'on venait faire. L'ouverture d'un
+         * compte, elle, est un fait neuf : elle se dit une fois.
+         */
+        $vers = redirect()->intended(route($espace->destination()));
+
+        return $nouveau ? $vers->with('succes', 'Votre compte est ouvert.') : $vers;
     }
 
     /**
@@ -189,7 +195,7 @@ class SocialController extends Controller
         Auth::login($compte, remember: true);
         $request->session()->regenerate();
 
-        return redirect()->intended(route('traveller.bookings'))->with('succes', 'Vous êtes connecté.');
+        return redirect()->intended(route('traveller.bookings'));
     }
 
     /**

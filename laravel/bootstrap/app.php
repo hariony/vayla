@@ -2,8 +2,11 @@
 
 use App\Exceptions\DestinationNotFoundException;
 use App\Exceptions\ListingNotFoundException;
+use App\Http\Middleware\EnsureAdminPasswordIsSet;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\OfficeContext;
 use App\Http\Middleware\PreventIndexing;
+use App\Services\Office\OfficeRefusal;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -11,7 +14,10 @@ use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
-        web: __DIR__.'/../routes/web.php',
+        // **Le back-office d'abord.** Les routes du site n'ont pas de
+        // domaine et répondent sur tous les hôtes : chargées avant, elles
+        // serviraient l'accueil public sur `office.…/`.
+        web: [__DIR__.'/../routes/office.php', __DIR__.'/../routes/web.php'],
         api: __DIR__.'/../routes/api.php',
         apiPrefix: 'api',
         commands: __DIR__.'/../routes/console.php',
@@ -26,6 +32,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // ni fuite de l'URL par l'en-tête Referer.
         $middleware->alias([
             'sans-index' => PreventIndexing::class,
+            'office' => OfficeContext::class,
+            'office.mot-de-passe' => EnsureAdminPasswordIsSet::class,
         ]);
 
         /*
@@ -47,15 +55,28 @@ return Application::configure(basePath: dirname(__DIR__))
          */
         $cotePro = fn ($request) => $request->is('proprietaire*');
 
-        $middleware->redirectGuestsTo(
-            fn ($request) => $cotePro($request) ? route('owner.login') : route('access.client')
-        );
+        // Le back-office se reconnaît à son **hôte**, pas à un préfixe : ses
+        // chemins (`/connexion`, `/reservations`) sont les mêmes que ceux du
+        // site, et c'est justement pour ça qu'il vit ailleurs.
+        $coteOffice = fn ($request) => $request->getHost() === config('vayla.office.domaine');
 
-        $middleware->redirectUsersTo(
-            fn ($request) => $cotePro($request) ? route('owner.home') : route('traveller.bookings')
-        );
+        $middleware->redirectGuestsTo(fn ($request) => match (true) {
+            $coteOffice($request) => route('office.login'),
+            $cotePro($request) => route('owner.login'),
+            default => route('access.client'),
+        });
+
+        $middleware->redirectUsersTo(fn ($request) => match (true) {
+            $coteOffice($request) => route('office.home'),
+            $cotePro($request) => route('owner.home'),
+            default => route('traveller.bookings'),
+        });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // Un geste du back-office refusé par les règles du produit n'est pas
+        // une panne : il revient à l'écran, avec la phrase qui dit quoi faire.
+        $exceptions->renderable(fn (OfficeRefusal $e) => back()->with('erreur', $e->getMessage()));
+
         // « Introuvable » est un fait métier, pas une panne. Les deux
         // exceptions du domaine sortent donc en 404 des deux côtés : en JSON
         // pour le client mobile, qui doit lire un statut et non une page

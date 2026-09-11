@@ -33,6 +33,8 @@ const props = defineProps({
     calendar: { type: Object, required: true },
     rules: { type: Object, required: true },
     prefill: { type: Object, default: () => ({}) },
+    /** Les coordonnées du compte connecté, ou `null` pour un visiteur. */
+    voyageur: { type: Object, default: null },
     holdHours: { type: Number, default: 48 },
     photos: { type: Object, default: () => ({}) },
     credits: { type: Array, default: () => [] },
@@ -45,10 +47,16 @@ const dates = useStayDates(calendrier)
 if (props.prefill.arrival) dates.arrivee.value = props.prefill.arrival
 if (props.prefill.departure) dates.depart.value = props.prefill.departure
 
+/*
+ * **Le compte pré-remplit, il n'exige rien.** Demander un séjour reste
+ * possible sans compte — c'est la promesse du produit — mais celui qui en a un
+ * ne retape pas son nom et son numéro à chaque demande. C'est la seule raison
+ * pour laquelle Vayla les garde.
+ */
 const form = useForm({
-    traveller: '',
-    traveller_phone: '',
-    traveller_email: '',
+    traveller: props.voyageur?.traveller ?? '',
+    traveller_phone: props.voyageur?.traveller_phone ?? '',
+    traveller_email: props.voyageur?.traveller_email ?? '',
     guests: props.prefill.guests ?? 2,
     arrival: props.prefill.arrival ?? '',
     departure: props.prefill.departure ?? '',

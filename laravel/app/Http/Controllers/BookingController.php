@@ -35,6 +35,10 @@ class BookingController extends Controller
             $request->query('arrivee'),
             $request->query('depart'),
             $request->integer('voyageurs') ?: null,
+            // Connecté, ses coordonnées pré-remplissent le formulaire. Le
+            // compte n'est toujours pas exigé : sans lui, les champs sont
+            // simplement vides.
+            $request->user(),
         ));
     }
 

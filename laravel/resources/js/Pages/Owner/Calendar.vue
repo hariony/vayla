@@ -43,7 +43,7 @@ const base = computed(() => `/proprietaire/logements/${props.listing.slug}/calen
     <OwnerShell :back="{ href: '/proprietaire', label: 'Retour à mon espace' }">
         <div class="oc__hello">
             <p class="oc__eyebrow">Calendrier</p>
-            <h1 class="oc__title">{{ listing.title }}</h1>
+            <h1 class="espace__titre">{{ listing.title }}</h1>
             <p v-if="listing.place" class="oc__sub">{{ listing.place }}</p>
         </div>
 
@@ -55,7 +55,6 @@ const base = computed(() => `/proprietaire/logements/${props.listing.slug}/calen
 <style scoped>
 .oc__hello { margin-bottom: 1.75rem; }
 .oc__eyebrow { margin: 0 0 .3rem; font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--terre-600); }
-.oc__title { margin: 0; font-size: clamp(1.6rem, 4vw, 2.1rem); font-weight: 800; letter-spacing: -.045em; color: var(--ink); }
 .oc__sub { margin: .3rem 0 0; font-size: .95rem; color: var(--text-2); }
 
 .oc__block + .oc__block { margin-top: clamp(2.25rem, 5vw, 3.25rem); }

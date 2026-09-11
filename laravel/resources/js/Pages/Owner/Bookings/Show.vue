@@ -28,7 +28,7 @@ const props = defineProps({
     <OwnerShell :back="{ href: '/proprietaire/reservations', label: 'Mes réservations' }">
         <header class="bk__head">
             <p class="bk__eyebrow num">{{ booking.reference }}</p>
-            <h1 class="bk__title">{{ booking.traveller }}</h1>
+            <h1 class="espace__titre">{{ booking.traveller }}</h1>
             <p class="bk__listing">{{ booking.listing }}</p>
             <span class="bk__state" :class="`bk__state--${booking.status}`">{{ booking.statusLabel }}</span>
         </header>
@@ -91,7 +91,6 @@ const props = defineProps({
 <style scoped>
 .bk__head { margin-bottom: 1.5rem; }
 .bk__eyebrow { margin: 0 0 .3rem; font-size: .78rem; font-weight: 700; letter-spacing: .06em; color: var(--text-3); }
-.bk__title { margin: 0; font-size: clamp(1.6rem, 4vw, 2.1rem); font-weight: 800; letter-spacing: -.045em; color: var(--ink); }
 .bk__listing { margin: .2rem 0 .6rem; font-size: .95rem; color: var(--text-2); }
 
 .bk__state {

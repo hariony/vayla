@@ -93,4 +93,90 @@ class ConversationService
     {
         return $this->messages->nonLusPour($owner);
     }
+
+    /** Idem côté voyageur, où l'adresse du compte tient lieu d'identité. */
+    public function nonLusVoyageur(string $email): int
+    {
+        return $this->messages->nonLusPourAdresse($email);
+    }
+
+    /**
+     * La boîte du propriétaire : une ligne par réservation qui porte un fil.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function boiteDuProprietaire(Owner $owner): array
+    {
+        return $this->messages->conversationsDuProprietaire($owner)
+            ->map(fn (Booking $b) => $this->ligne($b, MessageAuthor::Owner, $b->traveller))
+            ->all();
+    }
+
+    /**
+     * La boîte du voyageur.
+     *
+     * **Le correspondant n'y est pas nommé, le logement l'est.** Le voyageur a
+     * écrit à propos d'une maison, pas à une personne dont il ne connaît pas
+     * encore le nom au moment de la demande — et le propriétaire n'a pas à
+     * apparaître dans une liste avant d'avoir accepté.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function boiteDuVoyageur(string $email): array
+    {
+        return $this->messages->conversationsDeLAdresse($email)
+            ->map(fn (Booking $b) => $this->ligne($b, MessageAuthor::Traveller, $b->listing?->title))
+            ->all();
+    }
+
+    /**
+     * Une ligne de boîte.
+     *
+     * **L'extrait est celui du dernier message, quel qu'en soit l'auteur.**
+     * Ne montrer que le dernier message reçu ferait disparaître sa propre
+     * réponse : on ne saurait plus si on a répondu, ce qui est justement la
+     * question qu'on se pose en ouvrant une boîte.
+     *
+     * @return array<string, mixed>
+     */
+    private function ligne(Booking $booking, MessageAuthor $lecteur, ?string $sujet): array
+    {
+        $dernier = $booking->messages->last();
+        $lu = $lecteur === MessageAuthor::Traveller
+            ? $booking->traveller_read_at
+            : $booking->owner_read_at;
+
+        return [
+            'reference' => $booking->reference,
+            'sujet' => $sujet,
+            'listing' => $booking->listing?->title,
+            'place' => $booking->listing?->destination?->name,
+            'arrival' => $booking->arrival->toDateString(),
+            'departure' => $booking->departure->toDateString(),
+            'statut' => $booking->status->value,
+            'statutLabel' => $booking->status->label(),
+            'auteur' => $dernier?->author->value,
+            'auteurLabel' => $dernier?->author->label(),
+            'extrait' => $dernier ? $this->extrait($dernier->body) : null,
+            'quand' => $dernier?->created_at->toIso8601String(),
+            // Non lu : le dernier mot vient de l'autre partie, et il est
+            // postérieur à la dernière ouverture du fil.
+            'nonLu' => $dernier !== null
+                && $dernier->author !== $lecteur
+                && ($lu === null || $dernier->created_at->greaterThan($lu)),
+            'messages' => $booking->messages->count(),
+        ];
+    }
+
+    /**
+     * **Une ligne, pas trois.** Une boîte se parcourt du regard : un extrait
+     * qui déborde fait scruter le mauvais message. La coupe tombe sur un
+     * espace pour ne pas trancher un mot en deux.
+     */
+    private function extrait(string $corps): string
+    {
+        $plat = trim(preg_replace('/\s+/', ' ', $corps) ?? '');
+
+        return mb_strlen($plat) <= 120 ? $plat : rtrim(mb_substr($plat, 0, 117)).'…';
+    }
 }

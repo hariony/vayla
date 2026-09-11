@@ -14,7 +14,7 @@
  * où la demande de séjour prend le relais.
  */
 import { computed } from 'vue'
-import { Head, Link } from '@inertiajs/vue3'
+import { Head, Link, router } from '@inertiajs/vue3'
 
 import SiteHeader from '@/Components/SiteHeader.vue'
 import SiteFooter from '@/Components/SiteFooter.vue'
@@ -55,7 +55,7 @@ const total = computed(() => props.destinations.reduce((n, d) => n + d.listings,
 
                 <div class="atl__body">
                     <div class="atl__map">
-                        <MadagascarMap :destinations="destinations" />
+                        <MadagascarMap :destinations="destinations" @pick="(slug) => router.visit(`/destinations/${slug}`)" />
                     </div>
 
                     <ul class="atl__list">

@@ -2,11 +2,25 @@
 /**
  * La fiche du logement, saisie par son propriétaire.
  *
- * **Un formulaire long à sections, pas un assistant en cinq étapes.** Un
- * assistant est plus doux à la première saisie et insupportable à la
- * quinzième correction — or on corrige un tarif dix fois pour une création.
- * Les sections sont numérotées et la progression se lit en haut : on sait où
- * l'on en est sans avoir à cliquer « suivant ».
+ * **Un assistant en cinq étapes, où chaque étape se clique.** La fiche était
+ * un long formulaire à sections, par crainte de l'assistant classique — doux à
+ * la première saisie, insupportable à la quinzième correction, puisqu'on
+ * corrige un tarif dix fois pour une création. Ce qui rendait l'assistant
+ * insupportable, c'était l'**ordre imposé** : ici chaque étape s'atteint
+ * directement depuis la barre, et en modification « Enregistrer » reste
+ * disponible à chaque étape. On garde la douceur de la première saisie — une
+ * question à la fois — sans payer la quinzième correction.
+ *
+ * **« Suivant » ne bloque jamais.** Un champ obligatoire vide ne retient
+ * personne sur une étape : la barre marque ce qui reste à remplir, et c'est le
+ * bouton final qui refuse, **en nommant ce qui manque** et en y menant d'un
+ * clic. Retenir quelqu'un sur l'étape 1 parce qu'il n'a pas encore choisi de
+ * titre, c'est l'empêcher de voir ce qu'on attend de lui ensuite.
+ *
+ * **Une erreur du serveur ramène à son étape.** La validation reste celle de
+ * `OwnerListingRequest`, une seule fois ; mais une erreur sur le titre, reçue
+ * alors qu'on est sur les photos, serait invisible. On saute donc à la
+ * première étape fautive, et chaque étape en erreur le dit dans la barre.
  *
  * **Rien n'est publié depuis cet écran.** On enregistre, puis on **envoie à la
  * vérification**. Le niveau de confiance n'apparaît nulle part dans ce que le
@@ -23,11 +37,13 @@
  * seule liste de cent deux cases est illisible, et le propriétaire abandonne
  * avant la moitié.
  */
-import { computed, ref } from 'vue'
-import { Head, Link, router, useForm } from '@inertiajs/vue3'
+import { computed, nextTick, onMounted, ref } from 'vue'
+import { Head, router, useForm, usePage } from '@inertiajs/vue3'
+import gsap from 'gsap'
 
 import OwnerShell from '../Partials/OwnerShell.vue'
 import AmenityIcon from '@/Components/AmenityIcon.vue'
+import FormSteps from './FormSteps.vue'
 import PhotoManager from './PhotoManager.vue'
 import { nombre } from '@/Support/format.js'
 import { useDevise } from '@/Composables/useDevise.js'
@@ -77,6 +93,154 @@ const form = useForm({
 const ouverte = ref(props.amenityGroups[0]?.key ?? null)
 const envoiVerif = ref(false)
 
+/**
+ * Les cinq étapes, et **les champs que chacune porte**.
+ *
+ * La liste des champs n'est pas décorative : c'est elle qui ramène une erreur
+ * du serveur à son étape. Un test vérifie que chaque règle de
+ * `OwnerListingRequest` y figure — un champ oublié ici serait une erreur
+ * qu'aucune étape n'afficherait.
+ */
+const ETAPES = [
+    { cle: 'essentiel', label: "L'essentiel", champs: ['title', 'destination_id', 'kind', 'summary', 'description'] },
+    { cle: 'capacite', label: 'Capacité', champs: ['guests', 'bedrooms', 'beds', 'bathrooms', 'surface'] },
+    {
+        cle: 'tarif',
+        label: 'Tarif et séjour',
+        champs: ['price', 'min_nights', 'max_nights', 'check_in_from', 'check_out_before',
+            'pets_allowed', 'smoking_allowed', 'events_allowed'],
+    },
+    { cle: 'equipements', label: 'Équipements', champs: ['amenities'] },
+    { cle: 'photos', label: 'Photos', champs: [] },
+]
+
+const DERNIERE = ETAPES.length - 1
+
+const page = usePage()
+
+/**
+ * L'étape de départ vient de l'adresse (`?etape=photos`) : c'est ce qui dépose
+ * le propriétaire **directement sur les photos** après la création — la
+ * prochaine chose à faire — et ce qui garde l'étape quand on recharge.
+ */
+const depart = () => {
+    const cle = new URLSearchParams(page.url.split('?')[1] ?? '').get('etape')
+    const i = ETAPES.findIndex((e) => e.cle === cle)
+
+    return i === -1 ? 0 : i
+}
+
+const etape = ref(depart())
+const sens = ref(1)
+const racine = ref(null)
+
+/** Ce qu'une étape exige pour être « remplie ». Les étapes facultatives ne le sont qu'une fois touchées. */
+const REMPLIE = {
+    essentiel: () => form.title.trim().length >= 8 && Boolean(form.destination_id),
+    capacite: () => form.guests >= 1 && form.beds >= 1 && form.bathrooms >= 1 && form.bedrooms !== '' && form.bedrooms !== null,
+    tarif: () => form.price >= 5000 && form.min_nights >= 1,
+    equipements: () => choisis.value.size > 0,
+    photos: () => !creation.value && (props.listing.photos?.length ?? 0) > 0,
+}
+
+const enErreur = (e) => Object.keys(form.errors).some(
+    (k) => e.champs.some((c) => k === c || k.startsWith(`${c}.`))
+)
+
+const etapes = computed(() => ETAPES.map((e) => ({
+    ...e,
+    etat: enErreur(e) ? 'erreur' : (REMPLIE[e.cle]() ? 'fait' : 'vide'),
+})))
+
+/**
+ * Ce qui manque pour créer, **nommé et atteignable** : un bouton désactivé qui
+ * ne dit pas pourquoi est une impasse. Chaque manque mène à son étape.
+ */
+const manques = computed(() => [
+    form.title.trim().length < 8 && { etape: 0, texte: 'le nom du logement' },
+    !form.destination_id && { etape: 0, texte: 'la localisation' },
+    !(form.price >= 5000) && { etape: 2, texte: 'le prix pour une nuit' },
+].filter(Boolean))
+
+const sansMouvement = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+/**
+ * Change d'étape.
+ *
+ * L'adresse suit (`?etape=`) sans visite Inertia : `replaceState` en gardant
+ * `history.state`, où Inertia range sa page — le vider casserait le bouton
+ * retour. La page remonte en haut du formulaire : la barre d'action est
+ * collée en bas, et changer d'étape en restant au milieu de la précédente
+ * ferait commencer la lecture de la nouvelle par son milieu.
+ */
+const aller = async (i) => {
+    const cible = Math.max(0, Math.min(DERNIERE, i))
+
+    if (cible === etape.value) {
+        return
+    }
+
+    sens.value = cible > etape.value ? 1 : -1
+    etape.value = cible
+
+    const adresse = new URL(window.location.href)
+    adresse.searchParams.set('etape', ETAPES[cible].cle)
+    window.history.replaceState(window.history.state, '', adresse)
+
+    await nextTick()
+
+    const haut = racine.value?.getBoundingClientRect().top ?? 0
+    const entete = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-h')) || 78
+
+    if (haut < entete) {
+        window.scrollTo({ top: window.scrollY + haut - entete - 16, behavior: sansMouvement() ? 'auto' : 'smooth' })
+    }
+
+    // L'étape arrive du côté vers lequel on avance : vers la droite en
+    // avançant, vers la gauche en revenant. Court, et rien sous
+    // `prefers-reduced-motion`.
+    if (! sansMouvement()) {
+        const panneau = racine.value?.querySelector(`[data-etape="${ETAPES[cible].cle}"]`)
+
+        if (panneau) {
+            gsap.fromTo(panneau, { x: 18 * sens.value, opacity: 0 }, { x: 0, opacity: 1, duration: .32, ease: 'power2.out' })
+        }
+    }
+}
+
+/**
+ * Y a-t-il quelque chose de non enregistré ?
+ *
+ * `form.isDirty` ne voit pas les équipements : ils vivent dans `choisis` et ne
+ * passent dans le formulaire qu'à l'enregistrement. Sans cette comparaison, on
+ * pouvait cocher un groupe électrogène puis envoyer à Vayla une fiche qui ne
+ * le portait pas.
+ */
+const equipementsInitiaux = JSON.stringify(
+    (props.listing?.amenities ?? []).map((a) => [a.id, Boolean(a.highlight)]).sort((a, b) => a[0] - b[0])
+)
+
+const modifie = computed(() => form.isDirty || JSON.stringify(
+    [...choisis.value].map(([id, h]) => [id, Boolean(h)]).sort((a, b) => a[0] - b[0])
+) !== equipementsInitiaux)
+
+/** Après un refus du serveur : la première étape fautive, là où l'erreur se lit. */
+const allerALaPremiereErreur = () => {
+    const i = ETAPES.findIndex(enErreur)
+
+    if (i !== -1) {
+        aller(i)
+    }
+}
+
+// Une erreur déjà présente au chargement (retour arrière, rechargement) mène
+// aussi à son étape.
+onMounted(() => {
+    if (Object.keys(form.errors).length) {
+        allerALaPremiereErreur()
+    }
+})
+
 const basculer = (id) => {
     if (!modifiable.value) return
     choisis.value.has(id) ? choisis.value.delete(id) : choisis.value.set(id, false)
@@ -102,8 +266,11 @@ const enregistrer = () => {
     form.amenities = [...choisis.value].map(([id, highlight]) => ({ id, highlight }))
 
     creation.value
-        ? form.post('/proprietaire/logements')
-        : form.post(`/proprietaire/logements/${props.listing.slug}`, { preserveScroll: true })
+        ? form.post('/proprietaire/logements', { onError: allerALaPremiereErreur })
+        : form.post(`/proprietaire/logements/${props.listing.slug}`, {
+            preserveScroll: true,
+            onError: allerALaPremiereErreur,
+        })
 }
 
 const soumettre = () => {
@@ -124,8 +291,14 @@ const prixEur = computed(() => (form.price ? euros(form.price) : null))
     <OwnerShell :back="{ href: '/proprietaire/logements', label: 'Mes logements' }">
         <header class="fm__head">
             <p class="fm__eyebrow">{{ creation ? 'Nouveau logement' : listing.statusLabel }}</p>
-            <h1 class="fm__title">{{ creation ? 'Décrivez votre logement' : listing.title }}</h1>
+            <h1 class="espace__titre">{{ creation ? 'Décrivez votre logement' : listing.title }}</h1>
             <p v-if="!creation" class="fm__consigne">{{ listing.consigne }}</p>
+            <!-- Le motif du renvoi, écrit par Vayla : c'est ce qui dit quoi
+                 reprendre avant de renvoyer la fiche. -->
+            <div v-if="!creation && listing.reviewNote" class="fm__renvoi" role="note">
+                <p class="fm__renvoi-t">Vayla vous demande</p>
+                <p class="fm__renvoi-p">{{ listing.reviewNote }}</p>
+            </div>
         </header>
 
         <!-- Une fiche vérifiée n'est pas figée, elle est **partiellement**
@@ -137,10 +310,16 @@ const prixEur = computed(() => (form.price ? euros(form.price) : null))
             Pour la capacité, les équipements ou les photos, écrivez-nous : nous revérifions avec vous.
         </p>
 
+        <div ref="racine" class="fm__cadre">
+        <FormSteps :etapes="etapes" :courante="etape" @aller="aller" />
+
         <form class="fm" @submit.prevent="enregistrer">
+            <!-- `v-show`, pas `v-if` : les champs restent montés d'une étape
+                 à l'autre — le remplissage automatique du navigateur et ce
+                 qu'on a tapé ne se perdent pas en changeant d'étape. -->
             <!-- 1 ────────────────────────────────────────────────── -->
-            <section class="fm__block">
-                <h2 class="fm__h"><span class="fm__n">1</span> L'essentiel</h2>
+            <section v-show="etape === 0" class="fm__block" data-etape="essentiel">
+                <h2 class="espace__section fm__h">L'essentiel</h2>
 
                 <div class="fm__field">
                     <label class="fm__label" for="title">Nom du logement</label>
@@ -152,7 +331,13 @@ const prixEur = computed(() => (form.price ? euros(form.price) : null))
 
                 <div class="fm__pair">
                     <div class="fm__field">
-                        <label class="fm__label" for="destination_id">Destination</label>
+                        <!-- « Localisation » et non « Destination » : le mot du
+                             voyageur qui choisit où partir n'est pas celui du
+                             propriétaire qui situe sa maison. Seul le libellé
+                             change — c'est la même liste de destinations, et
+                             c'est ce qui garantit qu'une annonce reste
+                             retrouvable depuis l'atlas. -->
+                        <label class="fm__label" for="destination_id">Localisation</label>
                         <select id="destination_id" v-model="form.destination_id" class="fm__input" :disabled="!modifiable">
                             <option :value="null" disabled>Choisissez…</option>
                             <option v-for="d in destinations" :key="d.id" :value="d.id">{{ d.label }}</option>
@@ -188,8 +373,8 @@ const prixEur = computed(() => (form.price ? euros(form.price) : null))
             </section>
 
             <!-- 2 ────────────────────────────────────────────────── -->
-            <section class="fm__block">
-                <h2 class="fm__h"><span class="fm__n">2</span> Capacité</h2>
+            <section v-show="etape === 1" class="fm__block" data-etape="capacite">
+                <h2 class="espace__section fm__h">Capacité</h2>
                 <p class="fm__sub">
                     C'est ce que le voyageur regarde avant les photos : « est-ce que ça nous loge ? »
                 </p>
@@ -225,8 +410,8 @@ const prixEur = computed(() => (form.price ? euros(form.price) : null))
             </section>
 
             <!-- 3 ────────────────────────────────────────────────── -->
-            <section class="fm__block">
-                <h2 class="fm__h"><span class="fm__n">3</span> Tarif et séjour</h2>
+            <section v-show="etape === 2" class="fm__block" data-etape="tarif">
+                <h2 class="espace__section fm__h">Tarif et séjour</h2>
 
                 <div class="fm__pair">
                     <div class="fm__field">
@@ -267,8 +452,8 @@ const prixEur = computed(() => (form.price ? euros(form.price) : null))
             </section>
 
             <!-- 4 ────────────────────────────────────────────────── -->
-            <section class="fm__block">
-                <h2 class="fm__h"><span class="fm__n">4</span> Équipements</h2>
+            <section v-show="etape === 3" class="fm__block" data-etape="equipements">
+                <h2 class="espace__section fm__h">Équipements</h2>
                 <p class="fm__sub">
                     Cochez ce que le logement possède vraiment. Vayla vérifie sur place ou en visio —
                     un équipement coché qui n'existe pas fait annuler la vérification.
@@ -324,46 +509,98 @@ const prixEur = computed(() => (form.price ? euros(form.price) : null))
             </section>
 
             <!-- 5 ────────────────────────────────────────────────── -->
-            <section v-if="!creation" class="fm__block">
-                <h2 class="fm__h"><span class="fm__n">5</span> Photos</h2>
+            <section v-if="!creation" v-show="etape === 4" class="fm__block" data-etape="photos">
+                <h2 class="espace__section fm__h">Photos</h2>
                 <PhotoManager :slug="listing.slug" :photos="listing.photos" :modifiable="modifiable" />
             </section>
-            <section v-else class="fm__block fm__block--muted">
-                <h2 class="fm__h"><span class="fm__n">5</span> Photos</h2>
-                <p class="fm__sub">
-                    Enregistrez d'abord la fiche : vous pourrez ensuite ajouter vos photos.
+            <!-- En création, l'étape existe déjà : elle dit ce qui vient, et
+                 porte le bouton qui crée. Les photos s'attachent à un
+                 logement — il faut qu'il existe. La création ramène ensuite
+                 **ici même**, sur cette étape, prête à recevoir les photos. -->
+            <section v-else v-show="etape === 4" class="fm__block fm__block--muted" data-etape="photos">
+                <h2 class="espace__section fm__h">Photos</h2>
+                <p class="fm__sub fm__sub--seul">
+                    Les photos s'ajoutent une fois le logement créé. Créez-le : vous
+                    reviendrez directement sur cette étape pour les téléverser.
                 </p>
             </section>
 
-            <!-- Barre d'action collée en bas : sur un formulaire de cette
-                 longueur, un bouton qu'il faut aller chercher tout en bas est
-                 un formulaire qu'on quitte sans enregistrer. -->
+            <!-- **Collée en bas, sur toutes les étapes** : un bouton qu'il
+                 faut aller chercher est un formulaire qu'on quitte sans
+                 enregistrer. À gauche on revient, à droite on avance — et la
+                 seule action pleine de terre est celle qui termine. -->
             <div class="fm__bar">
-                <button type="submit" class="btn btn--ink btn--lg" :disabled="form.processing">
+                <button v-if="etape > 0" type="button" class="btn btn--outline fm__prec" @click="aller(etape - 1)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5.5 8.5 12l6.5 6.5" /></svg>
+                    Précédent
+                </button>
+
+                <span class="fm__pas num">Étape {{ etape + 1 }} sur {{ ETAPES.length }}</span>
+
+                <!-- En modification, on enregistre depuis n'importe quelle
+                     étape : c'est la quinzième correction qu'on protège. -->
+                <button v-if="!creation" type="submit" class="btn btn--outline" :disabled="form.processing">
                     {{ form.processing ? 'Enregistrement…' : 'Enregistrer' }}
                 </button>
 
-                <button
-                    v-if="!creation && listing.status === 'draft'"
-                    type="button"
-                    class="btn btn--terre btn--lg"
-                    :disabled="envoiVerif"
-                    @click="soumettre"
-                >
-                    {{ envoiVerif ? 'Envoi…' : 'Envoyer à Vayla pour vérification' }}
+                <button v-if="etape < DERNIERE" type="button" class="btn btn--ink fm__suiv" @click="aller(etape + 1)">
+                    Suivant
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5.5 6.5 6.5L9 18.5" /></svg>
                 </button>
 
-                <Link href="/proprietaire/logements" class="fm__cancel">Retour</Link>
+                <button
+                    v-else-if="creation"
+                    type="submit"
+                    class="btn btn--terre"
+                    :disabled="form.processing || manques.length > 0"
+                >
+                    {{ form.processing ? 'Création…' : 'Créer le logement' }}
+                </button>
+
+                <button
+                    v-else-if="listing.status === 'draft'"
+                    type="button"
+                    class="btn btn--terre"
+                    :disabled="envoiVerif || modifie"
+                    @click="soumettre"
+                >
+                    {{ envoiVerif ? 'Envoi…' : 'Envoyer à Vayla' }}
+                </button>
             </div>
+
+            <!-- Un bouton désactivé dit pourquoi, et mène à ce qui manque. -->
+            <p v-if="creation && etape === DERNIERE && manques.length" class="fm__manque">
+                Pour créer le logement, il manque
+                <template v-for="(m, i) in manques" :key="m.texte">
+                    <button type="button" class="fm__lien" @click="aller(m.etape)">{{ m.texte }}</button><template
+                        v-if="i < manques.length - 2">, </template><template v-else-if="i === manques.length - 2"> et </template>
+                </template>.
+            </p>
+            <p v-if="!creation && etape === DERNIERE && listing.status === 'draft' && modifie" class="fm__manque">
+                Enregistrez d'abord vos modifications : Vayla vérifie la fiche telle qu'elle est enregistrée.
+            </p>
         </form>
+        </div>
     </OwnerShell>
 </template>
 
 <style scoped>
 .fm__head { margin-bottom: 1.5rem; }
 .fm__eyebrow { margin: 0 0 .3rem; font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--terre-600); }
-.fm__title { margin: 0; font-size: clamp(1.6rem, 4vw, 2.1rem); font-weight: 800; letter-spacing: -.045em; color: var(--ink); }
 .fm__consigne { margin: .4rem 0 0; max-width: 56ch; font-size: .92rem; line-height: 1.55; color: var(--text-2); }
+.fm__renvoi {
+    max-width: 60ch;
+    margin-top: .9rem;
+    padding: .8rem 1rem;
+    border: 1px solid var(--terre-200);
+    border-left: 3px solid var(--terre-500);
+    border-radius: var(--r-sm);
+    background: var(--terre-050);
+}
+.fm__renvoi-t { margin: 0; font-size: .74rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--terre-700); }
+.fm__renvoi-p { margin: .25rem 0 0; font-size: .92rem; line-height: 1.55; color: var(--ink); white-space: pre-line; }
 
 .fm__locked {
     margin: 0 0 1.75rem;
@@ -387,19 +624,9 @@ const prixEur = computed(() => (form.price ? euros(form.price) : null))
 }
 .fm__block--muted { background: var(--off); }
 
-.fm__h { display: flex; align-items: center; gap: .6rem; margin: 0 0 1rem; font-size: 1.15rem; font-weight: 800; letter-spacing: -.03em; color: var(--ink); }
-.fm__n {
-    display: grid;
-    place-items: center;
-    width: 1.7rem;
-    height: 1.7rem;
-    border-radius: var(--r-pill);
-    background: var(--terre-500);
-    font-size: .82rem;
-    font-weight: 800;
-    color: var(--white);
-}
+.fm__h { margin: 0 0 1rem; }
 .fm__sub { margin: -.5rem 0 1rem; max-width: 60ch; font-size: .88rem; line-height: 1.55; color: var(--text-2); }
+.fm__sub--seul { margin-bottom: 0; }
 
 .fm__field { display: grid; gap: .3rem; margin-bottom: 1.1rem; }
 .fm__pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 0 1rem; }
@@ -500,7 +727,41 @@ const prixEur = computed(() => (form.price ? euros(form.price) : null))
     align-items: center;
     gap: .6rem;
     padding: .9rem 0;
-    background: linear-gradient(to top, var(--off) 65%, transparent);
+    background: linear-gradient(to top, var(--off) 70%, transparent);
 }
-.fm__cancel { margin-left: auto; font-size: .86rem; font-weight: 600; color: var(--text-2); }
+
+/* Le compteur pousse les actions vers la droite : on revient à gauche, on
+   avance à droite — le sens de lecture. */
+.fm__pas { margin-right: auto; font-size: .82rem; font-weight: 700; color: var(--text-3); }
+.fm__prec + .fm__pas { margin-left: .4rem; }
+
+.fm__prec svg,
+.fm__suiv svg { width: 1.05rem; height: 1.05rem; }
+
+.fm__manque {
+    margin: -.4rem 0 0;
+    font-size: .86rem;
+    line-height: 1.55;
+    text-align: right;
+    color: var(--text-2);
+}
+
+/* Un lien qui ressemble à un lien : souligné, en terre, et qui mène à
+   l'étape où se remplit ce qui manque. */
+.fm__lien {
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-weight: 700;
+    color: var(--terre-600);
+    text-decoration: underline;
+    text-underline-offset: .2em;
+    cursor: pointer;
+}
+
+@media (max-width: 560px) {
+    .fm__pas { order: -1; flex-basis: 100%; }
+    .fm__manque { text-align: left; }
+}
 </style>

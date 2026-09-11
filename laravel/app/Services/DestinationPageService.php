@@ -39,7 +39,7 @@ class DestinationPageService
     {
         $demo = (bool) config('vayla.demo');
 
-        $destination = Destination::query()->with('photo')->where('slug', $slug)->first()
+        $destination = Destination::query()->with(['photo', 'galerie'])->where('slug', $slug)->first()
             ?? throw new DestinationNotFoundException($slug);
 
         $rows = $this->listings->forDestination($slug, $demo);
@@ -58,6 +58,9 @@ class DestinationPageService
             ),
             'destinations' => $this->destinations->atlas($demo),
             'demo' => $demo,
+            // La galerie, dans l'ordre choisi au back-office : la première est
+            // la couverture, celle de l'atlas.
+            'galerie' => $destination->galerie->pluck('key')->values()->all(),
             'photos' => $this->photos->map(),
             'credits' => $this->photos->credits(),
         ];

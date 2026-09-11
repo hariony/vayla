@@ -108,4 +108,16 @@ return [
          */
         'hold_hours' => (int) env('VAYLA_BOOKING_HOLD_HOURS', 48),
     ],
+
+    /*
+     * Le back-office vit sur son propre hôte, pas sous un préfixe du site.
+     *
+     * Un `/admin` à côté de `/logements` partagerait le cookie de session du
+     * site public, se devinerait au premier essai, et chaque lien du site y
+     * serait à un clic. Un hôte à part, c'est un cookie à part : la session
+     * d'un voyageur n'y voyage pas, celle d'un administrateur n'en sort pas.
+     */
+    'office' => [
+        'domaine' => env('VAYLA_OFFICE_DOMAIN', 'office.localhost'),
+    ],
 ];

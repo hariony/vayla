@@ -27,4 +27,17 @@ interface BookingMessageRepositoryInterface
 
     /** Combien de réservations du propriétaire portent un message qu'il n'a pas lu. */
     public function nonLusPour(Owner $owner): int;
+
+    /** Idem côté voyageur, où l'adresse tient lieu d'identité. */
+    public function nonLusPourAdresse(string $email): int;
+
+    /**
+     * Les réservations qui portent un fil, la plus récemment écrite d'abord.
+     *
+     * @return Collection<int, Booking>
+     */
+    public function conversationsDuProprietaire(Owner $owner): Collection;
+
+    /** @return Collection<int, Booking> */
+    public function conversationsDeLAdresse(string $email): Collection;
 }

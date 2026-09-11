@@ -56,7 +56,14 @@ services:
     # reste blanche, et rien n'indique que la cause est npm.
     # On n'installe donc que si les dépendances manquent ; après un changement
     # de package.json, `make npm-install`.
-    command: sh -c "[ -x node_modules/.bin/vite ] || npm install --no-audit --no-fund; npm run dev -- --host 0.0.0.0"
+    #
+    # Et le cache d'optimisation (`node_modules/.vite`) est vidé à chaque
+    # démarrage : conservé d'un démarrage à l'autre, il laissait la liste des
+    # pages d'`import.meta.glob` vide — `Object.assign({})`, « Page not found »
+    # sur tout le site — dès que le conteneur repartait sans que personne pense
+    # à le purger à la main. Le prix : quelques secondes d'optimisation au
+    # démarrage.
+    command: sh -c "rm -rf node_modules/.vite; [ -x node_modules/.bin/vite ] || npm install --no-audit --no-fund; npm run dev -- --host 0.0.0.0"
     networks:
       - vayla-network
 

@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Admin;
 use App\Models\Owner;
 use App\Models\User;
 
@@ -59,6 +60,19 @@ return [
             'driver' => 'session',
             'provider' => 'owners',
         ],
+
+        /*
+         * L'équipe Vayla, sur le back-office. Troisième garde, troisième
+         * session : un administrateur n'est ni un voyageur ni un propriétaire,
+         * et le devenir par accident — un drapeau sur `users`, une session
+         * partagée — ferait de chaque faille d'un espace public une faille du
+         * back-office. Le cookie est de toute façon posé sur un autre hôte
+         * (`office.…`), donc aucune des deux autres sessions n'y voyage.
+         */
+        'admin' => [
+            'driver' => 'session',
+            'provider' => 'admins',
+        ],
     ],
 
     /*
@@ -87,6 +101,11 @@ return [
         'owners' => [
             'driver' => 'eloquent',
             'model' => Owner::class,
+        ],
+
+        'admins' => [
+            'driver' => 'eloquent',
+            'model' => Admin::class,
         ],
 
         // 'users' => [

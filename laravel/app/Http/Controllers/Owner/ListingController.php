@@ -47,6 +47,9 @@ class ListingController extends Controller
                 'status' => $l->status->value,
                 'statusLabel' => $l->status->label(),
                 'consigne' => $l->status->consigne(),
+                // Ce que Vayla demande quand elle renvoie la fiche : sans ce
+                // motif, le propriétaire devinerait ce qui manque.
+                'reviewNote' => $l->review_note,
                 'price' => $l->price,
                 'guests' => $l->guests,
                 'bedrooms' => $l->bedrooms,
@@ -72,8 +75,11 @@ class ListingController extends Controller
         $listing = $this->annonces->creer($request->user('proprietaire'), $request->fiche());
         $this->annonces->poserEquipements($listing, $request->validated('amenities') ?? []);
 
+        // Déposé **sur l'étape des photos** : c'est la prochaine chose à
+        // faire, et la seule que la création ne pouvait pas faire. Le
+        // formulaire lit `?etape=` à l'ouverture.
         return redirect()
-            ->route('owner.listings.edit', $listing->slug)
+            ->route('owner.listings.edit', ['slug' => $listing->slug, 'etape' => 'photos'])
             ->with('succes', 'Logement créé. Ajoutez vos photos, puis envoyez la fiche à Vayla.');
     }
 

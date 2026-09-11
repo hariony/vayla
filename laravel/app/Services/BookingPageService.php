@@ -8,6 +8,7 @@ use App\Data\StayRulesData;
 use App\Exceptions\ListingNotFoundException;
 use App\Models\Booking;
 use App\Models\Listing;
+use App\Models\User;
 use App\Repositories\Contracts\ListingRepositoryInterface;
 
 /**
@@ -28,7 +29,7 @@ class BookingPageService
     ) {}
 
     /** @return array<string, mixed> */
-    public function form(string $slug, ?string $arrivee, ?string $depart, ?int $voyageurs): array
+    public function form(string $slug, ?string $arrivee, ?string $depart, ?int $voyageurs, ?User $compte = null): array
     {
         $listing = $this->listing($slug);
 
@@ -41,6 +42,20 @@ class BookingPageService
                 'departure' => $depart,
                 'guests' => $voyageurs,
             ],
+            /*
+             * **Ce que le compte évite de retaper.** C'est la seule raison pour
+             * laquelle Vayla garde un nom et un numéro : sans ce
+             * pré-remplissage, ce seraient trois champs collectés pour un
+             * dossier, et Vayla n'en constitue pas.
+             *
+             * Un visiteur sans compte reçoit `null` et saisit comme avant : la
+             * demande de séjour ne réclame toujours aucun compte.
+             */
+            'voyageur' => $compte ? [
+                'traveller' => $compte->name,
+                'traveller_phone' => $compte->phone,
+                'traveller_email' => $compte->email,
+            ] : null,
             'holdHours' => (int) config('vayla.booking.hold_hours'),
             'photos' => $this->photos->map(),
             'credits' => $this->photos->credits(),

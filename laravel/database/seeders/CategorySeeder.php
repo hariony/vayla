@@ -30,8 +30,12 @@ class CategorySeeder extends Seeder
             ['key' => 'verifie',       'label' => 'Séjour confirmé', 'icon' => 'check'],
         ];
 
+        // **Créer ce qui manque, ne jamais réécrire.** Depuis que le
+        // back-office édite ce référentiel, la base fait foi : un `make seed`
+        // qui rétablirait les libellés d'origine effacerait en silence le
+        // travail de l'équipe.
         foreach ($categories as $position => $category) {
-            Category::updateOrCreate(
+            Category::firstOrCreate(
                 ['key' => $category['key']],
                 $category + ['position' => $position]
             );

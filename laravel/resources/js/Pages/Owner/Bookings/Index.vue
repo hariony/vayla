@@ -39,7 +39,7 @@ const filtrer = (valeur) => router.get('/proprietaire/reservations',
 
     <OwnerShell>
         <header class="rs__head">
-            <h1 class="rs__title">Mes réservations</h1>
+            <h1 class="espace__titre">Mes réservations</h1>
             <p class="rs__lede">
                 Tout ce qui est passé par Vayla, y compris les demandes refusées et expirées.
             </p>
@@ -107,7 +107,6 @@ const filtrer = (valeur) => router.get('/proprietaire/reservations',
 
 <style scoped>
 .rs__head { margin-bottom: 1.25rem; }
-.rs__title { margin: 0; font-size: clamp(1.6rem, 4vw, 2.1rem); font-weight: 800; letter-spacing: -.045em; color: var(--ink); }
 .rs__lede { margin: .35rem 0 0; max-width: 54ch; font-size: .92rem; line-height: 1.55; color: var(--text-2); }
 
 .rs__filters { display: flex; flex-wrap: wrap; gap: .45rem; margin-bottom: 1.25rem; }

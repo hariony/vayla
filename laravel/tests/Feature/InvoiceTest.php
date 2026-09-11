@@ -202,4 +202,55 @@ class InvoiceTest extends TestCase
             $this->assertArrayHasKey($cle, $ligne);
         }
     }
+
+    /**
+     * **Le mois en cours s'affiche avant les factures, et n'en est pas une.**
+     * Le cacher jusqu'au premier du mois suivant ferait découvrir un montant
+     * qu'on aurait pu voir venir — et c'est exactement ce qui fait qu'une
+     * commission se sent comme un piège.
+     */
+    public function test_l_ecran_de_facturation_montre_le_mois_en_cours_et_l_historique(): void
+    {
+        $listing = Listing::with(['unavailabilities', 'bookings'])->where('slug', 'villa-ambatoloaka')->firstOrFail();
+        $owner = $listing->owner;
+
+        $this->actingAs($owner, 'proprietaire')
+            ->get('/proprietaire/facturation')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Owner/Invoices')
+                ->has('facturation.encours')
+                ->has('facturation.factures')
+                ->where('taux', (float) config('vayla.commission.rate'))
+            );
+    }
+
+    /**
+     * **Un mois sans séjour confirmé n'entre pas dans l'historique.** Une
+     * ligne à zéro n'apprend rien et allonge une liste qu'on parcourt pour
+     * retrouver un montant.
+     */
+    public function test_l_historique_ecarte_les_mois_sans_sejour(): void
+    {
+        $listing = Listing::with(['unavailabilities', 'bookings'])->where('slug', 'villa-ambatoloaka')->firstOrFail();
+        $booking = $this->sejourTermine('villa-ambatoloaka', $this->fenetre($listing), 3);
+
+        $historique = app(InvoiceService::class)->historique($booking->listing->owner);
+
+        // Un séjour terminé il y a douze jours tombe forcément dans la
+        // fenêtre : soit dans le mois en cours, soit dans la facture qui
+        // précède. La somme le retrouve sans dépendre du jour où le test
+        // tourne — ce qui a déjà coûté une suite rouge un 31.
+        $vus = $historique['encours']['stays'] + collect($historique['factures'])->sum('stays');
+        $this->assertGreaterThan(0, $vus);
+
+        foreach ($historique['factures'] as $facture) {
+            $this->assertGreaterThan(0, $facture['stays'], 'Un mois vide n’a rien à faire dans l’historique.');
+        }
+    }
+
+    public function test_la_facturation_est_fermee_aux_visiteurs(): void
+    {
+        $this->get('/proprietaire/facturation')->assertRedirect('/proprietaire/connexion');
+    }
 }

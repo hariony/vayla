@@ -211,6 +211,10 @@ const href = computed(() => {
 }
 
 .lc__link { color: inherit; text-decoration: none; }
+/* Toute la carte mène à la fiche. Elle se soulève au survol comme un lien :
+   elle doit se cliquer comme un lien, pas seulement sur la photo et le titre.
+   Le lien du titre s'étend sur la carte entière (`.lc` est positionnée). */
+.lc__link::after { content: ''; position: absolute; inset: 0; z-index: 1; border-radius: var(--r-lg); }
 .lc__link:hover { text-decoration: underline; text-underline-offset: 3px; }
 .lc__link:focus-visible { outline: 2.5px solid var(--terre-500); outline-offset: 3px; border-radius: 4px; }
 

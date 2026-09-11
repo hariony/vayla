@@ -10,6 +10,8 @@
 import { Link } from '@inertiajs/vue3'
 import CategoryRail from '@/Components/CategoryRail.vue'
 import ListingCard from '@/Components/ListingCard.vue'
+import { useTextes } from '@/Composables/useTextes.js'
+import { lienCatalogue, lienDemande } from '@/Support/liens.js'
 
 defineProps({
     categories: { type: Array, default: () => [] },
@@ -20,9 +22,14 @@ defineProps({
     stay: { type: Object, default: null },
     demo: { type: Boolean, default: false },
     searchLabel: { type: String, default: '' },
+    /** Les critères du moteur : les deux sorties de la grille les emportent. */
+    criteres: { type: Object, default: () => ({}) },
 })
 
 defineEmits(['update:category', 'reset'])
+
+// Les textes viennent du back-office ; l'original reste dans `SiteTextCatalog`.
+const { t, riche } = useTextes()
 </script>
 
 <template>
@@ -37,10 +44,8 @@ defineEmits(['update:category', 'reset'])
                 site dont toute la promesse est la vérification.
             -->
             <header class="offers__head">
-                <h2 class="display display--md offers__title" data-anim>
-                    Les envies du moment
-                </h2>
-                <p class="offers__hint" data-anim>Choisissez une envie, la sélection suit.</p>
+                <h2 class="display display--md offers__title" data-anim>{{ t('accueil.offres.titre') }}</h2>
+                <p class="offers__hint" data-anim>{{ t('accueil.offres.consigne') }}</p>
             </header>
 
             <CategoryRail
@@ -58,7 +63,7 @@ defineEmits(['update:category', 'reset'])
 
                 <p v-if="demo" class="offers__demo">
                     <span class="chip chip--terre">Aperçu</span>
-                    Annonces fictives, le temps que les premiers propriétaires publient.
+                    {{ t('accueil.offres.demo') }}
                 </p>
             </div>
 
@@ -78,19 +83,18 @@ defineEmits(['update:category', 'reset'])
             <!-- L'accueil montre une sélection ; le catalogue porte les
                  filtres et la pagination. -->
             <p v-if="results.length" class="offers__more">
-                <Link href="/logements" class="btn btn--outline">
+                <!-- Le catalogue ouvert sur la même recherche : repartir de zéro
+                     ferait perdre la destination et les dates qu'on vient de poser. -->
+                <Link :href="lienCatalogue(criteres, category)" class="btn btn--outline">
                     Tous les logements, avec les filtres
                 </Link>
             </p>
 
             <div v-else class="offers__empty">
-                <h3 class="display display--md">Rien ici. C'est exactement pour ça qu'on existe.</h3>
-                <p class="lede offers__empty-lede">
-                    Décrivez ce que vous cherchez : on va le chercher auprès des
-                    propriétaires, on le vérifie, et on vous répond.
-                </p>
+                <h3 class="display display--md">{{ t('accueil.offres.vide_titre') }}</h3>
+                <p class="lede offers__empty-lede" v-html="riche('accueil.offres.vide_texte')" />
                 <div class="offers__empty-actions">
-                    <a href="#demande" class="btn btn--terre">Déposer une demande</a>
+                    <Link :href="lienDemande(criteres)" class="btn btn--terre">Déposer une demande</Link>
                     <button type="button" class="btn btn--outline" @click="$emit('reset')">
                         Voir tous les logements
                     </button>

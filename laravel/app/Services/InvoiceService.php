@@ -121,6 +121,46 @@ class InvoiceService
             ->all();
     }
 
+    /**
+     * Ce que le propriétaire voit dans sa rubrique « Facturation ».
+     *
+     * Trois choses, et l'ordre compte :
+     *
+     * 1. **Le mois en cours**, qui n'est pas encore une facture — c'est ce qui
+     *    s'accumule. Le cacher jusqu'au premier du mois suivant, c'est faire
+     *    découvrir un montant qu'on aurait pu voir venir, et c'est exactement
+     *    ce qui fait qu'une commission se sent comme un piège.
+     * 2. **La dernière facture**, celle qui est à régler.
+     * 3. **Les précédentes**, pour vérifier.
+     *
+     * Les mois **sans séjour confirmé sont écartés** de l'historique : une
+     * ligne à zéro n'apprend rien et allonge une liste qu'on parcourt pour
+     * retrouver un montant. Le mois en cours, lui, reste affiché même vide —
+     * « rien à payer ce mois-ci » est une information, pas un vide.
+     *
+     * @return array<string, mixed>
+     */
+    public function historique(Owner $owner, int $mois = 6): array
+    {
+        $aujourdhui = Carbon::today();
+
+        $precedentes = collect(range(1, max(1, $mois)))
+            ->map(fn (int $recul) => $this->forOwner($owner, $aujourdhui->copy()->subMonthsNoOverflow($recul)))
+            ->filter(fn (array $facture) => $facture['stays'] > 0)
+            ->values()
+            ->all();
+
+        return [
+            'encours' => $this->forOwner($owner, $aujourdhui),
+            'factures' => $precedentes,
+            'owner' => [
+                'name' => $owner->name,
+                'mobileMoney' => $owner->mobile_money,
+                'operator' => $owner->mobile_money_operator,
+            ],
+        ];
+    }
+
     private const MOIS = [
         'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
         'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',

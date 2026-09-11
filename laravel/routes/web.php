@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\AccessController;
 use App\Http\Controllers\AiController;
+use App\Http\Controllers\Auth\AccountController as TravellerAccountController;
+use App\Http\Controllers\Auth\MessageController as TravellerMessageController;
 use App\Http\Controllers\Auth\SocialController;
 use App\Http\Controllers\Auth\TravellerAuthController;
 use App\Http\Controllers\Auth\TravellerRegisterController;
@@ -10,12 +12,17 @@ use App\Http\Controllers\DestinationController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ListingController;
 use App\Http\Controllers\Owner\AccessLinkController;
+use App\Http\Controllers\Owner\AccountController as OwnerAccountController;
 use App\Http\Controllers\Owner\AuthController as OwnerAuthController;
 use App\Http\Controllers\Owner\BookingController as OwnerBookingController;
+use App\Http\Controllers\Owner\InvoiceController as OwnerInvoiceController;
 use App\Http\Controllers\Owner\ListingController as OwnerListingController;
+use App\Http\Controllers\Owner\MessageController as OwnerMessageController;
 use App\Http\Controllers\Owner\RegisterController as OwnerRegisterController;
 use App\Http\Controllers\OwnerCalendarController;
 use App\Http\Controllers\OwnerController;
+use App\Http\Controllers\PageController;
+use App\Http\Controllers\StayRequestController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
@@ -70,6 +77,16 @@ Route::post('/reservations/{reference}/messages', [BookingController::class, 're
  */
 Route::get('/destinations', [DestinationController::class, 'index'])->name('destinations.index');
 Route::get('/destinations/{slug}', [DestinationController::class, 'show'])->name('destinations.show');
+
+/*
+ * La demande « dans l'autre sens » : le voyageur décrit ce qu'il cherche,
+ * l'équipe va le chercher. Sans compte ; dix envois par heure et par
+ * adresse IP, parce qu'un formulaire public sans borne est une file que
+ * n'importe qui peut remplir à la place de l'équipe.
+ */
+Route::get('/demande', [StayRequestController::class, 'create'])->name('stay-requests.create');
+Route::post('/demande', [StayRequestController::class, 'store'])
+    ->middleware('throttle:10,60')->name('stay-requests.store');
 
 Route::post('/ai/chat', [AiController::class, 'chat'])
     ->middleware('throttle:20,1')
@@ -147,10 +164,30 @@ Route::middleware('guest')->group(function () {
 
 Route::post('/deconnexion', [TravellerAuthController::class, 'logout'])->name('traveller.logout');
 
-// Les réservations rattachées à l'adresse du compte : c'est tout ce que le
-// compte voyageur apporte, et c'est déjà ce qui manquait le plus.
-Route::get('/mes-reservations', [TravellerAuthController::class, 'bookings'])
-    ->middleware(['auth', 'sans-index'])->name('traveller.bookings');
+/*
+ * L'espace client.
+ *
+ * Trois rubriques, et aucune n'est décorative : les séjours rattachés à
+ * l'adresse, les conversations ouvertes autour d'eux, et le nom que les
+ * propriétaires liront. Tout est **hors index** — ce sont les pages d'un
+ * compte, elles n'ont rien à faire dans un moteur de recherche.
+ */
+// La garde est **nommée** : trois gardes cohabitent (`web`, `proprietaire`,
+// `admin`), et un `auth` nu lit la garde par défaut — celle qu'une requête
+// précédente a pu déplacer. Dire laquelle, c'est ne jamais laisser une
+// session d'administrateur ouvrir l'espace d'un voyageur.
+Route::middleware(['auth:web', 'sans-index'])->group(function () {
+    Route::get('/mes-reservations', [TravellerAuthController::class, 'bookings'])
+        ->name('traveller.bookings');
+
+    Route::get('/mes-messages', [TravellerMessageController::class, 'index'])
+        ->name('traveller.messages');
+
+    Route::get('/mon-compte', [TravellerAccountController::class, 'edit'])
+        ->name('traveller.account');
+    Route::post('/mon-compte', [TravellerAccountController::class, 'update'])
+        ->middleware('throttle:20,1')->name('traveller.account.update');
+});
 
 /*
  * L'espace propriétaire — un vrai compte.
@@ -249,6 +286,42 @@ Route::middleware('sans-index')->group(function () {
             Route::post('/proprietaire/reservations/{reference}/messages', [OwnerBookingController::class, 'reply'])
                 ->middleware('throttle:20,1')->name('owner.bookings.reply');
 
+            /*
+             * La boîte : toutes les conversations au même endroit. Les fils
+             * ne vivaient que dans chaque réservation — pour savoir si
+             * quelqu'un attendait, il fallait les ouvrir une par une.
+             */
+            Route::get('/proprietaire/messages', [OwnerMessageController::class, 'index'])
+                ->name('owner.messages');
+
+            /*
+             * La facturation, avec son historique. Le tableau de bord n'en
+             * montrait qu'une, et seulement la dernière : « pourquoi ce
+             * montant » n'avait pas de réponse.
+             */
+            Route::get('/proprietaire/facturation', [OwnerInvoiceController::class, 'index'])
+                ->name('owner.invoices');
+
+            /*
+             * Le compte. Le nom, le numéro WhatsApp, la ville et le mobile
+             * money étaient figés à l'inscription : celui qui changeait de
+             * numéro recevait ses demandes sur une ligne qu'il n'avait plus.
+             * L'adresse, elle, n'est pas modifiable ici — c'est l'identifiant
+             * de connexion.
+             */
+            Route::get('/proprietaire/compte', [OwnerAccountController::class, 'edit'])
+                ->name('owner.account');
+            Route::post('/proprietaire/compte', [OwnerAccountController::class, 'update'])
+                ->middleware('throttle:20,1')->name('owner.account.update');
+
+            // Le portrait part seul : un fichier de dix mégaoctets qui
+            // repartirait à chaque correction de numéro serait une minute
+            // d'attente, et un enregistrement perdu quand la ligne coupe.
+            Route::post('/proprietaire/compte/photo', [OwnerAccountController::class, 'portrait'])
+                ->middleware('throttle:20,1')->name('owner.account.portrait');
+            Route::post('/proprietaire/compte/photo/retirer', [OwnerAccountController::class, 'portraitDestroy'])
+                ->middleware('throttle:20,1')->name('owner.account.portrait.destroy');
+
             Route::post('/proprietaire/demandes/{reference}/accepter', [OwnerController::class, 'accept'])
                 ->middleware('throttle:20,1')->name('owner.accept');
             Route::post('/proprietaire/demandes/{reference}/refuser', [OwnerController::class, 'decline'])
@@ -269,3 +342,19 @@ Route::middleware('sans-index')->group(function () {
         });
     });
 });
+
+/*
+ * **Les pages éditoriales, à leur adresse courte — et en dernier, toujours.**
+ * « Comment ça marche », les tarifs, les mentions légales : l'équipe les écrit
+ * depuis le back-office. Cette route attrape un seul segment en minuscules et
+ * tirets ; placée ici, elle ne peut jamais passer devant un écran du site, et
+ * `PageService` refuse à une page l'adresse d'un écran. Une page en brouillon
+ * ou inconnue répond 404.
+ */
+//
+// `deconnexion` est exclue du motif : c'est une route **POST seulement**, et un
+// GET doit y répondre 405 — le signal qu'une déconnexion ne se fait jamais par
+// un lien. Attrapée ici, elle répondait 404, et `AccessTest` l'a vu.
+Route::get('/{page}', [PageController::class, 'show'])
+    ->where('page', '(?!deconnexion$)[a-z0-9]+(?:-[a-z0-9]+)*')
+    ->name('pages.show');

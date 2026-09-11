@@ -25,6 +25,12 @@ const props = defineProps({
     action: { type: String, required: true },
     /** « Écrivez au propriétaire » ou « Répondre au voyageur » : on nomme l'autre. */
     destinataire: { type: String, required: true },
+    /**
+     * Lu par Vayla, depuis le back-office. Les phrases adressées aux deux
+     * parties — « appelez-vous », « Vayla peut lire cet échange » — n'y ont
+     * aucun sens : le lecteur **est** Vayla. Le fil, lui, est le même.
+     */
+    mediation: { type: Boolean, default: false },
 })
 
 const form = useForm({ body: '' })
@@ -54,8 +60,8 @@ const quand = (iso) => {
 
 <template>
     <section class="cv">
-        <h2 class="cv__title">Échange</h2>
-        <p class="cv__lede">
+        <h2 v-if="!mediation" class="cv__title">Échange</h2>
+        <p v-if="!mediation" class="cv__lede">
             Ce qui est écrit ici reste attaché à la réservation. Pour les échanges rapides,
             appelez-vous — le numéro est plus haut.
         </p>
@@ -96,7 +102,7 @@ const quand = (iso) => {
             </div>
         </form>
 
-        <p class="cv__note">
+        <p v-if="!mediation" class="cv__note">
             En cas de désaccord, Vayla peut lire cet échange pour vous aider à trouver une solution.
         </p>
     </section>

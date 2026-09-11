@@ -58,7 +58,7 @@ const presse = (h) => h !== null && h <= 12
 <template>
     <section class="rq">
         <header class="rq__head">
-            <h2 class="rq__title">
+            <h2 class="espace__section rq__title">
                 À répondre
                 <span v-if="requests.length" class="rq__n num">{{ requests.length }}</span>
             </h2>
@@ -189,10 +189,6 @@ const presse = (h) => h !== null && h <= 12
     align-items: center;
     gap: .6rem;
     margin: 0;
-    font-size: 1.3rem;
-    font-weight: 800;
-    letter-spacing: -.032em;
-    color: var(--ink);
 }
 
 .rq__n {

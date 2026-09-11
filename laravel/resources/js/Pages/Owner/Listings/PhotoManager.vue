@@ -20,6 +20,7 @@ import { ref } from 'vue'
 import { router, useForm } from '@inertiajs/vue3'
 
 import { photoSrc, photoSrcset } from '@/Support/photo.js'
+import { preparerPhoto } from '@/Support/preparerPhoto.js'
 
 const props = defineProps({
     slug: { type: String, required: true },
@@ -29,12 +30,18 @@ const props = defineProps({
 
 const champ = ref(null)
 const form = useForm({ photo: null, caption: '' })
+const preparation = ref(false)
 
-function choisir(evenement) {
+// La photo est réduite avant de partir, à ce que le serveur garde vraiment :
+// sur une connexion mobile, un original de 12 Mo était une minute d'attente —
+// souvent coupée avant la fin.
+async function choisir(evenement) {
     const fichier = evenement.target.files?.[0]
     if (!fichier) return
 
-    form.photo = fichier
+    preparation.value = true
+    form.photo = await preparerPhoto(fichier)
+    preparation.value = false
     form.post(`/proprietaire/logements/${props.slug}/photos`, {
         preserveScroll: true,
         forceFormData: true,
@@ -105,8 +112,10 @@ function deplacer(index, pas) {
         <div v-if="modifiable" class="pm__add">
             <label class="btn btn--outline pm__pick">
                 <input ref="champ" type="file" accept="image/jpeg,image/png,image/webp"
-                       :disabled="form.processing" @change="choisir">
-                {{ form.processing ? 'Envoi en cours…' : 'Ajouter une photo' }}
+                       :disabled="form.processing || preparation" @change="choisir">
+                <template v-if="preparation">Préparation de la photo…</template>
+                <template v-else-if="form.processing">{{ (form.progress?.percentage ?? 0) < 100 ? `Envoi : ${Math.round(form.progress?.percentage ?? 0)} %` : 'Recadrage…' }}</template>
+                <template v-else>Ajouter une photo</template>
             </label>
             <p class="pm__hint">
                 JPEG, PNG ou WebP, 1200 pixels de large au minimum.

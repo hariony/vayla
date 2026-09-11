@@ -27,6 +27,7 @@ import OwnersSection from './Partials/OwnersSection.vue'
 import { usePageMotion } from '@/Composables/usePageMotion.js'
 import { useListingFilters } from '@/Composables/useListingFilters.js'
 import { useSearchQuery } from '@/Composables/useSearchQuery.js'
+import { allerA } from '@/Support/liens.js'
 
 const props = defineProps({
     destinations: { type: Array, default: () => [] },
@@ -44,6 +45,14 @@ const recherche = useSearchQuery()
 
 const { category, results, searchLabel, pickDestination, reset } =
     useListingFilters(toRef(props, 'listings'), toRef(props, 'destinations'), recherche)
+
+// Choisir une région — dans la liste ou sur la carte — filtre la grille, qui
+// est deux sections plus haut : sans ce défilement, le filtre s'appliquait
+// hors de l'écran et le clic semblait ne rien faire.
+const choisirRegion = (slug) => {
+    pickDestination(slug)
+    allerA('offres')
+}
 
 const root = ref(null)
 const hero = ref(null)
@@ -77,6 +86,7 @@ usePageMotion(root)
                 :results="results"
                 :photos="photos"
                 :stay="{ arrival: recherche.dates.arrivee.value, departure: recherche.dates.depart.value }"
+                :criteres="recherche.criteres.value"
                 :demo="demo"
                 :search-label="searchLabel"
                 @update:category="category = $event"
@@ -88,10 +98,10 @@ usePageMotion(root)
             <AtlasSection
                 :destinations="destinations"
                 :photos="photos"
-                @pick="pickDestination"
+                @pick="choisirRegion"
             />
 
-            <AskSection />
+            <AskSection :criteres="recherche.criteres.value" />
 
             <OwnersSection />
         </main>

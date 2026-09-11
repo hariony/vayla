@@ -98,7 +98,7 @@ function fermer() {
 <template>
     <section class="bf">
         <header class="bf__head">
-            <h2 class="bf__title">Fermer des dates</h2>
+            <h2 class="espace__section bf__title">Fermer des dates</h2>
             <p class="bf__lede">
                 Les nuits que vous fermez ici disparaissent du calendrier public :
                 plus personne ne peut les demander.
@@ -159,7 +159,7 @@ function fermer() {
 
 <style scoped>
 .bf__head { margin-bottom: 1.1rem; }
-.bf__title { margin: 0; font-size: 1.3rem; font-weight: 800; letter-spacing: -.032em; color: var(--ink); }
+.bf__title { margin: 0; }
 .bf__lede { margin: .5rem 0 0; max-width: 56ch; font-size: .9rem; line-height: 1.55; color: var(--text-2); }
 
 .bf__hint {

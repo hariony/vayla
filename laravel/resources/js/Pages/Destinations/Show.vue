@@ -23,7 +23,7 @@
  * lignes grises.
  */
 import { computed, ref } from 'vue'
-import { Head, Link } from '@inertiajs/vue3'
+import { Head, Link, router } from '@inertiajs/vue3'
 
 import SiteHeader from '@/Components/SiteHeader.vue'
 import SiteFooter from '@/Components/SiteFooter.vue'
@@ -46,13 +46,22 @@ const props = defineProps({
     demo: { type: Boolean, default: false },
     photos: { type: Object, default: () => ({}) },
     credits: { type: Array, default: () => [] },
+    /** Les clés de la galerie, dans l'ordre du back-office : la première est la couverture. */
+    galerie: { type: Array, default: () => [] },
 })
 
 const root = ref(null)
 useFicheMotion(root)
 
 const d = computed(() => props.fiche.destination)
-const photo = computed(() => (d.value.photo ? props.photos[d.value.photo] : null))
+/**
+ * La galerie de la destination. La photo de tête est celle qu'on a choisie dans
+ * la pellicule — la couverture par défaut. Une destination sans galerie
+ * retombe sur sa photo unique, puis sur l'illustration dessinée.
+ */
+const cles = computed(() => (props.galerie.length ? props.galerie : (d.value.photo ? [d.value.photo] : [])))
+const courante = ref(0)
+const photo = computed(() => props.photos[cles.value[courante.value]] ?? null)
 const money = nombre
 
 const { eurosFourchette } = useDevise()
@@ -108,7 +117,7 @@ const prixEur = computed(() => {
                     <!-- La carte est la géométrie réelle du pays : le repère
                          actif dit où l'on est, sans illustration décorative. -->
                     <div class="dest__map" data-fiche-head>
-                        <MadagascarMap :destinations="destinations" :active="d.slug" />
+                        <MadagascarMap :destinations="destinations" :active="d.slug" @pick="(slug) => slug !== d.slug && router.visit(`/destinations/${slug}`)" />
                     </div>
                 </header>
 
@@ -135,7 +144,8 @@ const prixEur = computed(() => {
 
                 <figure class="dest__media" data-anim>
                     <img
-                        v-if="d.photo"
+                        v-if="photo"
+                        :key="photo.key"
                         class="dest__photo"
                         :src="photoSrc(photo, 1600)"
                         :srcset="photoSrcset(photo)"
@@ -155,6 +165,25 @@ const prixEur = computed(() => {
                         <a v-if="photo.licence_url" :href="photo.licence_url" target="_blank" rel="noopener noreferrer">{{ photo.licence }}</a>
                         <template v-else>{{ photo.licence }}</template>
                     </figcaption>
+
+                    <!-- La pellicule : chaque vignette est un bouton, et la photo
+                         de tête suit. Pas de diaporama automatique — une image
+                         qui change pendant qu'on lit sa légende fait perdre le
+                         fil. -->
+                    <ul v-if="cles.length > 1" class="dest__pellicule" aria-label="Photos de la destination">
+                        <li v-for="(k, i) in cles" :key="k">
+                            <button
+                                type="button"
+                                class="dest__vignette"
+                                :class="{ 'is-on': i === courante }"
+                                :aria-pressed="i === courante"
+                                :aria-label="`Photo ${i + 1} sur ${cles.length} : ${photos[k]?.caption ?? d.name}`"
+                                @click="courante = i"
+                            >
+                                <img :src="photoSrc(photos[k], 800)" :alt="''" width="160" height="120" loading="lazy" decoding="async">
+                            </button>
+                        </li>
+                    </ul>
                 </figure>
 
                 <!-- ── Y aller ── -->
@@ -210,7 +239,7 @@ const prixEur = computed(() => {
                             nous vous répondons.
                         </p>
                         <div class="dest__empty-actions">
-                            <a href="/#demande" class="btn btn--terre btn--lg">Déposer une demande</a>
+                            <Link :href="`/demande?destination=${d.slug}`" class="btn btn--terre btn--lg">Déposer une demande</Link>
                             <Link href="/destinations" class="btn btn--outline">Voir les autres destinations</Link>
                         </div>
                     </div>
@@ -300,6 +329,24 @@ const prixEur = computed(() => {
     background: var(--off-2);
     box-shadow: var(--sh-1);
 }
+
+.dest__pellicule { display: flex; gap: .5rem; margin: .9rem 0 0; padding: 0 0 .2rem; overflow-x: auto; list-style: none; scrollbar-width: thin; }
+.dest__vignette {
+    display: block;
+    width: 6.5rem;
+    padding: 0;
+    overflow: hidden;
+    border: 2px solid transparent;
+    border-radius: var(--r-sm);
+    background: var(--off-2);
+    cursor: pointer;
+    transition: border-color .2s var(--ease), opacity .2s var(--ease);
+}
+.dest__vignette img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+.dest__vignette:not(.is-on) { opacity: .72; }
+.dest__vignette:hover { opacity: 1; }
+.dest__vignette:focus-visible { outline: 2px solid var(--terre-500); outline-offset: 2px; }
+.dest__vignette.is-on { border-color: var(--ink); opacity: 1; }
 
 .dest__credit {
     margin-top: .6rem;

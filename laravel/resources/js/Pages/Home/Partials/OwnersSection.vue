@@ -11,6 +11,10 @@
 import { Link } from '@inertiajs/vue3'
 
 import TrustGauge from '@/Components/TrustGauge.vue'
+import { useTextes } from '@/Composables/useTextes.js'
+
+// Les textes viennent du back-office ; l'original reste dans `SiteTextCatalog`.
+const { t, riche } = useTextes()
 </script>
 
 <template>
@@ -18,15 +22,9 @@ import TrustGauge from '@/Components/TrustGauge.vue'
     <section id="proprietaires" class="owners">
         <div class="shell owners__inner">
             <div class="owners__copy">
-                <p class="eyebrow eyebrow--light" data-anim>Propriétaires</p>
-                <h2 class="display display--lg owners__title" data-anim>
-                    Votre annonce, enfin crédible.
-                </h2>
-                <p class="lede owners__lede" data-anim>
-                    Vous perdez des séjours parce que le voyageur n'ose pas envoyer
-                    l'acompte. Faites vérifier votre logement une fois : le niveau
-                    s'affiche sur votre annonce, et il parle pour vous.
-                </p>
+                <p class="eyebrow eyebrow--light" data-anim>{{ t('accueil.proprietaires.surtitre') }}</p>
+                <h2 class="display display--lg owners__title" data-anim>{{ t('accueil.proprietaires.titre') }}</h2>
+                <p class="lede owners__lede" data-anim v-html="riche('accueil.proprietaires.accroche')" />
                 <div class="owners__actions" data-anim>
                     <!-- Il pointait sur `#proprietaires`, c'est-à-dire sur
                          lui-même : le bouton principal de la section ne menait
@@ -40,7 +38,7 @@ import TrustGauge from '@/Components/TrustGauge.vue'
                      lien, un propriétaire qui a perdu son lien WhatsApp
                      n'avait aucun chemin depuis le site. -->
                 <p class="owners__back" data-anim>
-                    Déjà propriétaire sur Vayla ?
+                    {{ t('accueil.proprietaires.deja') }}
                     <Link href="/proprietaire" class="owners__link">Accéder à mon espace</Link>
                 </p>
             </div>
@@ -48,18 +46,18 @@ import TrustGauge from '@/Components/TrustGauge.vue'
             <ul class="owners__list" data-anim-group>
                 <li class="owners__item">
                     <TrustGauge :level="2" light />
-                    <h3>Photos protégées</h3>
-                    <p>On compare vos images au reste du web : personne ne réutilisera votre logement.</p>
+                    <h3>{{ t('accueil.proprietaires.argument1_titre') }}</h3>
+                    <p v-html="riche('accueil.proprietaires.argument1_texte')" />
                 </li>
                 <li class="owners__item">
                     <TrustGauge :level="3" light />
-                    <h3>La visio suffit</h3>
-                    <p>Une visite guidée par appel vidéo, depuis chez vous, et le niveau 3 est acquis.</p>
+                    <h3>{{ t('accueil.proprietaires.argument2_titre') }}</h3>
+                    <p v-html="riche('accueil.proprietaires.argument2_texte')" />
                 </li>
                 <li class="owners__item">
                     <TrustGauge :level="4" light />
-                    <h3>Les séjours comptent</h3>
-                    <p>Chaque séjour confirmé par un voyageur consolide votre niveau.</p>
+                    <h3>{{ t('accueil.proprietaires.argument3_titre') }}</h3>
+                    <p v-html="riche('accueil.proprietaires.argument3_texte')" />
                 </li>
             </ul>
         </div>

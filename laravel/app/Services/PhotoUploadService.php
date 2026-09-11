@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Listing;
 use App\Models\Photo;
+use App\Services\Images\ImageSource;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -17,9 +18,20 @@ use RuntimeException;
  * laquelle. Un `srcset` qui promettrait un 3200 inexistant ferait télécharger
  * un 404, et sur une connexion malgache un aller-retour perdu se paie cher.
  *
- * **WebP, sans exception.** Les propriétaires téléversent depuis leur
- * téléphone : un JPEG de 4 Mo servi tel quel est une fiche qui ne se charge
- * pas là où on en a le plus besoin.
+ * **WebP, sans exception, et une qualité par palier.** Les propriétaires
+ * téléversent depuis leur téléphone : un JPEG de 4 Mo servi tel quel est une
+ * fiche qui ne se charge pas là où on en a le plus besoin. La qualité baisse
+ * quand la taille monte — 82 en 800, 79 en 1600, 74 en 3200 — parce que le
+ * 3200 n'est demandé que par les écrans à haute densité, où chaque pixel de
+ * l'image fait un demi-pixel à l'écran et où la compression se voit deux fois
+ * moins. Mesuré sur trois photographies de Commons (dont une de 48 Mpx) : un
+ * cinquième de disque en moins, sans différence visible sur les détails.
+ *
+ * **Chaque palier naît du précédent** (3200 → 1600 → 800), pas de
+ * l'original : réduire par moitié garde le détail mieux qu'un grand saut, et
+ * l'original n'est décodé qu'une fois (`ImageSource`, qui le lit sans jamais
+ * le recopier en pleine taille — une photo de 48 Mpx faisait tomber l'envoi
+ * sur la limite de mémoire de PHP).
  *
  * **On refuse une photo trop petite plutôt que de l'étirer.** Un original de
  * 900 px affiché sur une photo de tête de 1300 est flou, et un logement flou
@@ -34,16 +46,85 @@ class PhotoUploadService
 {
     private const PALIERS = [800, 1600, 3200];
 
+    /**
+     * Le poids maximal d'un fichier reçu, en kilo-octets : **40 Mo**, de quoi
+     * accepter l'original d'un appareil de 48 Mpx. Le navigateur réduit
+     * d'ordinaire la photo avant l'envoi (`Support/preparerPhoto.js`) ; cette
+     * borne sert quand il n'a pas pu. PHP en accepte 50 (`docker/php/php.ini`),
+     * nginx 100.
+     */
+    public const POIDS_MAX_KO = 40960;
+
     /** En dessous, la photo de tête est floue. */
     private const LARGEUR_MINIMALE = 1200;
 
     private const RATIO = 4 / 3;
 
-    private const QUALITE = 82;
+    /** @var array<int, int> la qualité WebP de chaque palier */
+    private const QUALITES = [800 => 82, 1600 => 79, 3200 => 74];
 
-    public function dossier(): string
+    public function dossier(string $dossier = 'annonces'): string
     {
-        return public_path('images/annonces');
+        return public_path("images/{$dossier}");
+    }
+
+    /**
+     * Ouvre, redresse, vérifie, recadre et écrit une photo dans
+     * `public/images/{dossier}/`, et renvoie la plus grande largeur réellement
+     * produite. **Le même traitement pour les annonces et les destinations** :
+     * deux copies auraient fini par ne pas refuser les mêmes photos floues.
+     *
+     * @throws RuntimeException si l'image est illisible ou trop petite
+     */
+    public function produire(UploadedFile $fichier, string $dossier, string $cle): int
+    {
+        $source = ImageSource::ouvrir($fichier->getRealPath());
+        $largeur = $source->largeur;
+        $hauteur = $source->hauteur;
+
+        if ($largeur < self::LARGEUR_MINIMALE) {
+            throw new RuntimeException(
+                "Cette photo fait {$largeur} pixels de large : il en faut au moins "
+                .self::LARGEUR_MINIMALE.'. Prenez-la avec l’appareil photo du téléphone plutôt '
+                .'que dans une conversation, qui les réduit.'
+            );
+        }
+
+        // Le recadrage 4/3, centré : la même proportion que toutes les
+        // vignettes du site.
+        if ($largeur / $hauteur > self::RATIO) {
+            $h = $hauteur;
+            $w = (int) round($hauteur * self::RATIO);
+        } else {
+            $w = $largeur;
+            $h = (int) round($largeur / self::RATIO);
+        }
+
+        // Les paliers que l'original permet — **jamais d'agrandissement** :
+        // `photos.width` doit dire la vérité sur ce que porte le disque.
+        $paliers = array_values(array_filter(self::PALIERS, fn (int $p) => $p === self::PALIERS[0] || $p <= $w));
+        $plafond = end($paliers);
+
+        $image = $source->extraire(
+            (int) round(($largeur - $w) / 2), (int) round(($hauteur - $h) / 2), $w, $h,
+            $plafond, (int) round($plafond / self::RATIO),
+        );
+
+        $this->ecrire($image, array_reverse($paliers), $cle, $dossier);
+
+        return $plafond;
+    }
+
+    /** Efface les fichiers d'une photo, tous paliers, dans son dossier. */
+    public function effacerFichiers(Photo $photo): void
+    {
+        foreach (self::PALIERS as $largeur) {
+            $chemin = $this->dossier($photo->folder)."/{$photo->key}-{$largeur}.webp";
+
+            if (is_file($chemin)) {
+                unlink($chemin);
+            }
+        }
     }
 
     /**
@@ -53,24 +134,8 @@ class PhotoUploadService
      */
     public function ajouter(Listing $listing, UploadedFile $fichier, ?string $legende = null): Photo
     {
-        [$source, $largeur, $hauteur] = $this->ouvrir($fichier);
-
-        if ($largeur < self::LARGEUR_MINIMALE) {
-            imagedestroy($source);
-
-            throw new RuntimeException(
-                "Cette photo fait {$largeur} pixels de large : il en faut au moins "
-                .self::LARGEUR_MINIMALE.'. Prenez-la avec l’appareil photo du téléphone plutôt '
-                .'que dans une conversation, qui les réduit.'
-            );
-        }
-
-        $recadree = $this->recadrer($source, $largeur, $hauteur);
-        imagedestroy($source);
-
         $cle = $listing->id.'/'.Str::lower(Str::random(16));
-        $plafond = $this->ecrire($recadree, $cle);
-        imagedestroy($recadree);
+        $plafond = $this->produire($fichier, 'annonces', $cle);
 
         $photo = Photo::create([
             'key' => $cle,
@@ -105,14 +170,7 @@ class PhotoUploadService
             return;
         }
 
-        foreach (self::PALIERS as $largeur) {
-            $chemin = $this->dossier()."/{$photo->key}-{$largeur}.webp";
-
-            if (is_file($chemin)) {
-                unlink($chemin);
-            }
-        }
-
+        $this->effacerFichiers($photo);
         $photo->delete();
     }
 
@@ -136,101 +194,29 @@ class PhotoUploadService
         }
     }
 
-    /** @return array{0: \GdImage, 1: int, 2: int} */
-    private function ouvrir(UploadedFile $fichier): array
-    {
-        $donnees = @file_get_contents($fichier->getRealPath());
-        $image = $donnees ? @imagecreatefromstring($donnees) : false;
-
-        if (! $image) {
-            throw new RuntimeException("Ce fichier n'est pas une image que nous savons lire. JPEG, PNG ou WebP.");
-        }
-
-        // Les photos de téléphone portent une orientation EXIF : sans ce
-        // redressement, une photo prise à la verticale s'affiche couchée.
-        $image = $this->redresser($image, $fichier->getRealPath());
-
-        return [$image, imagesx($image), imagesy($image)];
-    }
-
-    private function redresser(\GdImage $image, string $chemin): \GdImage
-    {
-        if (! function_exists('exif_read_data')) {
-            return $image;
-        }
-
-        $exif = @exif_read_data($chemin);
-        $angle = match ($exif['Orientation'] ?? 1) {
-            3 => 180,
-            6 => -90,
-            8 => 90,
-            default => 0,
-        };
-
-        if ($angle === 0) {
-            return $image;
-        }
-
-        $pivotee = imagerotate($image, $angle, 0);
-        imagedestroy($image);
-
-        return $pivotee ?: $image;
-    }
-
-    /** Recadrage centré en 4/3 : la même proportion que toutes les vignettes du site. */
-    private function recadrer(\GdImage $source, int $largeur, int $hauteur): \GdImage
-    {
-        $ratio = $largeur / $hauteur;
-
-        if ($ratio > self::RATIO) {
-            $h = $hauteur;
-            $w = (int) round($hauteur * self::RATIO);
-        } else {
-            $w = $largeur;
-            $h = (int) round($largeur / self::RATIO);
-        }
-
-        $x = (int) round(($largeur - $w) / 2);
-        $y = (int) round(($hauteur - $h) / 2);
-
-        $cible = imagecreatetruecolor($w, $h);
-        imagecopy($cible, $source, 0, 0, $x, $y, $w, $h);
-
-        return $cible;
-    }
-
     /**
-     * Écrit les paliers disponibles et renvoie le plus grand réellement
-     * produit. **Jamais d'agrandissement** : `photos.width` doit dire la
-     * vérité sur ce que porte le disque.
+     * Écrit chaque palier, du plus grand au plus petit, chacun réduit depuis
+     * le précédent.
+     *
+     * @param  array<int, int>  $paliers  décroissants
      */
-    private function ecrire(\GdImage $image, string $cle): int
+    private function ecrire(\GdImage $image, array $paliers, string $cle, string $sousDossier): void
     {
-        $source = imagesx($image);
-        $dossier = $this->dossier().'/'.dirname($cle);
+        $racine = $this->dossier($sousDossier);
+        $dossier = $racine.'/'.dirname($cle);
 
         if (! is_dir($dossier)) {
             mkdir($dossier, 0o755, true);
         }
 
-        $plafond = self::PALIERS[0];
-
-        foreach (self::PALIERS as $largeur) {
-            if ($largeur > $source && $largeur !== self::PALIERS[0]) {
-                break;
+        foreach ($paliers as $largeur) {
+            if (imagesx($image) !== $largeur) {
+                $reduite = imagecreatetruecolor($largeur, (int) round($largeur / self::RATIO));
+                imagecopyresampled($reduite, $image, 0, 0, 0, 0, imagesx($reduite), imagesy($reduite), imagesx($image), imagesy($image));
+                $image = $reduite;
             }
 
-            $w = min($largeur, $source);
-            $h = (int) round($w / self::RATIO);
-
-            $redimensionnee = imagecreatetruecolor($w, $h);
-            imagecopyresampled($redimensionnee, $image, 0, 0, 0, 0, $w, $h, $source, imagesy($image));
-            imagewebp($redimensionnee, $this->dossier()."/{$cle}-{$largeur}.webp", self::QUALITE);
-            imagedestroy($redimensionnee);
-
-            $plafond = $largeur;
+            imagewebp($image, "{$racine}/{$cle}-{$largeur}.webp", self::QUALITES[$largeur]);
         }
-
-        return $plafond;
     }
 }

@@ -39,7 +39,7 @@ function liberer(id) {
 
 <template>
     <section class="pl">
-        <h2 class="pl__title">Ce qui est déjà fermé</h2>
+        <h2 class="espace__section pl__title">Ce qui est déjà fermé</h2>
 
         <h3 class="pl__sub">Vos périodes</h3>
         <p v-if="!declared.length" class="pl__empty">
@@ -100,7 +100,7 @@ function liberer(id) {
 </template>
 
 <style scoped>
-.pl__title { margin: 0 0 1rem; font-size: 1.3rem; font-weight: 800; letter-spacing: -.032em; color: var(--ink); }
+.pl__title { margin: 0 0 1rem; }
 
 .pl__sub { margin: 0 0 .6rem; font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text-3); }
 .pl__sub--2 { margin-top: 1.75rem; }

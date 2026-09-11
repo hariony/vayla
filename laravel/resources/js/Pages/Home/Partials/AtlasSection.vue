@@ -7,9 +7,11 @@
  * une region, en revanche, filtre la grille : c'est ce que remonte `pick`.
  */
 import { ref } from 'vue'
+import { Link } from '@inertiajs/vue3'
 
 import MadagascarMap from '@/Components/MadagascarMap.vue'
 import { photoSrc, photoSrcset } from '@/Support/photo.js'
+import { useTextes } from '@/Composables/useTextes.js'
 
 defineProps({
     destinations: { type: Array, default: () => [] },
@@ -19,6 +21,9 @@ defineProps({
 defineEmits(['pick'])
 
 const active = ref('')
+
+// Les textes viennent du back-office ; l'original reste dans `SiteTextCatalog`.
+const { t, riche } = useTextes()
 </script>
 
 <template>
@@ -27,14 +32,11 @@ const active = ref('')
         <div class="shell">
             <div class="bar">
                 <div>
-                    <p class="eyebrow" data-anim>L'atlas</p>
-                    <h2 class="display display--lg" data-anim>Où l'on est déjà passé</h2>
-                    <p class="lede bar__lede" data-anim>
-                        On ouvre région par région, jamais avant d'avoir un correspondant
-                        sur place. Survolez la carte.
-                    </p>
+                    <p class="eyebrow" data-anim>{{ t('accueil.atlas.surtitre') }}</p>
+                    <h2 class="display display--lg" data-anim>{{ t('accueil.atlas.titre') }}</h2>
+                    <p class="lede bar__lede" data-anim v-html="riche('accueil.atlas.accroche')" />
                 </div>
-                <a href="#demande" class="btn btn--outline" data-anim>Demander une autre région</a>
+                <Link href="/demande" class="btn btn--outline" data-anim>Demander une autre région</Link>
             </div>
 
             <div class="atlas__grid">
@@ -43,6 +45,7 @@ const active = ref('')
                         :destinations="destinations"
                         :active="active"
                         @activate="active = $event"
+                        @pick="$emit('pick', $event)"
                     />
                 </div>
 

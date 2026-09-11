@@ -537,3 +537,222 @@ body::before {
 @media (prefers-reduced-motion: reduce) {
     .acces__panel { backdrop-filter: none; background: var(--white); }
 }
+
+/* ---------- Les espaces : le titre d'un écran de travail ----------
+
+   **`.display--*` est l'échelle des pages de vente, pas celle des outils.**
+   Dans une colonne de contenu posée à côté d'une barre latérale, un
+   `.display--lg` monte à 3,9 rem — soixante-deux pixels pour écrire « Mes
+   réservations » au-dessus de deux lignes. Ça hurle là où il faut informer, et
+   ça repousse hors de l'écran ce que la personne est venue lire.
+
+   L'échelle est donc écrite **une fois** ici, comme les primitives d'accès
+   juste au-dessus : les six écrans du propriétaire portaient chacun leur
+   propre règle, déjà divergente (2,1 rem cinq fois, 2,2 rem une fois), et
+   l'écran du client était parti à 3,9. Six copies d'une même décision, c'est
+   la garantie qu'une des six finira par mentir. */
+.espace__tete { margin-bottom: clamp(1.25rem, 3vw, 1.75rem); }
+
+/* **1,6 rem au plus.** Calée d'abord sur 2,1 rem, elle faisait 34 px au-dessus
+   d'une barre latérale en 15 px et d'une carte titrée en 20 : le titre de
+   l'écran écrasait ce qu'il introduisait. Et le crénage à −0,045 em, juste
+   pour une accroche d'accueil en 60 px, **collait les mots** à cette taille —
+   on lisait « Décrivezvotre logement ». À −0,03 em, l'espace se voit. */
+.espace__titre {
+    margin: 0;
+    font-size: clamp(1.35rem, 2.4vw, 1.6rem);
+    font-weight: 800;
+    letter-spacing: -.03em;
+    line-height: 1.15;
+    color: var(--ink);
+}
+
+/* **Le titre d'une section, sous le titre de l'écran.** Sept composants
+   portaient chacun la même règle — 1,3 rem, 800, −0,032 em —, recopiée à
+   l'identique : la garantie qu'une des sept finirait par diverger. Et à
+   1,3 rem sous un titre d'écran de 1,6, l'écart ne se voyait plus : on ne
+   savait pas lequel des deux introduisait l'autre. 1,1 rem rétablit une
+   hiérarchie franche — 26 px, puis 18. Les marges restent à chaque
+   composant : elles dépendent de ce qui suit, pas du rang du titre. */
+.espace__section {
+    font-size: 1.1rem;
+    font-weight: 800;
+    letter-spacing: -.02em;
+    line-height: 1.3;
+    color: var(--ink);
+}
+
+.espace__lede {
+    margin: .4rem 0 0;
+    max-width: 54ch;
+    font-size: .92rem;
+    line-height: 1.55;
+    color: var(--text-2);
+}
+
+/* ---------- Le back-office : les primitives du registre ----------
+
+   **Un outil, écrit avec le même alphabet que le site.** Même famille, même
+   terre pour l'action et la position, même lagon réservé à « vérifié » — un
+   back-office dans une autre langue graphique ferait croire qu'une annonce
+   « vérifiée » n'y veut pas dire la même chose que sur la fiche.
+
+   Ce qui change, c'est la **densité** : on y parcourt des listes toute la
+   journée. Des lignes plutôt que des cartes, des chiffres alignés en colonnes
+   (`tabular-nums`), des filets fins, et une seule couleur pleine par écran —
+   celle du bouton qui fait avancer le travail.
+
+   Ces primitives vivent ici plutôt que dans chaque page, pour la raison qui a
+   fait naître `.espace__titre` : treize écrans qui recopient la même ligne de
+   tableau, c'est treize façons de la faire diverger. */
+
+.of-card {
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--white);
+    box-shadow: 0 1px 0 rgba(26, 21, 18, .03);
+}
+
+.of-card__h {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.15rem .85rem;
+    border-bottom: 1px solid var(--line);
+}
+.of-card__t { margin: 0; font-size: .98rem; font-weight: 800; letter-spacing: -.02em; color: var(--ink); }
+.of-card__lien {
+    font-size: .8rem;
+    font-weight: 700;
+    color: var(--terre-600);
+    text-decoration: none;
+    white-space: nowrap;
+}
+.of-card__lien:hover { text-decoration: underline; text-underline-offset: .2em; }
+.of-card__b { padding: 1rem 1.15rem; }
+
+/* Le sur-titre : ce qui range, pas ce qui dit. */
+.of-kicker {
+    margin: 0;
+    font-size: .7rem;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--text-3);
+}
+
+/* **Les chiffres s'alignent.** Une colonne de montants en chiffres
+   proportionnels se lit en zigzag ; en chasse fixe, les milliers tombent les
+   uns sous les autres. */
+.of-num { font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+
+/* ── Les listes ────────────────────────────────────────────────────────
+   Une ligne entière est un lien : on vise une annonce, pas un mot bleu au
+   milieu d'elle. Elle a donc sa hauteur de cible, son survol **et** son focus,
+   jamais l'un sans l'autre. */
+.of-rows { margin: 0; padding: 0; list-style: none; }
+
+.of-row {
+    display: grid;
+    align-items: center;
+    gap: .9rem;
+    min-height: 3.5rem;
+    padding: .7rem 1.15rem;
+    border-top: 1px solid var(--line);
+    color: inherit;
+    text-decoration: none;
+    transition: background-color .18s var(--ease);
+}
+.of-rows > li:first-child > .of-row,
+.of-rows > .of-row:first-child { border-top: 0; }
+a.of-row:hover, button.of-row:hover { background: var(--off); }
+a.of-row:focus-visible { outline: 2px solid var(--terre-500); outline-offset: -2px; }
+
+.of-row__t {
+    display: block;
+    overflow: hidden;
+    font-size: .92rem;
+    font-weight: 700;
+    letter-spacing: -.015em;
+    color: var(--ink);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.of-row__s {
+    display: block;
+    overflow: hidden;
+    margin-top: .1rem;
+    font-size: .8rem;
+    color: var(--text-3);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ── Les pastilles d'état ──────────────────────────────────────────────
+   **Une forme par famille, pas un arc-en-ciel.** Ce qui attend quelqu'un prend
+   la terre (c'est un appel à agir), ce qui est acquis prend l'encre, ce qui est
+   clos reste gris. Le lagon n'y entre jamais : un statut n'est pas une
+   vérification, et c'est la jauge, à côté, qui dit le niveau. */
+.of-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .22rem .6rem;
+    border: 1px solid var(--line-2);
+    border-radius: var(--r-pill);
+    background: var(--white);
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: -.005em;
+    color: var(--text-2);
+    white-space: nowrap;
+}
+.of-chip::before {
+    content: '';
+    width: .42rem;
+    height: .42rem;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: .85;
+}
+.of-chip--attente { border-color: var(--terre-200); background: var(--terre-050); color: var(--terre-700); }
+.of-chip--actif { border-color: var(--ink); background: var(--ink); color: var(--white); }
+.of-chip--clos { color: var(--text-3); }
+.of-chip--demo { border-style: dashed; color: var(--text-3); }
+.of-chip--demo::before { display: none; }
+
+/* ── Les champs ────────────────────────────────────────────────────────
+   Mêmes mesures que les écrans d'accès : 2,75 rem, la cible tactile minimale.
+   Un outil interne n'a pas le droit d'être moins lisible — c'est là qu'on
+   passe ses journées. */
+.of-field { display: grid; gap: .35rem; }
+.of-label { font-size: .8rem; font-weight: 700; color: var(--ink); }
+.of-input {
+    width: 100%;
+    min-height: 2.75rem;
+    padding: .65rem .85rem;
+    border: 1px solid var(--line-2);
+    border-radius: var(--r-sm);
+    background: var(--white);
+    font: inherit;
+    font-size: .95rem;
+    color: var(--ink);
+    transition: border-color .18s var(--ease);
+}
+.of-input:hover { border-color: var(--text-3); }
+.of-input:focus-visible { outline: 2px solid var(--terre-500); outline-offset: 1px; border-color: transparent; }
+textarea.of-input { min-height: 6rem; resize: vertical; line-height: 1.5; }
+.of-help { margin: 0; font-size: .78rem; line-height: 1.45; color: var(--text-3); }
+.of-err { margin: 0; font-size: .8rem; font-weight: 700; color: var(--terre-700); }
+
+/* Le vide n'est pas un blanc : il dit ce qui viendra, et d'où. */
+.of-vide {
+    margin: 0;
+    padding: 2.25rem 1.25rem;
+    font-size: .9rem;
+    line-height: 1.55;
+    color: var(--text-3);
+    text-align: center;
+}
+.of-vide strong { display: block; margin-bottom: .2rem; font-size: .98rem; color: var(--ink); }

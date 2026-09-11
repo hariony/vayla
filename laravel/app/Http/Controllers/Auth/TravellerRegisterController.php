@@ -120,10 +120,16 @@ class TravellerRegisterController extends Controller
         Auth::login($user, remember: true);
         $request->session()->regenerate();
 
-        return redirect()->route('traveller.bookings')->with(
-            'succes',
-            $nouveau ? 'Votre compte est ouvert.' : 'Vous êtes connecté.'
-        );
+        /*
+         * **On n'annonce que ce qui n'est pas déjà visible.** « Vous êtes
+         * connecté » répétait ce que l'écran montre tout seul — l'espace, le
+         * nom dans le menu du compte — en travers d'un bandeau noir qu'il faut
+         * lire avant d'atteindre ce qu'on venait faire. L'ouverture d'un
+         * compte, elle, est un fait neuf : elle se dit une fois.
+         */
+        $vers = redirect()->route('traveller.bookings');
+
+        return $nouveau ? $vers->with('succes', 'Votre compte est ouvert.') : $vers;
     }
 
     public function resend(): RedirectResponse

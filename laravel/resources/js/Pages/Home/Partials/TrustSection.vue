@@ -5,10 +5,14 @@
  */
 import TrustGauge from '@/Components/TrustGauge.vue'
 import GeckoClimb from '@/Components/GeckoClimb.vue'
+import { useTextes } from '@/Composables/useTextes.js'
 
 defineProps({
     trustLevels: { type: Array, default: () => [] },
 })
+
+// Les textes viennent du back-office ; l'original reste dans `SiteTextCatalog`.
+const { t, riche } = useTextes()
 </script>
 
 <template>
@@ -16,14 +20,9 @@ defineProps({
     <section id="confiance" class="trust section">
         <div class="shell trust__grid">
             <div class="trust__aside">
-                <p class="eyebrow eyebrow--lagon" data-anim>La différence</p>
-                <h2 class="display display--lg" data-anim>
-                    Quatre niveaux.<br>Écrits sur chaque annonce.
-                </h2>
-                <p class="lede trust__lede" data-anim>
-                    Ailleurs, « vérifié » ne veut rien dire. Ici, c'est une échelle :
-                    vous savez toujours ce qui a été contrôlé, et par qui.
-                </p>
+                <p class="eyebrow eyebrow--lagon" data-anim>{{ t('accueil.confiance.surtitre') }}</p>
+                <h2 class="display display--lg" data-anim v-html="riche('accueil.confiance.titre')" />
+                <p class="lede trust__lede" data-anim v-html="riche('accueil.confiance.accroche')" />
 
                 <div class="trust__demo" data-anim>
                     <TrustGauge :level="4" large />

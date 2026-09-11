@@ -4,8 +4,20 @@
  * proprietaires. La maquette telephone montre le fil WhatsApp, qui est le
  * canal reel.
  */
+import { Link } from '@inertiajs/vue3'
+
 import SceneArt from '@/Components/SceneArt.vue'
 import TrustGauge from '@/Components/TrustGauge.vue'
+import { useTextes } from '@/Composables/useTextes.js'
+import { lienDemande } from '@/Support/liens.js'
+
+defineProps({
+    /** La recherche en cours : la demande part pré-remplie. */
+    criteres: { type: Object, default: () => ({}) },
+})
+
+// Les textes viennent du back-office ; l'original reste dans `SiteTextCatalog`.
+const { t, riche } = useTextes()
 </script>
 
 <template>
@@ -13,34 +25,31 @@ import TrustGauge from '@/Components/TrustGauge.vue'
     <section id="demande" class="ask section">
         <div class="shell ask__grid">
             <div class="ask__copy">
-                <p class="eyebrow" data-anim>Le sens inverse</p>
+                <p class="eyebrow" data-anim>{{ t('accueil.demande.surtitre') }}</p>
                 <h2 class="display display--lg" data-anim>
-                    Vous ne trouvez pas ?<br>
-                    <em>C'est nous qui cherchons.</em>
+                    {{ t('accueil.demande.titre') }}<br>
+                    <em>{{ t('accueil.demande.titre_accent') }}</em>
                 </h2>
-                <p class="lede ask__lede" data-anim>
-                    Dites-nous la ville, les dates, le budget et le nombre de
-                    voyageurs. On sollicite les propriétaires de la zone, on
-                    vérifie ce qui remonte, et vous recevez les réponses —
-                    sur WhatsApp, sans créer de compte.
-                </p>
+                <p class="lede ask__lede" data-anim v-html="riche('accueil.demande.accroche')" />
 
                 <ol class="ask__steps" data-anim-group>
                     <li class="ask__step">
                         <span class="ask__step-n num">01</span>
-                        <span>Vous décrivez le séjour en une minute.</span>
+                        <span>{{ t('accueil.demande.etape1') }}</span>
                     </li>
                     <li class="ask__step">
                         <span class="ask__step-n num">02</span>
-                        <span>On diffuse la demande aux propriétaires vérifiés.</span>
+                        <span>{{ t('accueil.demande.etape2') }}</span>
                     </li>
                     <li class="ask__step">
                         <span class="ask__step-n num">03</span>
-                        <span>On contrôle chaque proposition avant de vous l'envoyer.</span>
+                        <span>{{ t('accueil.demande.etape3') }}</span>
                     </li>
                 </ol>
 
-                <a href="#demande" class="btn btn--terre btn--lg" data-anim>Déposer une demande</a>
+                <!-- Il pointait sur `#demande`, c'est-à-dire sur lui-même : il n'y
+                     avait rien derrière. La demande emporte la recherche en cours. -->
+                <Link :href="lienDemande(criteres)" class="btn btn--terre btn--lg" data-anim>Déposer une demande</Link>
             </div>
 
             <div class="ask__phone" data-anim data-depth="0.14">

@@ -5,6 +5,8 @@ namespace App\Http\Middleware;
 use App\Data\DeviseData;
 use App\Enums\SocialProvider;
 use App\Models\Owner;
+use App\Services\Content\PageService;
+use App\Services\Content\SiteTextService;
 use App\Services\ConversationService;
 use App\Services\Currency\ExchangeRateProvider;
 use Illuminate\Http\Request;
@@ -45,12 +47,34 @@ class HandleInertiaRequests extends Middleware
              */
             'google_client_id' => fn () => config('services.google.client_id'),
             'auth' => [
-                'user' => $request->user(),
+                /*
+                 * **Une projection, jamais le modèle entier.**
+                 * `$request->user()` sérialisait tout ce que porte la ligne —
+                 * et pour le compte propriétaire, dont `$hidden` ne masque que
+                 * la clé d'accès et le mot de passe, cela signifiait publier
+                 * l'adresse exacte, la date de dernière connexion et l'état de
+                 * vérification dans le `data-page` de **chaque** écran. Un
+                 * test sur l'adresse exacte l'a révélé.
+                 *
+                 * **Et la garde est nommée.** Sans elle, `user()` interroge la
+                 * garde par défaut : `actingAs($owner, 'proprietaire')` la
+                 * change, et un propriétaire se retrouvait publié dans
+                 * `auth.user`. La nommer rend la prop indépendante de qui a
+                 * appelé `shouldUse`.
+                 */
+                'user' => fn () => $request->user('web')?->only([
+                    'first_name', 'last_name', 'name', 'email', 'phone',
+                ]),
                 // Le propriétaire connecté, sur sa propre garde : l'espace
                 // propriétaire et un éventuel back-office n'ont jamais la
                 // même session, et ne doivent jamais se confondre.
-                'owner' => fn () => $request->user('proprietaire')?->only(['name', 'phone', 'city']),
+                'owner' => fn () => $request->user('proprietaire')?->only(['name', 'phone', 'city', 'portrait']),
             ],
+            // Les textes du site et les liens du pied de page, tenus depuis le
+            // back-office. En cache jusqu'à la prochaine modification : ils
+            // sont lus sur chaque page et changent une fois par mois.
+            'textes' => fn () => app(SiteTextService::class)->tous(),
+            'pied' => fn () => app(PageService::class)->pied(),
             // Sans ça, accepter une demande renvoie sur la même page sans
             // rien dire : l'utilisateur reclique, et se demande si ça a marché.
             'flash' => [
@@ -68,6 +92,12 @@ class HandleInertiaRequests extends Middleware
             // jamais cette requête.
             'ownerUnread' => fn () => ($o = $request->user('proprietaire')) instanceof Owner
                 ? app(ConversationService::class)->nonLus($o)
+                : 0,
+            // Le même compte côté voyageur, porté par sa rubrique
+            // « Messages ». Paresseux pour la même raison : une page publique
+            // n'a personne de connecté et ne paie donc jamais la requête.
+            'travellerUnread' => fn () => ($u = $request->user('web'))
+                ? app(ConversationService::class)->nonLusVoyageur($u->email)
                 : 0,
         ]);
     }

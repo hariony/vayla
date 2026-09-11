@@ -27,6 +27,7 @@ class DatabaseSeeder extends Seeder
             UnavailabilitySeeder::class,
             BookingSeeder::class,
             StayConfirmationSeeder::class,
+            PageSeeder::class,
         ]);
     }
 }

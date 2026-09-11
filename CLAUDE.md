@@ -48,7 +48,8 @@ Formatage PHP (Pint est en require-dev, pas de cible Make) :
 docker compose exec app ./vendor/bin/pint
 ```
 
-Accès : app `http://localhost:8070`, Vite `http://localhost:5174`, PostgreSQL `localhost:5437`.
+Accès : app `http://localhost:8070`, back-office `http://office.localhost:8070`, Vite
+`http://localhost:5174`, PostgreSQL `localhost:5437`.
 **5174 et non 5173** : un autre projet occupe 5173 sur cette machine — voir « Pièges ».
 
 ## Architecture
@@ -261,6 +262,84 @@ Quatre partis pris à ne pas défaire :
   flottaison, et `loading="lazy"` y laisse des rectangles gris. Seules les vignettes de la
   visionneuse restent en `lazy`.
 
+**Les raccourcis de la fiche : six pictogrammes légendés, flottants, à gauche.**
+`Components/SectionDock.vue` pose six raccourcis — Photos, Énergie, Vérification, Avis,
+Équipements, Calendrier. Une fiche fait trois mille pixels et ne se lit pas dans l'ordre : celui
+qui cherche « y a-t-il un groupe électrogène » ou « quelqu'un y a-t-il vraiment dormi » n'a aucune
+raison de traverser la description pour y arriver.
+
+**Les libellés sont écrits, toujours, sous chaque pictogramme.** Une première version ne les
+déployait qu'au survol — la faute des chevrons gris du calendrier sous une forme plus jolie : au
+doigt il n'y a pas de survol, et un éclair ne dit pas « Énergie » à qui découvre. Le pictogramme se
+reconnaît, le mot s'assure. Un test regarde les deux façons de cacher un mot sans le retirer :
+`aria-hidden`, ou une largeur nulle.
+
+**Un seul objet, deux ancrages** — c'est la seule chose que `variante` décide :
+
+- **`flottant`** : **collé au défilement et toujours visible**, dans un **couloir réservé** à
+  gauche du contenu. La fiche pose `--couloir: 5.5rem` et ajoute cette largeur à la marge gauche
+  de `.shell` au-delà de 1180 px : laissés dans la seule gouttière, les raccourcis se collaient au
+  bord de la photographie, et se posaient dessus dès 1440 px. **Toute retouche du couloir demande
+  de refaire le `sizes` de la galerie** (la photo de tête perd sa largeur : 1 216 px au-delà de
+  1400).
+
+  **`sticky`, jamais `fixed` : la descente maximale est la fin de la fiche.** En `position:
+  fixed`, le dock ignorait la page et finissait posé sur le pied de page — une butée qu'un
+  élément fixé à la fenêtre ne peut pas connaître. Il colle maintenant dans `.fiche__couloir`, une
+  bande **absolue de toute la hauteur de `.shell`**, dans le `<main>` : la fiche finie, la bande
+  finie, et il remonte avec elle au-dessus des crédits photo. Aucun calcul, aucun écouteur, et plus
+  de `(100vw - 1400px) / 2` à tenir à jour — la bande suit `.shell` d'elle-même. Il colle à la même
+  hauteur que l'encart de réservation (`--header-h + 1.5rem`) : les deux colonnes qui suivent le
+  lecteur partent de la même ligne. **Aucun ancêtre ne doit porter `overflow: hidden`** — un
+  élément `sticky` s'y arrête net ; `.page` est en `overflow-x: clip` pour cette raison.
+- **`photo`** : une **rangée au bas de la photographie**, sous 1180 px. Horizontale, parce que six
+  pictogrammes légendés empilés feraient 290 px — la hauteur de la photo entière sur un
+  téléphone. En bas, jamais en haut : le coin haut-gauche porte le sceau de vérification et le
+  haut-droit « voir les photos ». Elle défile si l'écran est trop étroit, et **ne coupe jamais
+  une légende**. La rubrique « Photos » n'y figure pas — un raccourci vers l'endroit où l'on se
+  trouve déjà est un bouton qui ne fait rien.
+
+**Les pictogrammes sont dessinés pour la fiche** (`Components/SectionGlyph.vue`), et chacun dit ce
+que la section contient *sur Vayla* : une photographie de voyage (cadre, relief, soleil) plutôt
+qu'un appareil ; un éclair et ses étincelles ; un écusson portant **la coche du monogramme** — le V
+de Vayla est lui-même une coche ; **une liste cochée, ni bulle ni étoile**, parce que Vayla n'a pas
+de note sur cinq et que les voyageurs y cochent des faits ; quatre cases et un pion pour un
+inventaire ; une page de mois **traversée par une plage**, parce que sur la fiche on pose une
+arrivée et un départ, pas un jour. **Bicolores comme le monogramme et les pictogrammes de
+`/connexion`** : corps à l'encre, accent à la terre. Le lagon n'y entre pas, pas même sur
+*Vérification* : un pictogramme d'orientation n'est pas une vérification.
+
+**Chaque pictogramme a son geste** (`Composables/useGlyphMotion.js`), et le geste joue le mot de la
+section — comme la clé qui tourne sur `/connexion` : le soleil se lève, l'éclair vacille comme une
+ampoule sur un réseau fragile puis tient, la coche se trace, les faits se cochent un à un, le pion
+pointe une case, la plage du séjour se pose. Il joue **au survol, au focus *et* à l'arrivée dans la
+section** — jamais au seul survol : c'est l'arrivée qui le montre au doigt, et c'est ce qui apprend
+l'icône. Moins de 0,7 s, **chaque pièce revient à sa position de repos**, une chronologie par
+pictogramme relancée plutôt que superposée, et rien sous `prefers-reduced-motion`. **L'entrée les
+présente un par un** : les pastilles arrivent en cascade, puis chaque geste se joue à la suite —
+c'est le seul moment où tous bougent.
+
+**Le fil dit où l'on en est** : il se remplit à mesure qu'on descend (`ScrollTrigger`, jamais un
+IntersectionObserver maison — lui seul rate le défilement rapide, l'arrivée par une ancre et
+l'onglet en arrière-plan). Il **longe** la colonne au lieu de la traverser : passé au centre des
+pastilles, il aurait barré les légendes. Sur la photographie il n'apparaît pas.
+
+**La terre dit « vous êtes là », sans remplir la pastille** : fond de terre très pâle, filet de
+terre, légende en terre foncée. Une pastille entièrement terre aurait avalé le pictogramme
+bicolore, et son geste avec.
+
+- **Six rubriques, pas huit** : la description et les règles de séjour sont dans le flux, juste
+  après ce qui les amène. Un raccourci qu'on parcourt pour choisir n'en est plus un.
+- **L'ordre suit celui de la page**, et un test le vérifie en même temps que l'existence de chaque
+  ancre, d'un tracé et d'un geste pour chaque rubrique.
+- **Aller à une section n'est pas un saut d'ancre** : l'en-tête est fixe, `href="#photos"` poserait
+  le titre dessous. On défile à la main, décalé de `--header-h` — et d'un coup sous
+  `prefers-reduced-motion`.
+- **Les deux ancrages lisent le même état**, tenu par la page : chacun appelant le composable
+  aurait posé deux jeux de `ScrollTrigger` sur les mêmes sections.
+- **La surcouche épouse la photographie de tête, pas la galerie entière** : sa géométrie vit en
+  jetons sur `.gal`, lus par la photo et par la surcouche.
+
 `Components/AmenityIcon.vue` porte les 64 pictogrammes d'équipements, même grille de 24 px que
 le rail. Une clé inconnue retombe sur un point neutre : le vocabulaire peut s'allonger en base
 sans casser le front ni les versions installées de l'application mobile.
@@ -288,6 +367,89 @@ l'emporte : c'est celle qui a des demandes qui expirent.
 
 **« Devenir hôte » se retire pour un propriétaire** : ça n'a aucun sens pour quelqu'un qui l'est
 déjà — c'est la même raison qui vaut à l'intérieur de son espace.
+
+**La barre ne porte plus qu'une action, et « Demander un séjour » n'en était pas une.** Ce bouton
+pointait sur `#demande`, la section « le sens inverse » de l'accueil, dont le propre bouton pointait
+alors sur lui-même : la barre du site entier promettait un geste qui n'existait nulle part. (Ce geste
+existe depuis — `/demande`, voir « La demande dans l'autre sens » — mais la raison qui suit tient
+toujours.) Et même réparé, il serait faux — **on ne demande pas un séjour dans l'abstrait, on le demande pour un
+logement**, sur `/logements/{slug}/reserver`, une fois qu'on en a choisi un. Un appel à l'action
+posé avant ce choix court-circuite l'étape qui donne son sens à tout le reste, et le voyageur a
+déjà le moteur de recherche sous les yeux. Le propriétaire, lui, n'a que ce chemin : c'est donc
+« Devenir hôte » qui reste.
+
+**« Propriétaires » sort de la navigation avec lui.** Les deux menaient à la même ancre, à trente
+pixels d'écart : deux libellés pour une destination, exactement ce qu'on a retiré de `/connexion`.
+Le bouton reste, et il dit ce qu'on y fait. Aucune des quatre portes du propriétaire déjà inscrit
+n'est touchée — cette ancre-là recrute.
+
+**Un seul objet plein dans la barre, et « Connexion » n'est qu'un mot.** Le bouton garde **l'encre**
+(`.btn--ink`, qui passe à la terre au survol) : la terre était pourtant libre, plus rien ne la lui
+disputait, mais une barre **fixe**, qui suit la page entière, n'est pas l'endroit où la dépenser —
+elle appartient au moteur de recherche et aux boutons du contenu, ceux qui font vraiment avancer.
+Et « Connexion » reste un lien de texte : deux pastilles côte à côte pèseraient en permanence sur ce
+qu'on lit dessous. **C'est le contraste de poids qui dit lequel des deux est une action**, pas le
+contour — l'exception assumée à « pas de bouton sans contour ni fond », parce qu'il ne s'agit pas
+ici de distinguer un contrôle d'un décor mais deux contrôles l'un de l'autre, et que le mot
+« Connexion » est de toute façon compris de tous. Les deux prennent la hauteur du bouton de menu —
+2,625 rem, soit 42 px — pour que le bord droit tienne sur une seule ligne optique.
+
+### Le menu du compte
+
+**Connecté, le mot cède la place à une pastille d'initiales** (`Components/AccountMenu.vue`), et
+elle répare une impasse plutôt que d'ajouter un ornement : **se déconnecter n'existait que *dans*
+`/mes-reservations` et *dans* l'espace propriétaire**. Depuis l'accueil, une fiche ou le catalogue,
+un voyageur connecté n'avait aucune sortie. Sur un téléphone partagé — le cas courant chez nous —
+ce n'est pas une gêne, c'est la session de quelqu'un d'autre qu'on prend pour la sienne.
+
+**La pastille dit qui est connecté avant même qu'on l'ouvre**, ce qu'un libellé « Mon espace » ne
+fait pas : on lit ses initiales, donc on sait que la session est la sienne. C'est la seule raison
+pour laquelle un avatar vaut mieux qu'un mot ici. Elle est **neutre, jamais terre** — un avatar dit
+une identité, pas une action, et la barre ne porte qu'un seul objet coloré. Bordée et pleine en
+revanche, avec un chevron : un rond d'initiales seul se prend pour une image, et c'est précisément
+la convention que la moitié de notre public n'a pas encore rencontrée.
+
+**Elle est visible à toutes les largeurs**, contrairement au mot « Connexion » qu'elle remplace
+(caché sous 460 px, où le tiroir prend le relais) : c'est le seul endroit du site public d'où l'on
+se déconnecte, et le cacher sur un téléphone reviendrait à le retirer là où il sert le plus.
+
+**Aucun lien inventé.** Chaque entrée pointe sur une route qui existe — c'est la règle qui a fait
+retirer « Demander un séjour » de la barre, et un menu de compte est justement le premier endroit
+où l'on ajoute « Mon profil » ou « Paramètres » avant d'avoir l'écran derrière. `AccessTest` relit
+les destinations écrites dans le composant et **les demande vraiment**, sous la bonne garde.
+
+- **Voyageur** : Mes réservations, puis se déconnecter. C'est tout ce que le compte porte
+  aujourd'hui, et l'écrire honnêtement vaut mieux que meubler.
+- **Propriétaire** : Demandes, Réservations (avec la pastille de conversations en attente, la même
+  que l'onglet de l'espace), Mes logements, Publier un logement — **ordonnés par urgence, pas par
+  catégorie**, comme l'espace lui-même.
+
+**Les deux gardes peuvent être ouvertes en même temps** — `web` et `proprietaire` sont deux
+sessions distinctes. Le menu montre alors les **deux** espaces, chacun avec sa sortie nommée
+(« Quitter l'espace propriétaire »), et le dit en toutes lettres. C'est le seul endroit du site où
+cet état est visible ; le taire ferait croire à une déconnexion qui n'a pas eu lieu.
+
+**Le panneau est léger, et chaque ligne porte son pictogramme.** Les intitulés sont en **400** —
+c'est une liste de lieux où aller, pas une liste d'alertes ; ils étaient en 600, la sortie en 700
+et le nom en 800, et le panneau pesait plus lourd que la page qu'il ouvrait. Le poids est gardé
+pour **la ligne où l'on est** (600, pictogramme en terre) : ouvrir le menu depuis « Messages » et y
+voir « Messages » comme les autres ne disait pas qu'on y était. **Une seule ligne allumée, la
+correspondance la plus précise** — sur `/proprietaire/logements/nouveau`, « Mes logements » et
+« Publier un logement » correspondaient toutes deux. Les pictogrammes viennent de `SpaceIcon` et
+de la clé `icone` des rubriques de `Support/espaces.js`, au trait et un ton sous le libellé : ils
+repèrent, le mot informe. Un test exige un pictogramme **existant** sur chaque ligne. Le panneau
+n'a plus de bordure franche mais une ombre longue et douce, s'ouvre depuis la pastille (origine
+haut-droite), et la sortie vit en bas, seule, derrière un filet — avec deux sessions, une sortie
+nommée par espace.
+
+**Ce n'est pas un `role="menu"`.** Le motif ARIA « menu » impose un focus roulant et casse la
+tabulation à laquelle les gens s'attendent ; ce panneau ne contient que des liens et un bouton,
+donc c'est une **divulgation** — `aria-expanded` sur le déclencheur, Tab qui traverse, Échap qui
+referme et rend le focus, clic dehors et défilement qui referment. Les flèches marchent en plus,
+pour qui les essaie.
+
+**La déconnexion est un POST, jamais un lien**, et `AccessTest` tient les deux bouts : le composant
+ne pose aucun lien vers `/deconnexion`, et les deux routes répondent **405 au GET**.
 
 Le test regarde les deux couches, parce qu'aucune ne suffit : les **props partagées** côté serveur
 (`auth.user`, `auth.owner`), et le **balisage** de `SiteHeader` — l'en-tête étant rendu côté
@@ -375,6 +537,16 @@ Quatre éléments spécifiques :
   - **`sizes` se mesure, il ne s'estime pas.** La photo de la page destination annonçait 660 px
     pour un cadre de 1 304 : le navigateur descendait au fichier 800 et l'affichait mou.
     Ouvrir la page et lire `getBoundingClientRect().width` est le seul moyen sûr.
+  - **`PhotoSeeder` ne supprime que dans `lieux`, le dossier qu'il possède.** Sa suppression des
+    clés retirées visait toute la table : un `make seed` effaçait les photos téléversées par les
+    propriétaires (`annonces`) et par l'équipe (`destinations`), fichiers laissés orphelins. Un test
+    rejoue le seeder et vérifie qu'elles ont tenu.
+  - **Les crédits du pied de page ne listent pas les photos des propriétaires** : elles sont à eux,
+    sans auteur ni licence à citer (`PhotoService::credits`). Un crédit sans page source ou sans
+    page de licence s'affiche sans lien plutôt qu'avec un lien vide.
+  - `images/annonces/`, `images/destinations/` et `images/proprietaires/` portent chacun un
+    `.gitignore` : ce qu'on y téléverse en développement — photos de logements, portraits — n'a
+    rien à faire dans le dépôt.
   - `PhotoFilesTest` vérifie qu'aucune clé n'est sans fichier, qu'aucun fichier n'est orphelin,
     qu'aucune photo n'est publiée sans auteur, et que `width` ne dépasse pas ce que porte le
     disque. `PhotoSeeder` **supprime** les clés retirées du catalogue : sans ça elles restaient
@@ -944,8 +1116,8 @@ propriétaire de Vayla.
 **L'écran est ordonné par urgence, pas par catégorie.** Le propriétaire n'ouvre pas Vayla par
 curiosité : il l'ouvre parce qu'un message lui dit qu'une demande attend. Les demandes à
 répondre viennent donc en premier et sont **le seul bloc qui porte des boutons** ; viennent
-ensuite les séjours à venir, les logements, la facture. Pas d'en-tête du site — « Devenir hôte »
-n'a aucun sens pour quelqu'un qui l'est déjà — pas d'onglets, pas de menu.
+ensuite les séjours à venir, les logements, la facture. L'écran porte l'en-tête du site comme
+l'espace client — voir plus bas : « Devenir hôte » s'y retire de lui-même pour un propriétaire.
 
 Trois détails qui décident de l'usage :
 
@@ -960,21 +1132,284 @@ Trois détails qui décident de l'usage :
   explication use la relation des deux côtés.
 - **Le message de succès est neutre, jamais lagon.** Le lagon ne dit que « vérifié » ; s'en
   servir pour « ça a marché » rendrait l'échelle de confiance illisible d'un coup d'œil.
+  **Neutre ne veut pas dire sombre** : c'était un aplat d'encre plein, la chose la plus sombre de
+  l'écran au-dessus d'un formulaire blanc — il prenait l'œil comme une alerte alors qu'il dit
+  « c'est fait ». C'est une **carte blanche bordée**, portée par une petite marque ronde dont la
+  coche se trace à l'arrivée ; l'erreur est la même carte en terre.
+
+  **La coche est verte, et c'est la seule exception à « le lagon ne dit que vérifié ».** Demandée
+  explicitement : un disque d'encre se lisait comme un trou noir, pas comme une réussite. Elle est
+  **bornée** — la coche seule (fond `--lagon-050`, trait `--lagon-600`), jamais la carte ni le
+  texte ; et une **forme que la vérification n'emploie pas** : un rond coché, là où la jauge est une
+  barre à quatre segments et le sceau une pastille légendée. La jauge apparaît aussi dans les
+  espaces (« Mes logements », le tableau de bord) : c'est la forme, pas l'endroit, qui empêche la
+  confusion. **Ne pas étendre cette exception** — une carte ou un bouton verts pour « ça a marché »
+  referaient exactement ce que la règle interdit.
+
+  **La coche est visible au repos ; l'animation ne fait qu'y arriver.** La première version la
+  posait invisible et comptait sur l'animation pour la révéler : là où elle ne se jouait pas, il ne
+  restait qu'un disque vide. Et **l'espace entre les deux phrases est dans l'interpolation** : laissé
+  en tête d'un nœud de texte, le compilateur le condensait — « Compte créé.Décrivez ». **Le fait en gras, la
+  suite en romain** : `SpaceShell` coupe le message à sa première phrase, parce que « Compte créé.
+  Décrivez votre logement… » disait deux choses de même poids et qu'on lisait la consigne comme la
+  fin du constat.
 - **La déconnexion est un POST, jamais un lien.** Un GET destructeur se déclenche au
   préchargement d'un navigateur ou d'un antivirus, et le propriétaire se retrouve dehors sans
   avoir rien touché.
 
-Le cadre commun (bandeau, fond, retour, messages de retour, déconnexion) vit dans
-`Owner/Partials/OwnerShell.vue` : recopié entre les écrans, il aurait divergé au premier
-ajustement.
+### Les deux espaces partagent une barre latérale : `SpaceShell`
 
-**Trois rubriques, dans un menu** — Demandes, Réservations (avec sa pastille de conversations en
-attente), Logements. L'espace tenait sur un
-écran tant qu'il ne servait qu'à répondre ; depuis qu'on y saisit des annonces et qu'on y
-téléverse des photos, tout empiler donnerait une page de trois mille pixels. Les onglets
-défilent horizontalement sous 640 px plutôt que de se replier dans un bouton hamburger : un menu
-caché derrière trois traits n'est pas une navigation pour quelqu'un dont c'est le premier outil
-en ligne.
+Le cadre commun — barre, contenu, retour, messages de retour, compte, sortie — vit dans
+`Components/SpaceShell.vue`, et il sert **l'espace client comme l'espace propriétaire**. C'est la
+leçon d'`AccessShell` appliquée un cran plus loin : deux barres recopiées auraient divergé au
+premier ajustement, et l'une aurait fini par ne plus dire ce que l'autre dit.
+`Owner/Partials/OwnerShell.vue` ne décide donc plus que d'**une** chose : ce qu'il y a dedans.
+
+**Les rubriques étaient des onglets en travers du haut ; elles sont passées à gauche.** Ça tenait
+à trois — Demandes, Réservations, Logements — et ça ne tient plus dès qu'arrivent la facturation,
+les messages et le profil : passé quatre ou cinq, une rangée horizontale défile, et **ce qui
+dépasse de l'écran n'existe plus** pour celui qui ne pense pas à faire glisser. Une colonne, elle,
+s'allonge sans rien cacher. C'est la seule raison de la reprendre — pas la ressemblance avec les
+autres outils.
+
+**Les rubriques ont toutes été construites, plutôt qu'annoncées.** Elles étaient d'abord posées en
+« Bientôt » — un mot, pas un lien, sous un intitulé qui l'annonçait. Elles existent maintenant, et
+c'est mieux : une rubrique promise engage le produit sans rien livrer, et celles-là étaient toutes
+adossées à des données déjà en base. `SpaceShell` garde la capacité (un groupe dont aucun `item`
+n'a de `href` est titré et rendu inerte) pour la prochaine qui sera décidée avant d'être écrite.
+
+**Côté propriétaire** — *Mon activité* : Demandes, **Messages**, Réservations, Mes logements ;
+*Mon compte* : **Facturation**, **Mes informations**. **Côté client** : Mes réservations,
+**Messages**, **Mes informations**. Deux rubriques ont été écartées au lieu d'être promises :
+« Mes favoris », qui suppose un bouton d'enregistrement sur tout le catalogue et une décision sur
+la place du compte dans le produit ; et « Aide », qui serait une page de politiques qu'on n'a pas
+tranchées — le recours est WhatsApp, et il est déjà écrit au pied de la barre.
+
+**Les rubriques ne sont écrites qu'une fois** — `resources/js/Support/espaces.js` — et **trois
+surfaces les lisent** : la barre latérale, le menu du compte de l'en-tête et le tiroir mobile.
+Elles vivaient d'abord dans les composants qui les affichent, et les deux listes avaient déjà
+divergé : le menu déroulant ignorait « Messages » et « Mes informations » côté client, si bien que
+la même personne voyait deux menus différents selon qu'elle cliquait sur sa pastille ou qu'elle se
+trouvait dans son espace. Un test regarde la **cause** — une rubrique écrite en dur dans une
+surface — et pas seulement le symptôme. Une rubrique sans `href` est « à venir » : la barre la rend
+inerte, le menu déroulant l'ignore (il n'a pas la place d'expliquer).
+
+`AccessTest` demande aussi vraiment chaque `href`, sous la bonne garde : une rubrique qui ne mène
+nulle part ne passe pas.
+
+**La pastille a changé de rubrique.** Elle comptait des conversations en attente et vivait sur
+« Réservations » : elle disait donc « deux réservations », ce qui n'a jamais été son sens et
+envoyait chercher au mauvais endroit. Elle est sur « Messages », des deux côtés
+(`ownerUnread`, `travellerUnread`).
+
+#### Les deux boîtes
+
+**Un message se rate, et c'est ce que les boîtes réparent.** Les fils ne vivaient que *dans* chaque
+réservation : pour savoir si quelqu'un attendait une réponse, il fallait ouvrir les réservations
+une par une. Côté voyageur, c'était pire — le fil ne s'atteignait que par une référence reçue dans
+un message, donc perdu avec lui.
+
+**Elles mènent au fil, elles ne le rendent pas.** La conversation s'ouvre sur la réservation, avec
+ses dates, son total et ses boutons : « c'est possible d'arriver plus tard ? » se répond en
+regardant la date d'arrivée. Une messagerie affichant le fil seul obligerait à retrouver de quoi il
+parle.
+
+**`ConversationList` sert les deux côtés**, comme `Conversation` pour le fil lui-même : seule
+change la destination du lien. Une ligne répond, dans l'ordre où on se le demande : est-ce que ça
+m'attend (une pastille de terre, pas un gras qui se confondrait avec un titre), de quoi ça parle,
+qu'est-ce qui a été dit en dernier, et quand.
+
+**L'extrait montre le dernier message même s'il est de moi**, préfixé de « Vous : ». Ne montrer que
+ce qu'on a reçu ferait disparaître sa propre réponse : on ne saurait plus si on a répondu, ce qui
+est justement la question qu'on se pose en ouvrant une boîte.
+
+**L'ancienneté, pas la date** (`ilYA` dans `Support/format.js`) : devant une liste on se demande
+« est-ce que ça vient d'arriver ? », et une date absolue oblige à savoir quel jour on est. Au-delà
+d'une semaine la question s'inverse — on cherche alors *quand* — et la date reprend la main.
+
+**Une réservation sans message n'est pas une conversation** : la faire figurer donnerait une boîte
+de lignes muettes où le vrai message se perdrait. Le tri se fait sur le **dernier message**, pas
+sur la réservation : une conversation qui reprend six mois plus tard doit remonter.
+
+#### La facturation
+
+**C'est la rubrique qui décide si un propriétaire reste.** Le tableau de bord n'affichait qu'une
+facture, la dernière : « pourquoi ce montant » n'avait pas de réponse trois mois après.
+
+**Le mois en cours vient avant les factures, et n'en est pas une.** C'est ce qui s'accumule — le
+cacher jusqu'au premier du mois suivant ferait découvrir un montant qu'on aurait pu voir venir, et
+c'est exactement ce qui fait qu'une commission se sent comme un piège. L'écran écrit que rien n'est
+encore dû, et qu'un séjour ne compte qu'une fois confirmé par le voyageur.
+
+**Les mois sans séjour confirmé sortent de l'historique** — une ligne à zéro n'apprend rien — mais
+le mois en cours reste affiché même vide : « rien à venir » est une information, pas un blanc.
+Chaque facture se déplie (`<details>` bordé, avec son chevron : un vrai contrôle), la plus récente
+ouverte. **Aucun euro sur cette page**, et **aucun bouton « Payer »** : Vayla n'encaisse pas, le
+propriétaire pousse son règlement par mobile money.
+
+#### « Mes informations », des deux côtés
+
+**Rien n'était modifiable.** Le propriétaire qui changeait de numéro recevait ses demandes sur une
+ligne qu'il n'avait plus — au pire moment, une demande expirant en 48 h.
+
+**L'adresse e-mail n'a de champ nulle part, et les deux écrans disent pourquoi.** Elle est
+l'identifiant de connexion depuis la disparition des mots de passe : modifiable depuis une session
+ouverte, elle offrirait le compte à qui a emprunté le téléphone. Côté voyageur elle **rattache en
+plus les séjours**, et l'écran écrit combien en dépendent — un chiffre explique mieux qu'une règle.
+Ce n'est pas un champ grisé mais un libellé : un champ qu'on ne peut pas remplir sans savoir
+pourquoi est un faux signal de plus.
+
+**Le portrait et l'adresse exacte** complètent la fiche du propriétaire, et chacun a dû justifier
+sa présence — Vayla ne constitue pas de dossier.
+
+- **Le portrait** (`owners.portrait`, `OwnerPortraitService`) ne passe **pas** par la table
+  `photos` : celle-ci porte les photographies de Commons et des logements, avec crédit obligatoire,
+  trois résolutions et `PhotoFilesTest` qui la surveille fichier par fichier — un visage y entrerait
+  comme un orphelin sans auteur. Une colonne suffit : un portrait appartient à un compte, n'est
+  jamais partagé, et n'a pas de légende. **Carré, 160 et 480 px** : il s'affiche à 2 rem dans la
+  colonne et 4 rem sur son écran ; un 1600 de plus serait un fichier que personne ne télécharge. Le
+  **seuil est bas — 200 px** : la règle des 1200 protège une photo de tête qu'on regarde en grand,
+  et refuser l'unique photo que quelqu'un a de lui-même reviendrait à refuser le portrait tout
+  court. Le recadrage est **centré haut**, pas centré : sur un portrait en pied, un carré pris au
+  milieu coupe la tête. Il **part seul, dès qu'il est choisi** — un fichier de dix mégaoctets qui
+  repartirait à chaque correction de numéro serait une minute d'attente et un enregistrement perdu
+  quand la ligne coupe. Le remplacement **efface l'ancien fichier** : un visage qui traîne n'est pas
+  un octet comme un autre. Il s'affiche là où les initiales étaient — pastille de l'en-tête, pied de
+  la colonne — et **nulle part publiquement**, ce que l'écran écrit.
+- **L'adresse exacte** (`owners.address`) sert à deux choses, écrites sous le champ : la facture de
+  fin de mois, qui doit désigner quelqu'un pour être payable, et la vérification — celui qui passe
+  voir un logement doit savoir où aller. La ville reste à côté, approximative, et suffit à tout le
+  reste. **Jamais publiée**, et un test le vérifie sur la fiche et l'accueil.
+
+**Ce test-là a révélé une fuite qui n'avait rien à voir.** `auth.user` partageait
+`$request->user()`, c'est-à-dire le **modèle entier** : pour un compte propriétaire, dont `$hidden`
+ne masque que la clé d'accès et le mot de passe, cela publiait l'adresse exacte, l'e-mail, la date
+de dernière connexion et l'état de vérification dans le `data-page` de **chaque** écran. La prop est
+maintenant une **projection explicite**, et la **garde est nommée** (`$request->user('web')`) :
+sans elle, `actingAs($owner, 'proprietaire')` change la garde par défaut et un propriétaire se
+retrouve publié dans `auth.user`.
+
+**Changer de numéro annule sa confirmation, et l'écran le dit avant.**
+`phone_verified_at` n'enregistre pas une vérification maison : il enregistre le fait que le lien
+d'accès envoyé sur ce WhatsApp a servi. Le numéro changé, cette preuve ne porte plus sur rien — la
+garder ferait mentir le compte sur une vérification, ce que Vayla reproche précisément aux annonces
+qu'elle vérifie. `unique:owners,phone` **ignore le compte lui-même** : sans ça, enregistrer sans
+toucher au numéro échouerait sur « déjà pris », par soi.
+
+**Le compte voyageur tient en trois champs — nom, prénom, téléphone — et chacun sert deux fois.**
+Ni mot de passe, ni date de naissance, ni adresse postale : le nom et le prénom sont ce que le
+propriétaire lit quand il décide d'accepter quelqu'un chez lui, le numéro est ce par quoi il
+rappelle, et **les trois pré-remplissent la demande de séjour**. C'est la seule raison pour
+laquelle Vayla les garde : sans ce second usage, ce serait un dossier de plus à constituer. Tout
+est facultatif, et le formulaire de séjour redemandera ce qui manque — **demander un séjour ne
+réclame toujours aucun compte**, un visiteur arrive sur un formulaire vide.
+
+**Nom et prénom sont séparés parce qu'un champ unique ne se relit pas.** « RAKOTOBE Jean » est une
+écriture courante ici, « Jean Rakotobe » l'est ailleurs, et rien ne dit laquelle on a sous les
+yeux : l'écran des réservations en avait fait « Bonjour RAKOTOBE », un patronyme crié à quelqu'un
+qu'on voulait accueillir. **La colonne `name` a disparu** plutôt que de rester à côté des deux
+parties — deux endroits pour un même fait finissent toujours par diverger. Le nom complet est
+**dérivé** par un accesseur du modèle, comme `perks` l'est des équipements marqués ; un mutateur
+sépare un nom entier, parce que la connexion sociale en reçoit un d'un seul tenant et écrit
+`['name' => …]` indifféremment sur `User` ou sur `Owner`. La coupe tombe au premier espace — juste
+pour « Jean Rakotobe », fausse pour « RAKOTOBE Jean », et corrigeable en dix secondes sur l'écran
+du compte, ce qui n'était pas le cas avant. **`users.phone` n'est pas unique** : côté propriétaire
+le numéro identifie un compte, ici il ne fait que pré-remplir, et deux personnes d'un même foyer
+partagent une ligne.
+
+**Aucun bouton de suppression de compte** : effacer un compte voyageur toucherait des réservations
+qui appartiennent aussi à un propriétaire, et tant que cette question n'est pas tranchée, le bouton
+mentirait.
+
+**La rubrique où l'on est prend la terre** — fond `--terre-050`, texte `--terre-700`, et une barre
+de terre à gauche. C'est déjà ce que faisait le trait sous l'onglet actif : le repère a seulement
+tourné d'un quart de tour.
+
+**« Publier un logement » n'est pas une rubrique, c'est un geste.** Il est en tête de barre, dans
+le seul bouton plein de l'écran ; rangé dans la liste, il serait devenu un endroit où l'on va
+alors que c'est ce qu'on vient faire.
+
+**Les deux espaces portent le même en-tête : celui du site.** L'espace propriétaire n'en avait pas,
+et la raison était précise — la barre **recrutait**, et « Devenir hôte » n'a aucun sens pour
+quelqu'un qui l'est déjà. **Cette raison a disparu** : l'en-tête suit la session, le bouton se
+retire pour un propriétaire, et « Connexion » est devenu le menu de son compte, où vit la
+déconnexion. La raison tombée, la règle tombe avec elle — deux barres différentes pour deux espaces
+du même produit obligent à réapprendre où sont les choses en changeant de casquette.
+
+Le chemin y a coûté deux essais, et les deux erreurs sont instructives : la colonne a d'abord
+**absorbé** le bandeau du propriétaire (marque, espace, sortie), et l'application s'est retrouvée
+sans repère en haut de fenêtre — « le header a disparu » ; puis un bandeau **propre à l'espace** a
+été rendu, ce qui donnait deux barres différentes selon la casquette. `SpaceShell` ne porte donc
+plus **aucun** en-tête à lui, et un test le vérifie : ni `<header>` dans le cadre, et
+`<SiteHeader :search="false" />` sur les quatre écrans qui montent un espace.
+
+**`:search="false"` n'est pas un détail** : la forme compacte de l'en-tête efface la navigation pour
+y encastrer le moteur de recherche. Sans moteur à encastrer, elle laisse une barre vide au premier
+défilement — le piège est documenté plus bas, et les trois écrans du client venaient de tomber
+dedans.
+
+**Le monogramme se trace en filigrane** au pied de la barre, à 5 % — le même geste que le littoral
+de l'accueil et le V de `/connexion`. C'est ce qui fait de ces écrans des pages de Vayla plutôt
+qu'un tableau de bord interchangeable.
+
+**Sous 960 px, la colonne redevient une rangée qui défile**, jamais un bouton hamburger : un menu
+caché derrière trois traits n'est pas une navigation pour quelqu'un dont c'est le premier outil en
+ligne. Les rubriques à venir sortent de cette rangée et se replient en une ligne de texte en
+dessous, derrière le mot qui les annonce — une seule rangée pour les deux ferait sortir de l'écran
+ce qui marche aujourd'hui, poussé par ce qui n'existe pas encore.
+
+**Les titres d'un écran de travail ont deux tailles, écrites une fois dans `app.scss`** :
+`.espace__titre` pour le titre de l'écran, `clamp(1.35rem, 2.4vw, 1.6rem)`, et `.espace__section`
+pour les titres de section, 1,1 rem — 26 px, puis 18. **`.display--*` est l'échelle des pages de
+vente, pas celle des outils** : un `.display--lg` montait à 3,9 rem, soixante-deux pixels au-dessus
+de deux réservations.
+
+Le titre d'écran a été réglé deux fois. D'abord à 2,1 rem : 34 px au-dessus d'une barre latérale en
+15 px et d'une carte titrée en 20, il écrasait ce qu'il introduisait — et le crénage à −0,045 em,
+juste pour une accroche d'accueil en 60 px, **collait les mots** à cette taille (« Décrivezvotre
+logement »). Il est à −0,03 em. Les **titres de section**, eux, étaient **recopiés à l'identique
+dans neuf composants** (1,3 rem, 800, −0,032 em) : la garantie qu'un des neuf finirait par
+diverger, et à 1,3 rem sous un titre de 1,6 on ne savait plus lequel introduisait l'autre. Chaque
+composant ne garde que ses **marges**, qui dépendent de ce qui suit et pas du rang du titre. Un test
+vérifie la borne du titre d'écran et que **tout `<h2>` d'un espace passe par `.espace__section`** —
+sauf le nom d'un logement dans sa carte, qui n'est pas un titre de section. Seul le **montant dû**
+de la facture reste plus gros (1,6 rem) : c'est un chiffre, et c'est lui qu'on vient lire.
+
+**On n'annonce que ce qui n'est pas déjà visible.** Le bandeau « Vous êtes connecté » barrait le
+haut de l'espace à chaque entrée — client comme propriétaire, par code comme par Google — pour
+répéter ce que l'écran montre tout seul : l'espace, et le nom dans le menu du compte. Il fallait le
+lire avant d'atteindre ce qu'on venait faire. Il est retiré des quatre endroits qui le posaient.
+« Votre compte est ouvert. » reste : c'est un fait neuf, et il ne se dit qu'une fois.
+
+**Un écran de travail se nomme, il ne salue pas.** « Bonjour X » prenait le premier mot du nom — et
+ce mot est le **nom de famille** dès qu'il est écrit à la malgache, « RAKOTOBE Hariony ». On criait
+donc un patronyme en capitales à quelqu'un qu'on voulait accueillir. Le nom du compte ne dit de
+toute façon rien de plus que le menu de l'en-tête et le pied de la colonne, qui le portent déjà :
+l'écran s'appelle « Mes réservations » ou « Demandes », comme sa rubrique, ce qui confirme où l'on
+est. La règle vaut pour les **deux** espaces — corrigée d'abord côté client, elle a survécu deux
+échanges de plus sur le tableau de bord du propriétaire, et un test la tient maintenant sur tous
+les écrans des deux espaces.
+
+**La sortie est au pied de la colonne *et* dans le menu de l'en-tête.** Ce n'est pas une redondance
+à supprimer : dans un espace où l'on reste — le propriétaire y passe ses semaines — la colonne est
+ce qu'on parcourt, et c'est là qu'on cherche à sortir ; le menu de l'en-tête sert **partout
+ailleurs sur le site**, où il n'y a pas de colonne. Deux surfaces différentes, pas deux fois la
+même. Le cadre déduit le compte et la porte de sortie de sa **garde** (`garde="proprietaire"`)
+plutôt que de les recevoir : trois écrans client montent ce cadre, et les leur faire recomposer
+chacun aurait garanti qu'un des trois finisse par afficher autre chose — ou par déconnecter la
+mauvaise session, les deux gardes pouvant être ouvertes en même temps.
+
+**L'entrée est une seule chorégraphie, et rien après** (`Composables/useSpaceMotion.js`) : les
+rubriques se décalent de 28 ms, puis le contenu monte de 10 px. C'est un outil, pas une vitrine —
+le propriétaire l'ouvre parce qu'une demande expire dans quarante et une heures, et un mouvement
+qui se remarque met du temps entre lui et sa réponse.
+
+**Le client garde l'en-tête du site, le propriétaire non** (`marque`). Le voyageur n'est pas dans
+un outil : il est sur le site et il en repartira vers le catalogue — lui retirer les destinations
+pour lui montrer ses deux réservations serait l'enfermer dans une pièce vide. Sa barre ne répète
+donc ni la marque ni le compte, que l'en-tête porte déjà quinze centimètres plus haut ; **et son
+écran n'a plus son propre bouton « Se déconnecter »**, puisque le menu du compte en a un sur toutes
+les pages du site.
 
 #### La saisie d'une annonce
 
@@ -996,10 +1431,41 @@ remet en cause ce que Vayla est allé voir. Capacité, type, destination, équip
 bougent plus : une annonce visitée en visio dont on pourrait changer les photos ferait de la
 vérification un tampon sans objet. L'écran le **dit** au lieu de griser sans expliquer.
 
-**Un formulaire long à sections, pas un assistant.** Un assistant est doux à la première saisie
-et insupportable à la quinzième correction — or on corrige un tarif dix fois pour une création.
-La barre d'action est collée en bas : sur un formulaire de cette longueur, un bouton qu'il faut
-aller chercher est un formulaire qu'on quitte sans enregistrer.
+**Un assistant en cinq étapes, où chaque étape se clique** — L'essentiel, Capacité, Tarif et
+séjour, Équipements, Photos (`Owner/Listings/FormSteps.vue` pour la barre). La fiche était d'abord
+un long formulaire à sections, par crainte de l'assistant classique : doux à la première saisie,
+insupportable à la quinzième correction, puisqu'on corrige un tarif dix fois pour une création. Ce
+qui le rendait insupportable, c'était **l'ordre imposé** ; ici chaque étape s'atteint directement
+depuis la barre, et en modification **« Enregistrer » reste disponible à chaque étape**. On garde
+la douceur de la première saisie — une question à la fois — sans payer la quinzième correction.
+
+- **« Suivant » ne bloque jamais.** Un champ vide ne retient personne sur une étape : la barre
+  marque ce qui reste, et c'est le bouton final qui refuse **en nommant ce qui manque** — « il
+  manque le nom du logement et le prix pour une nuit », chaque manque étant un lien vers son étape.
+- **Une erreur du serveur ramène à son étape.** La validation reste celle d'`OwnerListingRequest`,
+  une fois ; mais une erreur sur le titre reçue depuis l'étape des photos serait invisible. Chaque
+  étape déclare **ses champs**, on saute à la première fautive, et la barre marque les étapes en
+  erreur. Un test vérifie que **chaque règle du Request appartient à une étape** : un champ oublié
+  serait une erreur qu'aucun écran n'afficherait.
+- **Trois états, trois formes** : l'étape courante en rond plein de terre, une étape remplie en
+  rond d'encre coché, une étape en erreur en rond cerclé de terre avec « ! ». Plein pour « ici »,
+  cerclé pour « à reprendre » : on ne les confond pas même en noir et blanc. **Pas de vert** —
+  l'exception du lagon est bornée à la coche du message de retour.
+- **`v-show`, pas `v-if`** : les champs restent montés d'une étape à l'autre, rien de ce qu'on a
+  tapé ne se perd.
+- **L'étape vit dans l'adresse** (`?etape=photos`), posée par `history.replaceState` **en gardant
+  `history.state`** — Inertia y range sa page, le vider casserait le bouton retour. C'est ce qui
+  permet à la création de **déposer directement sur l'étape des photos**, la seule que la création
+  ne pouvait pas faire ; et en création, cette étape existe déjà pour l'annoncer et porter le
+  bouton « Créer le logement ».
+- **« Envoyer à Vayla » refuse une fiche non enregistrée**, équipements compris : `form.isDirty`
+  ne voit pas les cases cochées, qui ne passent dans le formulaire qu'à l'enregistrement — on
+  pouvait envoyer à la vérification une fiche qui ne portait pas le groupe électrogène qu'on
+  venait de cocher.
+
+La barre d'action est collée en bas, sur toutes les étapes : un bouton qu'il faut aller chercher
+est un formulaire qu'on quitte sans enregistrer. On revient à gauche, on avance à droite, et la
+seule action pleine de terre est celle qui termine.
 
 **Les 102 équipements sont groupés par rubrique et repliés**, avec le compte par rubrique. Une
 seule liste de cent deux cases est illisible et on abandonne avant la moitié. Le marqueur
@@ -1017,6 +1483,41 @@ le disque. Une photo de moins de 1200 px est **refusée avec sa taille dans le m
 original de 900 px est flou sur une photo de tête de 1300, et un logement flou ne se réserve pas.
 L'orientation EXIF est redressée : sans ça, une photo prise à la verticale s'affiche couchée.
 
+**Les gros fichiers passent, et c'est le résultat de quatre corrections, pas d'une.** Une photo de
+48 Mpx (12 Mo) — ce que produit un téléphone récent en mode haute résolution — échouait à chaque
+maillon :
+
+1. **nginx** ne pouvait pas écrire le corps de la requête dans son dossier temporaire
+   (`/var/lib/nginx` est à `nginx` en 750, `www-data` n'y entre pas) : **toute** photo au-delà de
+   quelques kilo-octets tombait en 500 avant d'atteindre PHP. Les tests ne passent pas par nginx
+   et ne pouvaient pas le voir. Les dossiers temporaires sont dans `/tmp`
+   (`docker/nginx/nginx.conf`) ; vérifié par un vrai envoi HTTP de 12 Mo.
+2. **La mémoire** : l'original était décodé, pivoté, puis recadré — trois copies pleine taille,
+   534 Mo mesurés pour 256 autorisés. `Services/Images/ImageSource` lit les dimensions dans
+   l'en-tête, recadre et réduit **en une seule passe** depuis l'original, applique l'orientation
+   sur la petite image, et accorde la mémoire calculée pour ce seul traitement : 289 Mo, 2,5 s.
+   Au-delà de 80 Mpx, refus avec la taille, **avant** décodage. Les portraits y passent aussi.
+3. **Le redressement ne s'était jamais fait** : il reposait sur `exif_read_data`, que l'image PHP
+   n'embarque pas, derrière un `function_exists`. `ImageSource` lit l'étiquette d'orientation
+   dans l'en-tête JPEG lui-même ; un test fabrique une photo couchée et vérifie qu'elle sort droite.
+4. **Le navigateur réduit avant d'envoyer** (`Support/preparerPhoto.js`) : à la largeur que le
+   serveur gardera après recadrage (3 200 px, 960 pour un portrait), en JPEG 0,92 — quatre à six
+   fois moins à transférer sur une connexion mobile, et l'orientation déjà appliquée. Au moindre
+   doute l'original part : le serveur sait le traiter. Les quatre écrans d'envoi l'utilisent, et
+   montrent l'envoi avancer (`Components/Office/PhotoDepot.vue` au back-office).
+
+Le plafond est de **40 Mo** (`PhotoUploadService::POIDS_MAX_KO`, lu par les trois `FormRequest`),
+sous les 50 de PHP et les 100 de nginx.
+
+**La compression : une qualité par palier, chaque palier réduit depuis le précédent.** 82 en 800,
+79 en 1600, 74 en 3200 : le 3200 n'est demandé que par les écrans à haute densité, où la
+compression se voit deux fois moins. Mesuré sur trois originaux de Commons contre l'ancien
+traitement (qualité 82 partout, chaque palier depuis l'original) : 10 à 23 % de disque en moins,
+aucune différence visible sur des détails à 100 %. **L'accentuation a été essayée et écartée** :
+elle alourdissait les fichiers sans gain qu'on voie. GD n'a pas l'AVIF dans cette image ; le jour
+où il l'aura, c'est ici que ça se jouera. Les photos de Commons déjà en place n'ont pas été
+réencodées — un WebP recompressé perd à chaque passage.
+
 **`photos.folder` sépare deux provenances qui ne se mélangent pas.** `lieux` porte les
 photographies de Commons — auteur, licence et page source obligatoires, c'est ce qu'exigent CC BY
 et CC BY-SA — et `annonces` celles du propriétaire, qui sont à lui. Les fondre ferait apparaître
@@ -1027,8 +1528,35 @@ une annonce, avec un seul crédit.
 
 **La position 0 est la couverture, et il n'y a pas d'autre bouton pour la désigner** — pas de
 colonne `photo_id` à côté, qui aurait permis qu'une couverture n'appartienne pas à la galerie. On
-réordonne par **deux flèches bordées de 2,75 rem**, pas par glisser-déposer : agréable à la
-souris, pénible au doigt, inaccessible au clavier.
+réordonne par **deux flèches bordées de 2,75 rem**. Dans le back-office, le **glisser-déposer
+s'y ajoute** (`Composables/useRangement.js`) — **il ne les remplace jamais** : sans souris ni
+écran tactile, les flèches sont le seul chemin. Chacun range avec l'outil qu'il a sous la main,
+et l'ordre change à l'écran avant la réponse du serveur.
+
+**Le glisser est écrit aux évènements `pointer*`, pas avec `draggable`.** La première version
+était native, et c'est tout ce qu'elle ne faisait pas qui l'a condamnée : rien ne bougeait avant
+le lâcher, donc on ne voyait pas où la photo tomberait ; les interstices de la grille refusaient
+le dépôt ; le fantôme était la vignette translucide du système ; et rien ne marchait au doigt.
+Maintenant **les autres photos s'écartent pendant qu'on tient** (GSAP Flip) — l'emplacement en
+pointillé de terre *est* l'endroit où elle tombera —, une copie de la carte suit le pointeur, la
+page défile seule près des bords, Échap annule, et l'ordre ne part au serveur qu'au lâcher, une
+fois. Trois règles tiennent la mécanique :
+
+- **On vise une place, pas une photo.** Les places de la grille sont mesurées une fois, au départ,
+  en coordonnées de page ; viser les cartes elles-mêmes, en pleine animation, faisait osciller
+  l'ordre d'avant en arrière. Et **un réordonnancement par image**, pas un par mouvement de souris.
+- **Un appui sans mouvement reste un clic** (seuil de 6 px) : c'est lui qui ouvre le gros plan.
+  Le clic qui suit un lâcher est avalé, sinon ranger une photo l'ouvrirait aussi.
+- **Au doigt, on attrape par la poignée** (`data-poignee`, seule en `touch-action: none`) : sur le
+  reste de la carte, le doigt fait défiler la page, comme partout ailleurs. Les boutons d'une carte
+  n'attrapent rien — sauf celui qui porte `data-prise`, la vignette qu'on clique.
+
+**Sur une destination, cliquer une photo la montre en grand** (le « gros plan »), avec ses crédits
+et ses gestes : avancer, reculer, mettre en couverture, retirer. Une vignette de 7 rem ne dit ni si
+la photo est nette, ni ce qu'elle cadre — et les gestes posés là laissent la grille n'être qu'une
+grille de photos qu'on range. La photothèque passe par le même gros plan : un clic la
+montre, « Ajouter à la galerie » l'ajoute. Un clic qui ajoutait directement faisait entrer une photo qu'on
+voulait seulement regarder.
 
 #### L'échange voyageur ↔ propriétaire
 
@@ -1064,6 +1592,44 @@ de ce fil.
 avec deux mises en page finiraient par ne plus dire la même chose. La seule différence est `moi`,
 posé par le serveur selon qui lit. Pas de bulles, pas d'indicateur de frappe, pas de
 rechargement : la mise en page d'un chat promettrait une instantanéité qui n'existe pas.
+
+#### La demande dans l'autre sens
+
+`/demande` (`StayRequestController`, `StayRequestService`, `Pages/Demande/Create`) — **le voyageur
+décrit le séjour qu'il cherche, l'équipe va le chercher.** C'est la promesse de la section « Vous ne
+trouvez pas ? » de l'accueil et de « Comment ça marche », et **rien ne la tenait** : ses quatre
+boutons « Déposer une demande » (la section elle-même, l'état vide de la grille, l'atlas, le pied
+de page) et celui des destinations sans logement pointaient sur `#demande` — la section où se
+trouvait le premier. Un clic, et rien.
+
+- **La recherche en cours voyage avec le clic** (`Support/liens.js`) : destination, dates et
+  voyageurs arrivent dans l'adresse, et `useSearchQuery` les tient — même calendrier, même
+  consigne que le moteur. **Et la page dit ce qui existe déjà** : si des logements correspondent,
+  elle y mène — faire attendre quelqu'un pour ce qu'il a sous les yeux serait absurde.
+- **Seul ce qui permet de répondre est obligatoire** : un nom, et WhatsApp ou un e-mail (le numéro
+  normalisé en E.164). Destination, dates, budget : « je ne sais pas encore » est une réponse
+  valable. Ni compte ni mot de passe — l'accueil le promet.
+- **Elle n'engage personne** : aucune nuit bloquée, aucun propriétaire prévenu d'office, et la page
+  l'écrit avant et après l'envoi. Dix envois par heure et par IP, et un champ piège (`site`).
+- **Au back-office, une file** (`/demandes`, groupe « Séjours », avec son compteur) : chaque carte
+  porte WhatsApp prêt à écrire, le catalogue déjà filtré sur la demande, et qui s'en occupe.
+  **Prendre une demande l'écrit** — deux personnes qui écrivent au même voyageur, c'est une
+  question posée deux fois — et **la clore demande une note** (ce qui a été proposé, ou pourquoi
+  rien). Les nouvelles viennent **la plus ancienne en tête**.
+
+**Les autres liens de l'accueil, relus un par un** (et tenus par `StayRequestTest`) :
+
+- **Les repères de la carte se donnaient pour des boutons** (`role="button"`, focalisables, curseur
+  main) sans rien faire au clic : ils filtrent maintenant la grille comme la ligne de la liste
+  voisine, au clic comme au clavier, et mènent à la destination sur `/destinations`.
+- **Choisir une région défile jusqu'à la grille** (`allerA('offres')`, sous l'en-tête fixe) : le
+  filtre s'appliquait deux sections plus haut, hors de l'écran, et le clic semblait ne rien faire.
+- **« Tous les logements, avec les filtres » ouvre le catalogue sur la même recherche** — catégorie
+  comprise. Il repartait de zéro.
+- **Toute la carte d'annonce se clique** : elle se soulève au survol comme un lien, mais seuls la
+  photo et le titre en étaient un. Le lien du titre s'étend sur la carte (`::after`).
+- **« Publier un logement » du pied de page** mène à l'inscription, comme la colonne voisine, et non
+  à une ancre de recrutement qui n'existe que sur l'accueil.
 
 #### L'historique des réservations
 
@@ -1119,6 +1685,325 @@ sécurité de l'espace. Une signature acceptant un identifiant de période nu pe
 le calendrier d'un confrère avec une clé valide et un identifiant deviné — `OwnerCalendarTest` le
 vérifie, comme il vérifie la borne « arriver le jour où la période précédente se libère ».
 
+### Le back-office — `office.localhost:8070`
+
+**Un hôte à part, pas un préfixe `/admin`.** Un `/admin` à côté de `/logements` partagerait le
+cookie de session du site, se devinerait au premier essai, et chaque lien du site y serait à un
+clic. Sur un autre hôte (`VAYLA_OFFICE_DOMAIN`, `office.localhost` par défaut — `*.localhost`
+résout vers la machine sans toucher au fichier hosts), le cookie est à part : la session d'un
+voyageur n'y voyage pas, celle d'un administrateur n'en sort pas.
+
+**`routes/office.php` est chargé AVANT `web.php`** (`bootstrap/app.php`, `web: [office, web]`),
+et c'est une règle de sécurité : les routes du site n'ont pas de domaine et répondent sur tous
+les hôtes. Et **sa dernière route attrape tout le reste de l'hôte** (`NotFoundController`, un
+contrôleur et non une fermeture — le cache de routes ne sérialise pas les fermetures) : sans
+elle, `office.…/logements` ouvrait le catalogue public, et `office.…/proprietaire` l'espace d'un
+propriétaire, dans l'outil de l'équipe. `OfficeTest` le vérifie ; vérifié aussi **avec le cache
+de routes actif**, puisque l'entrypoint le compile à chaque démarrage.
+
+**Les administrateurs ont leur table (`admins`) et leur garde (`admin`), jamais un drapeau sur
+`users`.** Aucune route d'inscription : le premier membre se crée en ligne de commande
+(`php artisan vayla:admin prenom@vayla.mg --nom="…"`, `--reinitialiser`, `--retirer`, `--liste`),
+les suivants depuis l'écran « Membres ». On ne s'y retire pas soi-même, on n'y retire pas le
+dernier membre.
+
+**La porte : une adresse et un mot de passe — la seule du produit qui en ait un.** Elle a d'abord
+été un code par e-mail, comme partout ailleurs ; ça tient pour des voyageurs et des propriétaires
+qui reviennent quelques fois par mois, pas pour une équipe qui ouvre l'outil vingt fois par jour.
+Ce qui la tient (`OfficeAuthService`) :
+
+- **l'échec ne dit jamais laquelle des deux valeurs est fausse** (« Adresse ou mot de passe
+  incorrect. », même message pour une adresse inconnue), **et le temps de réponse non plus** :
+  une adresse inconnue passe par un `Hash::check` sur un leurre, sinon le chronomètre ferait le
+  travail que le message refuse de faire ;
+- **cinq essais par minute pour une adresse depuis une machine, vingt par heure pour une adresse
+  tout court** — la seconde borne arrête qui devine depuis plusieurs machines ; l'écran dit dans
+  combien de secondes réessayer ;
+- **un mot de passe posé par quelqu'un d'autre est provisoire** (`password_set_at` nul) : il a été
+  vu — par le collègue qui l'a dicté, par le terminal qui l'a affiché — et
+  `EnsureAdminPasswordIsSet` n'ouvre alors que « Mon compte », jusqu'à ce que la personne en
+  choisisse un. Publier sous un secret partagé ferait mentir le journal sur qui a agi ;
+- **le provisoire ne part jamais par e-mail** — un mot de passe dans une boîte y reste. Il
+  s'affiche **une fois**, en session flash, à celui qui ajoute le membre ou le réinitialise
+  (seize caractères sans O/0 ni I/l/1, il se dicte) ;
+- **douze caractères, pas de règle de forme, refus des mots de passe connus des fuites**
+  (`Password::uncompromised()`) ; l'actuel est toujours redemandé pour en changer ;
+- ni « rester connecté », ni connexion sociale.
+
+**La porte ne ressemble à aucune de celles du site** (`Components/Office/OfficeGate.vue`, qui sert
+aussi la page introuvable) : fond d'encre, papier quadrillé, le V du monogramme tracé en grand, la
+fiche de connexion posée à droite. Les écrans d'accès du site sont blancs et baignés de latérite ;
+un voyageur qui tomberait ici ne doit pas croire être au bon endroit. Un test vérifie qu'elle ne
+monte pas `AccessShell`. Le « Afficher » du mot de passe est un bouton bordé et nommé, pas un œil.
+
+**Les comptes de test : `php artisan vayla:comptes-test`** (local uniquement, refuse ailleurs).
+Il crée un compte d'équipe au mot de passe définitif, trois voyageurs rattachés aux réservations
+de démonstration par l'adresse, et imprime une fiche Markdown — propriétaires de démo, leurs
+liens d'accès directs, identifiants — à coller dans `specs/access.md` (ignoré par git). Tout est
+en `@demo.vayla.test` : en développement, les codes arrivent dans le bac à sable Mailtrap. **Pas
+un seeder**, et c'est délibéré : `RegistrationTest` et `SocialAuthTest` comptent les voyageurs
+après `seed()`, et un mot de passe en dur dans un seeder versionné finirait par tourner là où il
+ne doit pas. À relancer après `make seed`, qui recrée les réservations sans adresse.
+
+**Les gardes sont nommées partout** — `auth:web` sur l'espace client (c'était un `auth` nu),
+`$request->user('admin')` dans les contrôleurs. Trois gardes cohabitent, et un `auth` nu lit la
+garde par défaut, que l'authentification d'une autre garde a pu déplacer.
+
+**Les liens vers le site public se génèrent depuis `APP_URL`, pas depuis l'hôte courant.**
+`OfficeContext` force la racine des URL : sans ça, le lien d'accès qu'un administrateur remet dans
+la file WhatsApp devenait `office.…/proprietaire/acces/…` — une page introuvable envoyée à un
+propriétaire. Les routes du back-office portent leur domaine et n'en dépendent pas. Côté front,
+« Voir sur le site » est un `<a>` vers `publicUrl`, jamais un `<Link>` Inertia : une visite Inertia
+ne traverse pas d'hôte.
+
+**C'est le seul endroit où `trust_level` s'écrit, et les règles vivent dans `ModerationService` :**
+
+- **le niveau 2 exige un numéro vérifié** — il se lit « numéro et identité vérifiés » ; le numéro
+  se confirme d'un bouton « Je l'ai eu au téléphone », qui enregistre un appel qui a eu lieu ;
+- **le niveau 4 ne s'attribue pas, il s'atteint** par une confirmation de séjour ; et une annonce
+  qui en porte ne redescend plus (ses confirmations contrediraient le niveau) ;
+- **une annonce en ligne est au moins au niveau 2**, et **publier exige le niveau 2** : c'est
+  l'appel qui met en ligne ;
+- **renvoyer une fiche exige un motif** (`listings.review_note`), que le propriétaire lit en tête
+  de sa fiche et de sa liste (« Vayla vous demande ») ; il s'efface quand il la renvoie.
+
+**Les mêmes phrases servent au refus et à l'écran** (`pourquoiPasNiveau`, `pourquoiPasPublier`) :
+chaque barreau fermé écrit sa raison dessous avant qu'on clique. Un refus (`OfficeRefusal`)
+remonte en bandeau d'erreur par un gestionnaire unique dans `bootstrap/app.php`.
+
+**Aucune règle métier réécrite** : annuler passe par `BookingService`, écrire par
+`ConversationService` (au nom de `MessageAuthor::Vayla`, **dans le fil**, lu par les deux
+parties — l'annulation y écrit aussi son motif), le lien d'accès par `OwnerNotifier`. Le
+back-office est une troisième porte sur les mêmes services, comme le site et l'API mobile.
+**Lire un fil depuis le back-office ne marque rien comme lu.**
+
+**Le journal (`admin_actions`) est la contrepartie du pouvoir de publier.** Seuls les gestes qui
+engagent quelqu'un s'y écrivent — consulter, non. Écrit par les services après que le geste a
+réussi, jamais modifié (pas d'`updated_at`), et **le nom de l'administrateur y est recopié** : un
+membre retiré ne rend pas ses décisions anonymes.
+
+**La facture réglée se consigne (`invoice_settlements`), son montant ne se saisit pas** : il est
+recalculé depuis la facture, seule la référence mobile money est un champ. Le mois en cours ne se
+règle pas — ce n'est pas encore une facture.
+
+**La file WhatsApp est à l'écran**, ce que faisait `vayla:whatsapp` (qui reste). Deux gestes
+numérotés — ouvrir dans WhatsApp, puis « C'est parti » — et le second ne s'allume qu'après le
+premier : marquer envoyé ce qui n'est pas parti ferait expirer une demande en silence.
+
+**Le cadre (`OfficeShell`) est un gabarit persistant** (`defineOptions({ layout: OfficeShell })`) :
+la colonne entre une fois, seul le contenu change — une entrée rejouée à chaque clic fatigue à la
+vingtième. **La colonne est d'encre, la seule dalle sombre du produit**, pour qu'on ne publie
+jamais depuis le mauvais onglet quand l'espace propriétaire est ouvert à côté. Rubriques dans
+`Support/office.js` (testées comme celles des espaces), primitives `.of-*` dans `app.scss`
+(lignes, pastilles d'état, champs — même 2,75 rem qu'ailleurs), `useOfficeMotion` pour les
+comptes qui montent (`data-count`), les barres (`data-bar`) et les lignes qui sortent de la file
+(`replier`). Le lagon n'y apparaît que sur ce qui est une vérification : l'échelle, « numéro
+vérifié ». Tout ce qui attend quelqu'un prend la terre.
+
+**`OfficeReadService` met tout à plat** : aucun modèle n'arrive au front. Le back-office voit
+plus que le site — adresses exactes, courriels, numéros — et c'est précisément pourquoi chaque
+champ est nommé ; la clé d'accès, elle, n'en sort jamais (un test la cherche dans la réponse).
+
+#### Les textes du site : pages éditoriales et textes de l'accueil
+
+**Deux natures de texte, deux outils** — groupe « Contenu », « Textes du site » et « Pages ».
+
+**Les pages éditoriales** (`pages`, `PageService`, écran public `Content/Show`) : « Comment ça
+marche », « Tarifs », « Guide du propriétaire », « À propos », « Nous contacter », et les trois
+pages légales. Écrites en **Markdown** — ce qu'on tape sans apprendre un éditeur —, avec une
+barre d'outils qui pose les marques autour de la sélection, et un **aperçu rendu par le serveur**
+(`POST /pages/apercu`), c'est-à-dire par le même moteur que la page publiée.
+
+- **Le HTML tapé est retiré, pas échappé ni exécuté** (`Str::markdown`, `html_input: strip`,
+  `allow_unsafe_links: false`) : un compte d'équipe compromis ne doit pas pouvoir poser un script
+  sur le site. Un test poste `<script>`, `onerror` et un lien `javascript:`.
+- **`{commission}` s'écrit depuis le réglage** au moment de l'affichage : recopié à la main, le
+  taux de la page « Tarifs » mentirait le jour où il change.
+- **Adresse courte, à la racine** (`/comment-ca-marche`) : la route `/{page}` est **la dernière
+  de `web.php`**, un écran du site passe toujours devant, et `PageService` refuse à une page
+  l'adresse d'un écran — la liste est lue **sur le routeur**, pas recopiée. `deconnexion` est
+  exclue du motif : POST seulement, un GET doit y répondre 405. **L'adresse se fige à la première
+  publication** : elle a pu être partagée.
+- **Publier est un geste à part d'enregistrer**, et une page qui porte encore « [à compléter] »
+  refuse de se publier. **Les pages légales et le contact naissent ainsi**, en brouillon
+  (`PageSeeder`) : ils demandent des faits que le dépôt n'a pas — éditeur, hébergeur, contact,
+  droit applicable. Un texte juridique inventé serait pire que pas de texte. `internal_note` dit à
+  l'équipe ce qui manque, et n'est jamais affichée.
+- `is_system` : les pages attendues par le pied de page et la loi se dépublient, ne se suppriment
+  pas, et gardent leur adresse.
+
+**Le pied de page ne porte plus de lien mort.** Il avait cinq liens `#` (tarifs, guide, à propos,
+contact, conditions). Il liste désormais les écrans du site, écrits dans `SiteFooter`, puis **les
+pages publiées** de chaque colonne (prop partagée `pied`) ; les pages légales ont leur ligne en
+bas. Une page en brouillon n'y apparaît pas. Un test vérifie qu'aucun `'#'` ne revient.
+
+**Les textes de l'accueil et du pied de page** (`site_texts`, `SiteTextService`,
+`App\Support\SiteTextCatalog`, écran « Textes du site ») : titres, accroches, étapes, arguments.
+
+- **L'original vit dans le code, la modification en base.** « Rétablir l'original » supprime la
+  ligne ; un texte jamais touché n'est écrit qu'une fois, dans le catalogue.
+- **Chaque texte porte sa borne et sa raison sous le champ** — la ligne soulignée du titre de
+  l'accueil déborde d'un téléphone au-delà de vingt caractères (voir « L'accroche du hero contraint
+  l'échelle typographique »). **Les points des clés sont échappés dans les règles**
+  (`textes.accueil\.hero\.titre`) : sans ça Laravel lit un tableau imbriqué, ne trouve rien, et la
+  borne ne s'applique jamais. Un test poste vingt et un caractères.
+- **Ce que l'équipe tape est affiché, jamais interprété** : `useTextes().riche()` échappe d'abord,
+  puis ne reconnaît que `**gras**` et le retour à la ligne. C'est la condition du `v-html`.
+- **Ce qui n'est pas au catalogue ne se réécrit pas** : les boutons (des contrôles), les libellés
+  des niveaux de confiance (ils viennent de `TrustLevel` — l'accueil doit dire ce que disent les
+  fiches), tout ce qui est calculé.
+- Lus sur chaque page, écrits une fois par mois : textes et liens du pied de page sont **en cache
+  jusqu'à la prochaine modification**, et retombent sur le catalogue si la base ne répond pas.
+
+Pour ajouter un texte modifiable : une entrée au catalogue (clé, libellé, borne, original), puis
+`t('clé')` ou `v-html="riche('clé')"` dans le composant.
+
+#### Les statistiques
+
+`/statistiques` (`OfficeStatsService`, `Office/Stats/Index`) — des courbes, **et rien que des
+comptes définis**. Chaque graphique écrit sous son titre ce qu'il compte et à quelle date il le
+range, parce que deux écrans qui ne tombent pas sur le même chiffre font douter des deux :
+
+- une **demande** au mois où elle a été **faite**, par issue (acceptée, en attente, refusée,
+  expirée, annulée) ;
+- un **séjour** et sa **commission** au mois du **départ** — la règle de la facture ;
+- un **règlement** au mois qu'il **solde**.
+
+**Le délai de réponse est une médiane**, pas une moyenne ; **le taux de réponse ne compte que les
+demandes tranchées** — une demande encore en attente n'a pas encore échoué ; **un mois sans
+donnée n'est pas un zéro** (la courbe s'interrompt au lieu de plonger). **Pas de flèche de
+tendance** : sur les volumes d'une plateforme qui démarre, « +200 % » veut dire « deux de plus ».
+Des tests tiennent ces quatre règles.
+
+**La démonstration est incluse tant qu'elle existe, et l'écran le dit** dans un bandeau, avec un
+bouton pour la retirer (`?demo=0`) : des courbes nourries de réservations fictives ne doivent
+jamais passer pour l'activité réelle. La période (6, 12 ou 24 mois) vit aussi dans l'adresse.
+
+**Les graphiques sont dessinés à la main, en SVG** (`Components/Office/OfficeChart.vue`, courbes,
+barres ou barres empilées ; `OfficeHBars.vue` pour les comparaisons) — aucune bibliothèque, qui
+pèserait plus que le back-office et imposerait ses couleurs. Le SVG est **mesuré à sa largeur
+réelle** (`ResizeObserver`), jamais étiré par un `viewBox`, qui déformerait textes et traits. **Un
+mois se lit au survol, au doigt et au clavier** (flèches), et son relevé s'écrit au-dessus du
+graphique ; chaque graphique a son **tableau** replié, pour les lecteurs d'écran et pour recopier
+un chiffre. GSAP trace les courbes et fait monter les barres, à l'arrivée et quand la période
+change — rien sous `prefers-reduced-motion`. Le lagon n'y apparaît que sur l'échelle de confiance.
+
+Le regroupement par mois se fait **en PHP**, pas en SQL : les fonctions de date diffèrent entre
+PostgreSQL et SQLite, et les volumes tiennent en mémoire. Le jour où ils ne tiendront plus, ce
+sera une vue matérialisée — et `OfficeStatsService` sera le seul fichier à changer.
+
+**`php artisan vayla:historique-demo`** (local uniquement) écrit des mois de demandes **passées**,
+toutes `is_demo`, pour voir les courbes vivre sur une base fraîche. Rien dans le futur : aucune
+nuit bloquée, aucun calendrier touché. Et les règles tiennent aussi pour la démonstration : un
+séjour n'est « effectué » qu'avec une confirmation de voyageur, sur une annonce de niveau 4 —
+ailleurs il reste « accepté ». `--retirer` l'efface ; un `make seed` aussi.
+
+**Le contenu du back-office va jusqu'aux bords de l'écran** : `.of__corps` n'a plus de largeur
+maximale. Borné à 76 rem, il laissait un tiers d'un écran de travail vide pendant que les listes
+se tassaient et que les graphiques se lisaient mal. Ce qui doit rester étroit — un texte, un
+formulaire de mot de passe — porte sa propre mesure.
+
+#### La photothèque
+
+`/phototheque` (`OfficePhotoLibraryService`, `Office/Photos/Index`) — toutes les photographies du
+site, **leurs crédits, et où chacune apparaît**. Une grille à gauche, la photo choisie en grand à
+droite (la même lecture que la galerie d'une destination), avec ses usages en liens, son poids
+sur le disque et ses trois tailles. La photo choisie vit dans l'adresse (`?photo=`) : le journal
+et la page d'une destination y renvoient.
+
+**Le crédit se corrige ici**, parce que c'est lui qui s'affiche au pied de chaque page. Ce qu'on
+peut toucher dépend de la provenance, et ce qu'on ne peut pas n'est pas un bouton grisé mais une
+phrase :
+
+| Provenance | Légende | Auteur, source | Licence | Supprimer |
+|---|---|---|---|---|
+| Commons (`lieux`) | oui | oui | **non** — celle de l'auteur, souvent en 2.0 ou 3.0 | jamais |
+| Équipe (`destinations`) | oui | oui | oui | seulement si elle n'illustre rien |
+| Propriétaire (`annonces`) | oui (texte lu aux malvoyants) | — | — | depuis son annonce |
+| Démonstration (`an-`, `ia-`) | non | non | non | disparaît avec elles |
+
+- **Une photo de l'équipe qui n'illustre rien n'est pas créditée** (`PhotoRepository::credited`) :
+  on ne crédite pas une image qu'on ne publie pas. On peut donc téléverser d'avance, sans
+  destination, et l'ajouter à une galerie plus tard.
+- **`PhotoSeeder` ne réécrit plus la légende, l'auteur ni la page d'origine** d'une photo
+  existante — la règle des autres référentiels : un `make seed` effaçait sinon les corrections de
+  l'équipe. Un test corrige puis rejoue le seeder.
+- **Téléverser pour une destination passe par la galerie** (`OfficeContentService::ajouterPhotoDestination`,
+  qui appelle `televerser`) : un seul endroit produit, crédite et range une photo.
+
+**Un formulaire ne s'imbrique pas dans un autre.** L'ajout de photo de la page destination était
+un `<form>` dans le `<form>` de la destination : son `submit` remontait, l'enregistrement de la
+destination partait aussi, et Inertia **annulait l'envoi de la photo** en cours de route. C'est un
+groupe maintenant ; un balayage des templates n'en a pas trouvé d'autre.
+
+#### La gestion de contenu
+
+**Le back-office ne fait pas que modérer : il corrige.** Contenu des annonces, destinations,
+catégories du rail, équipements, réglages — tout ce qui portait le site sans qu'on puisse le
+toucher ailleurs que dans le code ou les seeders. Groupe « Contenu » de la colonne ;
+`OfficeContentService` pour les gestes, `OfficeContentReadService` pour les écrans.
+
+- **Le contenu d'une annonce, tout le contenu** (`/annonces/{id}/modifier`) — y compris ce que le
+  propriétaire ne peut plus toucher après vérification : c'est le rôle de Vayla de corriger une
+  capacité mal saisie ou de remplacer une photo floue. Mêmes bornes que la fiche du propriétaire
+  (`OfficeListingRequest` **hérite** d'`OwnerListingRequest`, elle ne la recopie pas), plus la mise
+  en avant et les catégories. **Le journal écrit les champs changés** (« titre, capacité,
+  tarif »), et rien quand rien n'a changé. `trust_level`, `status` et `slug` n'entrent pas par
+  là : ils ont leurs gestes à eux. Un long formulaire à sections, pas un assistant — l'équipe
+  corrige, elle ne découvre pas —, avec une barre collée qui dit s'il reste quelque chose à
+  enregistrer. Les photos passent par `PhotoUploadService`, comme côté propriétaire.
+- **Saisir une annonce pour un propriétaire** qui la dicte au téléphone
+  (`/proprietaires/{id}/annonces/nouvelle`) : elle naît en brouillon, au niveau 1. La saisir
+  n'est pas la vérifier.
+- **Une clé publique ne bouge jamais** — slug de destination, clé de catégorie ou d'équipement.
+  Elle naît du libellé à la création, puis elle est figée : c'est une adresse, un filtre d'URL et
+  un mot de l'API mobile. On renomme le libellé ; un test poste une autre clé et vérifie qu'elle
+  est ignorée.
+- **On ne supprime pas ce qui porte une déclaration** : un équipement coché par des logements,
+  une destination qui a des logements. L'écran ne propose même pas le bouton, et le service
+  refuse avec la raison.
+- **« Tout » et « Séjour confirmé » sont des filtres, pas des étiquettes**
+  (`CATEGORIES_STRUCTURELLES`) : ils se renomment et se déplacent, mais ne se posent sur aucune
+  annonce et ne se suppriment pas. « Séjour confirmé » se déduit du niveau 4 — et **ne se vend
+  pas**.
+- **Une place achetée se dit** : `categories.sponsored` affiche « Sponsorisé » sous le libellé,
+  dans le rail public. Le titre du rail reste éditorial ; une position vendue qu'on tairait
+  ferait du rail un classement déguisé.
+- **Une destination porte une galerie** (`destination_photo`), comme une annonce : la position 0
+  est la couverture — l'atlas et l'en-tête de sa page —, et la page publique montre les autres en
+  pellicule (un bouton par vignette, jamais de diaporama automatique). **`destinations.photo_id`
+  reste**, parce que l'atlas, l'accueil et l'API la lisent, mais **elle n'a qu'un écrivain**,
+  `OfficeContentService::synchroniserCouverture()`, qui la recopie depuis la position 0 à chaque
+  geste ; un test vérifie qu'elles ne divergent jamais, et le formulaire de la destination ne
+  l'écrit plus. On range (glisser-déposer et flèches), on voit chaque photo en grand, on ajoute depuis la photothèque (Commons,
+  jamais une image générée, jamais une `an-` qui disparaîtra avec les annonces de démonstration),
+  on retire : une photo **téléversée** qui ne figure plus dans aucune galerie est effacée avec ses
+  fichiers, une photographie de **Commons** est seulement détachée. Chaque photo **se téléverse**
+  aussi — la photothèque ne contenait que les onze photos déjà posées, une par destination. Une photo téléversée va dans
+  `images/destinations/` — **jamais dans `lieux/`**, que `PhotoSeeder` possède et que
+  `PhotoFilesTest` compare au disque —, passe par le même traitement que les photos d'annonce
+  (`PhotoUploadService::produire` : 4/3, 800 à 3200 px, refus sous 1 200 px), et exige son
+  **crédit** (légende, auteur, licence parmi `OfficeContentService::LICENCES`) et une **case
+  cochée** : une vraie photographie de ce lieu, que Vayla a le droit de publier — la règle photo,
+  déclarée à chaque fois. Elle arrive au bout de la galerie, et est créditée au pied de page.
+- **Les pictogrammes se choisissent parmi ceux qui sont dessinés.** Ceux du rail vivent dans
+  `Support/categoryIcons.js`, lu par le rail **et** par le back-office ; un test compare ses clés
+  à `ICONES_CATEGORIES` côté serveur, et celles de `SCENES` à `SceneArt`. Ceux des équipements
+  sont ceux déjà en base — un nom inventé n'aurait pas de tracé.
+- **Les réglages** (`settings`, `SettingsService`) : le taux de change **et sa date, saisie avec
+  lui** — `SettingExchangeRate` remplace `ConfigExchangeRate` derrière `ExchangeRateProvider`, la
+  couture prévue —, et le taux de commission **des nouvelles demandes** (chaque réservation fige
+  le sien, un test le vérifie). Le `.env` reste le repli : une ligne absente, ou une table pas
+  encore migrée, ne fait jamais tomber une page. Changer la commission demande une
+  confirmation.
+
+**Les seeders des référentiels créent ce qui manque, ils ne réécrivent plus.** `CategorySeeder`,
+`AmenitySeeder` et `DestinationSeeder` étaient en `updateOrCreate` : un `make seed` aurait
+rétabli les libellés d'origine et effacé en silence le travail de l'équipe. Ils sont en
+`firstOrCreate` (la destination repose seulement une photo perdue). Conséquence assumée : corriger
+un libellé dans un seeder ne change plus une base existante — c'est le back-office qui le fait.
+Un test modifie deux lignes, rejoue les seeders et vérifie qu'elles ont tenu.
+
 ### L'euro à côté de l'ariary
 
 `≈ 37 €` sous `185 000 Ar`. Un voyageur étranger ne sait pas ce que valent
@@ -1163,6 +2048,9 @@ panne pour un agrément. Elle met en cache et retombe sur la dernière valeur co
 
 Côté front, tout passe par `Composables/useDevise.js` — `euros()`, `eurosFourchette()`,
 `mention` — jamais par une division écrite dans un composant.
+
+**Le taux se règle maintenant depuis le back-office** (`SettingExchangeRate`, écran « Réglages »),
+avec sa date ; `VAYLA_EUR_RATE` et `VAYLA_EUR_RATE_DATE` ne servent plus que de repli.
 
 ### Le code à usage unique (OTP)
 
@@ -1436,6 +2324,10 @@ Groq, OpenRouter, Ollama). Exposé via `POST /ai/chat`, limité à `throttle:20,
   le téléphone ; depuis qu'il est un identifiant de connexion, il change — et le seeder ne
   reconnaissait plus la ligne, créant un second propriétaire du même nom, sans logement. La clé
   est maintenant `['name' => …, 'is_demo' => true]`, que le seeder possède entièrement.
+- **`docker/nginx/nginx.conf` est copié dans l'image, pas monté** : le modifier demande
+  `docker compose build app && docker compose up -d app`. C'est aussi vrai de `docker/php/*` et de
+  `supervisord.conf`. Et une erreur nginx ne remonte jamais dans les tests : le journal est
+  `/var/log/nginx/error.log`, dans le conteneur.
 - `docker/php/php.ini` est un profil **développement** (`display_errors=On`,
   `opcache.validate_timestamps=1`). La bascule production est documentée en commentaire dans
   le fichier ; ne pas la faire à la légère.
@@ -1467,9 +2359,21 @@ Groq, OpenRouter, Ollama). Exposé via `POST /ai/chat`, limité à `throttle:20,
   `RefreshDatabase` migre à zéro la base de travail : annonces, photos, propriétaires et clés
   d'accès disparaissent (les clés étant retirées à la création, les liens déjà envoyés meurent
   avec). Le même cache explique les POST de test en 419. Deux protections désormais :
-  `make test` lance `config:clear` d'abord, et **`tests/TestCase::setUp()` refuse de démarrer**
-  si la connexion n'est pas SQLite en mémoire — ce contrôle-là ne dépend d'aucun cache, ne pas
-  le retirer.
+  `make test` lance `config:clear` d'abord, et **`tests/TestCase::setUpTraits()` refuse de
+  démarrer** si la connexion n'est pas SQLite en mémoire — ce contrôle-là ne dépend d'aucun
+  cache, ne pas le retirer.
+
+  **Et surtout ne pas le redescendre dans `setUp()`.** C'est là qu'il était écrit d'abord, après
+  `parent::setUp()` — or `parent::setUp()` appelle `setUpTraits()`, donc `RefreshDatabase`, donc
+  `migrate:fresh`. Le garde-fou levait bien son erreur, mais **sur une base déjà vide** : le
+  11 septembre, un `php artisan test --filter=…` lancé en direct après un redémarrage du conteneur
+  a effacé la base de travail une seconde fois, comptes réels compris, pendant que le message
+  annonçait qu'on s'arrêtait. `setUpTraits()` s'exécute une fois la configuration chargée et
+  **avant** le premier trait : c'est le seul endroit où l'on peut encore refuser. Le correctif a
+  été prouvé en reproduisant le scénario exact — configuration compilée, test lancé en direct :
+  même nombre d'annonces avant et après. **Lancer `make test`, jamais `php artisan test` en
+  direct** ; et après tout incident de tests, compter les lignes de la base avant de conclure
+  qu'elle est intacte — un message d'erreur ne prouve pas qu'on s'est arrêté à temps.
 - **Un port Vite non publié fait servir les assets du projet voisin — en silence.** Une autre
   application tourne sur cette machine et publie déjà 5173. Docker laissait alors partir
   `vayla-node` **sans publier son port**, sans erreur : Vite démarrait bien à l'intérieur du
@@ -1514,6 +2418,28 @@ Groq, OpenRouter, Ollama). Exposé via `POST /ai/chat`, limité à `throttle:20,
 
   Pour vérifier sans passer par le navigateur : `curl -s http://localhost:5174/resources/js/app.js`
   doit lister les pages dans le `Object.assign({…})`.
+
+  **Le même symptôme suit le premier import d'un nouveau module d'un paquet** — `gsap/Flip`, importé
+  pour la première fois par `useRangement.js`, a fait réoptimiser les dépendances par Vite, et le
+  navigateur a reçu une liste de pages sans `Office/Destinations/Edit.vue`, pourtant présente et
+  compilable. Même remède : vider `node_modules/.vite`, redémarrer, vérifier le glob. Ce n'est pas
+  le `vite build` lancé dans le conteneur : vérifié, il laisse le glob du serveur intact.
+
+  **La purge est maintenant dans la commande du conteneur** (`docker-compose.yml`) : tout
+  démarrage de `node` — `make npm-dev`, `make up`, un redémarrage de Docker Desktop — vide
+  `node_modules/.vite` avant de lancer Vite. La purge manuelle ne tenait pas : le 11 septembre, le
+  conteneur est reparti sans que personne la fasse, et le back-office entier est tombé sur « Page
+  not found » avec un glob vide. Vérifié en redémarrant deux fois de suite sans purge : 81 pages à
+  chaque fois. La règle vaut pour **tout** fichier ajouté sous `Pages/`, partiels compris
+  (`Pages/Owner/Listings/FormSteps.vue` l'a déclenché) : le glob `./Pages/**/*.vue` les ramasse
+  aussi.
+
+  **Et `app.js` ne laisse plus la page blanche en développement** : si une page manque à la liste,
+  il la charge directement par son chemin (le serveur de dev sert tout fichier) et l'écrit dans la
+  console — `[vayla] « … » manque à la liste de pages de Vite`. Ce détour n'existe qu'en
+  développement (`import.meta.env.DEV`) ; le build calcule sa liste une fois et ne l'embarque pas.
+  Si l'avertissement revient, c'est que Vite doit être redémarré — le filet cache le symptôme, pas
+  la cause.
 - **Jamais de `whereBetween` sur une colonne de date — un intervalle semi-ouvert.** La colonne est
   déclarée `date`, mais **SQLite est faiblement typé** et y range ce que Laravel écrit :
   `2026-08-31 00:00:00`. La comparaison redevient alors une comparaison de **chaînes**, où cette
@@ -1524,6 +2450,16 @@ Groq, OpenRouter, Ollama). Exposé via `POST /ai/chat`, limité à `throttle:20,
   verte hier, rouge aujourd'hui, sans qu'une ligne ait bougé. Écrire
   `->where('col', '>=', $debut)->where('col', '<', $finPlusUnJour)` : juste sur les deux moteurs,
   et toujours indexable, ce que `whereDate()` n'aurait pas été.
+
+  **Même cause, autre symptôme : le cast `date` sur une colonne qu'on cherche par égalité.**
+  `invoice_settlements.month` était casté en `date` ; Eloquent l'écrivait donc
+  `2026-08-01 00:00:00`, et `where('month', '2026-08-01')` ne le retrouvait plus sous SQLite — la
+  facture restait « à régler » juste après avoir été réglée, et le règlement suivant heurtait
+  l'unicité. La colonne reste une chaîne `AAAA-MM-JJ`, sans cast.
+- **`Rule::exists(...)->where('colonne', false)` ne trouve jamais rien.** La règle s'écrit en
+  chaîne, et le booléen y devient le texte « false » : aucune photo de lieu ne passait la
+  validation d'une destination. Écrire la condition dans une fermeture —
+  `->where(fn ($q) => $q->where('is_ai', false))` —, qui s'applique à la requête.
 - **Centrer en flex avec `overflow: hidden` rend le haut de la page inatteignable.** Un bloc en
   `align-items: center` dont le contenu dépasse la hauteur déborde **des deux côtés** ; avec
   `overflow: hidden`, le haut est rogné et il n'y a aucun moyen d'y revenir — sur `/connexion`,

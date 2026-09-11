@@ -21,7 +21,7 @@ defineProps({
 <template>
     <section class="iv">
         <header class="iv__head">
-            <h2 class="iv__title">Facture · {{ invoice.period.label }}</h2>
+            <h2 class="espace__section iv__title">Facture · {{ invoice.period.label }}</h2>
             <p class="iv__basis">{{ invoice.basis }}</p>
         </header>
 
@@ -69,7 +69,7 @@ defineProps({
 
 <style scoped>
 .iv__head { margin-bottom: 1rem; }
-.iv__title { margin: 0; font-size: 1.3rem; font-weight: 800; letter-spacing: -.032em; color: var(--ink); text-transform: capitalize; }
+.iv__title { margin: 0; text-transform: capitalize; }
 .iv__basis { margin: .4rem 0 0; max-width: 58ch; font-size: .84rem; line-height: 1.55; color: var(--text-3); }
 
 .iv__none {

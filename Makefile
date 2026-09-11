@@ -168,7 +168,12 @@ rollback: ## Rollback last migration
 
 # ── Frontend ──────────────────────────
 
-npm-dev: ## Restart Vite dev server (node container)
+npm-dev: ## Restart Vite dev server (node container), cache purged
+	# Le cache d'optimisation de Vite (`node_modules/.vite`) fige la liste des
+	# pages qu'`import.meta.glob` résout : un redémarrage qui le garde laisse la
+	# liste vide, et Inertia lève « Page not found » sur tout le site. La
+	# commande du conteneur le vide désormais à chaque démarrage (voir
+	# docker-compose.yml) : un `restart` suffit, d'où qu'il vienne.
 	docker compose restart node
 	docker compose logs -f node
 

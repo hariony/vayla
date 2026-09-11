@@ -13,7 +13,9 @@ const props = defineProps({
     active: { type: String, default: '' },
 })
 
-defineEmits(['activate'])
+// `pick` : un repère est un bouton (`role="button"`, focalisable) — il doit
+// faire au clic et au clavier ce que fait la ligne de la liste à côté.
+defineEmits(['activate', 'pick'])
 
 /*
  * Positions projetées depuis les coordonnées réelles avec la projection
@@ -100,7 +102,12 @@ const plotted = computed(() =>
             role="button"
             :aria-label="d.name"
             @mouseenter="$emit('activate', d.slug)"
+            @mouseleave="$emit('activate', '')"
             @focus="$emit('activate', d.slug)"
+            @blur="$emit('activate', '')"
+            @click="$emit('pick', d.slug)"
+            @keydown.enter.prevent="$emit('pick', d.slug)"
+            @keydown.space.prevent="$emit('pick', d.slug)"
         >
             <circle class="map__halo" :cx="d.x" :cy="d.y" r="15" filter="url(#map-halo)" />
             <circle class="map__ring" :cx="d.x" :cy="d.y" r="9" />

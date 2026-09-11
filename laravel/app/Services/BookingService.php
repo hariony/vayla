@@ -11,6 +11,7 @@ use App\Models\BookingMessage;
 use App\Models\Listing;
 use App\Models\StayConfirmation;
 use App\Services\Notifications\OwnerNotifier;
+use App\Services\Settings\SettingsService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -45,6 +46,7 @@ class BookingService
     public function __construct(
         private AvailabilityService $availability,
         private OwnerNotifier $notifier,
+        private SettingsService $reglages,
     ) {}
 
     /**
@@ -74,7 +76,7 @@ class BookingService
                 throw new BookingRefusedException('Ces nuits viennent d\'être prises.');
             }
 
-            $rate = (float) config('vayla.commission.rate');
+            $rate = $this->reglages->commission();
 
             $booking = Booking::create([
                 'reference' => $this->reference(),

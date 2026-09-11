@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\ListingStatus;
+use App\Http\Requests\OwnerListingRequest;
 use App\Models\Amenity;
 use App\Models\Destination;
 use App\Models\Listing;
@@ -248,6 +249,45 @@ class OwnerListingTest extends TestCase
         foreach ($groupes as $g) {
             $this->assertNotEmpty($g['amenities'], "Rubrique vide publiée : {$g['key']}");
             $this->assertNotEmpty($g['label']);
+        }
+    }
+
+    /**
+     * **La création dépose sur l'étape des photos.** C'est la prochaine chose
+     * à faire, et la seule que la création ne pouvait pas faire : les photos
+     * s'attachent à un logement qui doit déjà exister.
+     */
+    public function test_la_creation_depose_sur_l_etape_des_photos(): void
+    {
+        $this->connectee()
+            ->post('/proprietaire/logements', $this->fiche())
+            ->assertRedirect('/proprietaire/logements/maison-de-la-pointe-andilana/modifier?etape=photos');
+    }
+
+    /**
+     * **Chaque règle du formulaire appartient à une étape.** C'est ce qui
+     * ramène une erreur du serveur à l'étape où elle se lit : un champ que
+     * les étapes ne déclarent pas serait une erreur reçue sur la mauvaise
+     * étape — donc invisible, et un bouton « Créer » qui refuse sans dire
+     * pourquoi.
+     */
+    public function test_chaque_regle_du_formulaire_appartient_a_une_etape(): void
+    {
+        $source = file_get_contents(resource_path('js/Pages/Owner/Listings/Form.vue'));
+
+        preg_match('/const ETAPES = \[(.*?)\n\]/s', $source, $bloc);
+        $this->assertNotEmpty($bloc, 'Le formulaire doit déclarer ses étapes.');
+
+        preg_match_all("/'([a-z_]+)'/", $bloc[1], $mots);
+        $champs = $mots[1];
+
+        $regles = array_keys((new OwnerListingRequest)->rules());
+
+        foreach ($regles as $regle) {
+            // `amenities.*.id` appartient à l'étape qui porte `amenities`.
+            $racine = explode('.', $regle)[0];
+
+            $this->assertContains($racine, $champs, "La règle « {$regle} » n'appartient à aucune étape du formulaire.");
         }
     }
 }

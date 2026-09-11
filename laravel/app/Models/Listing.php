@@ -17,7 +17,7 @@ class Listing extends Model
         'summary', 'description', 'guests', 'bedrooms', 'beds', 'bathrooms',
         'surface', 'price', 'min_nights', 'max_nights', 'check_in_from',
         'check_out_before', 'pets_allowed', 'smoking_allowed', 'events_allowed',
-        'trust_level', 'featured', 'is_demo', 'status',
+        'trust_level', 'featured', 'is_demo', 'status', 'review_note',
     ];
 
     protected function casts(): array

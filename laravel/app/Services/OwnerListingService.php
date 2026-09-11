@@ -100,6 +100,7 @@ class OwnerListingService
             'status' => $listing->status->value,
             'statusLabel' => $listing->status->label(),
             'consigne' => $listing->status->consigne(),
+            'reviewNote' => $listing->review_note,
             'modifiable' => $listing->status->estModifiable(),
             'trust' => $listing->trust_level->value,
             'trustName' => $listing->trust_level->label(),
@@ -224,6 +225,9 @@ class OwnerListingService
 
         if ($manques === []) {
             $listing->status = ListingStatus::Submitted;
+            // Le motif du renvoi a servi : la fiche repart, et le garder
+            // afficherait une demande à laquelle il a déjà répondu.
+            $listing->review_note = null;
             $listing->save();
         }
 

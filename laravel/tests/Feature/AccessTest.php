@@ -295,6 +295,384 @@ class AccessTest extends TestCase
         $this->assertStringNotContainsString('href="/connexion"', $balisage[1]);
     }
 
+    /**
+     * **Aucun menu ne promet un écran qui n'existe pas.**
+     *
+     * C'est la règle qui a fait retirer « Demander un séjour » de la barre : il
+     * pointait sur une section dont le bouton pointait sur lui-même. Un menu de
+     * compte et une barre d'espace sont les premiers endroits où l'on ajoute
+     * « Mon profil » ou « Paramètres » avant d'avoir l'écran derrière — le test
+     * relit donc les destinations écrites dans les composants et **les demande
+     * vraiment**.
+     *
+     * Le corollaire vaut aussi : les rubriques à venir n'ont pas de `href`.
+     * Elles sont écrites en toutes lettres dans la barre, sous un intitulé
+     * « Bientôt », et n'ouvrent rien — c'est exactement pour ça qu'elles ne
+     * peuvent pas casser ce test.
+     */
+    public function test_aucun_menu_ne_promet_un_ecran_qui_n_existe_pas(): void
+    {
+        // Les rubriques des deux espaces vivent au même endroit : la barre
+        // latérale, le menu du compte et le tiroir mobile les lisent tous les
+        // trois. Le menu du compte avait divergé — il ignorait « Messages » et
+        // « Mes informations » côté client — ce que deux listes garantissent
+        // toujours de finir par faire.
+        $sources = [
+            'js/Support/espaces.js',
+            'js/Components/AccountMenu.vue',
+        ];
+
+        $owner = Owner::query()->firstOrFail();
+        $voyageur = User::create(['email' => 'menu@example.com']);
+        $vus = 0;
+
+        foreach ($sources as $fichier) {
+            preg_match_all("/href: '([^']+)'/", file_get_contents(resource_path($fichier)), $trouves);
+
+            foreach ($trouves[1] as $href) {
+                $reponse = str_starts_with($href, '/proprietaire')
+                    ? $this->actingAs($owner, 'proprietaire')->get($href)
+                    : $this->actingAs($voyageur)->get($href);
+
+                $this->assertNotSame(
+                    404,
+                    $reponse->getStatusCode(),
+                    "{$fichier} mène sur {$href}, qui n'existe pas."
+                );
+
+                $vus++;
+            }
+        }
+
+        $this->assertGreaterThan(5, $vus, 'Les menus ne portent presque aucune destination.');
+    }
+
+    /**
+     * **Le menu du compte et la barre latérale lisent la même liste.**
+     *
+     * Elles étaient écrites deux fois, et avaient déjà divergé : le menu
+     * ignorait « Messages » et « Mes informations » côté client, si bien que
+     * la même personne voyait deux menus différents selon qu'elle cliquait sur
+     * sa pastille ou qu'elle se trouvait dans son espace. Le test regarde donc
+     * la **cause** — une rubrique écrite en dur dans une des deux surfaces —
+     * et pas seulement le symptôme.
+     */
+    public function test_les_rubriques_ne_sont_ecrites_qu_une_fois(): void
+    {
+        $surfaces = [
+            'js/Components/AccountMenu.vue',
+            'js/Pages/Owner/Partials/OwnerShell.vue',
+            'js/Pages/Auth/Bookings.vue',
+            'js/Pages/Auth/Messages.vue',
+            'js/Pages/Auth/Account.vue',
+        ];
+
+        foreach ($surfaces as $fichier) {
+            $source = file_get_contents(resource_path($fichier));
+
+            $this->assertStringContainsString(
+                "from '@/Support/espaces.js'",
+                $source,
+                $fichier.' doit lire les rubriques partagées.'
+            );
+
+            preg_match_all("/href: '([^']+)'/", $source, $trouves);
+
+            $this->assertEmpty(
+                $trouves[1],
+                $fichier.' écrit une rubrique en dur : c’est ainsi que les deux menus ont divergé.'
+            );
+        }
+    }
+
+    /**
+     * **Chaque ligne du menu porte son pictogramme.** Le menu aligne une
+     * colonne d'icônes à gauche des intitulés ; une rubrique ajoutée sans la
+     * sienne y laisserait un trou — et un pictogramme inconnu retombe sur un
+     * point, qui se lit comme une erreur.
+     */
+    public function test_chaque_ligne_du_menu_porte_son_pictogramme(): void
+    {
+        $espaces = file_get_contents(resource_path('js/Support/espaces.js'));
+        $icones = file_get_contents(resource_path('js/Components/SpaceIcon.vue'));
+
+        preg_match_all("/\{[^{}]*href: '[^']+'[^{}]*\}/s", $espaces, $lignes);
+        $this->assertNotEmpty($lignes[0]);
+
+        foreach ($lignes[0] as $ligne) {
+            $this->assertMatchesRegularExpression("/icone: '([a-z]+)'/", $ligne, "Ligne sans pictogramme : {$ligne}");
+
+            preg_match("/icone: '([a-z]+)'/", $ligne, $icone);
+            $this->assertStringContainsString("    {$icone[1]}: '", $icones, "Pictogramme « {$icone[1]} » introuvable.");
+        }
+
+        // Et la sortie a le sien.
+        $this->assertStringContainsString("    sortir: '", $icones);
+        $this->assertStringContainsString('<SpaceIcon name="sortir"', file_get_contents(resource_path('js/Components/AccountMenu.vue')));
+    }
+
+    /**
+     * **Les deux espaces montent le même cadre.**
+     *
+     * C'est la leçon d'`AccessShell`, appliquée un cran plus loin : deux barres
+     * latérales recopiées auraient divergé au premier ajustement, et l'une
+     * aurait fini par ne plus dire ce que l'autre dit.
+     */
+    public function test_les_deux_espaces_montent_le_meme_cadre(): void
+    {
+        foreach (['js/Pages/Owner/Partials/OwnerShell.vue', 'js/Pages/Auth/Bookings.vue'] as $fichier) {
+            $this->assertStringContainsString(
+                '<SpaceShell',
+                file_get_contents(resource_path($fichier)),
+                $fichier.' doit monter le cadre commun des espaces.'
+            );
+        }
+    }
+
+    /**
+     * **Les titres des espaces ont deux tailles, écrites une fois.**
+     *
+     * Le titre d'écran montait à 2,1 rem — 34 px au-dessus d'une barre
+     * latérale en 15 : il écrasait ce qu'il introduisait. Et sept titres de
+     * section recopiaient la même règle en 1,3 rem, trop près du titre d'écran
+     * pour qu'on sache lequel introduisait l'autre. Le test tient les deux
+     * bouts : la borne haute du titre, et aucun `<h2>` d'espace qui ne passe
+     * par la primitive — c'est une huitième copie qui ferait rediverger.
+     */
+    public function test_les_titres_des_espaces_ont_deux_tailles_ecrites_une_fois(): void
+    {
+        $feuille = file_get_contents(resource_path('css/app.scss'));
+
+        preg_match('/\n\.espace__titre \{(.*?)\}/s', $feuille, $titre);
+        $this->assertNotEmpty($titre);
+        $this->assertStringContainsString('1.6rem)', $titre[1], 'Le titre d’écran plafonne à 1,6 rem.');
+
+        $ecrans = glob(resource_path('js/Pages/Owner').'/{,*/,Partials/,Listings/,Bookings/}*.vue', GLOB_BRACE)
+            + glob(resource_path('js/Pages/Auth').'/{Account,Bookings,Messages}.vue', GLOB_BRACE);
+
+        // Le nom d'un logement dans sa carte n'est pas un titre de section.
+        $horsCategorie = ['ml__name'];
+
+        foreach (array_unique($ecrans) as $fichier) {
+            preg_match_all('/<h2 class="([^"]*)"/', file_get_contents($fichier), $h2);
+
+            foreach ($h2[1] as $classes) {
+                if (array_intersect(explode(' ', $classes), $horsCategorie)) {
+                    continue;
+                }
+
+                $this->assertStringContainsString(
+                    'espace__section',
+                    $classes,
+                    basename($fichier)." : un titre de section doit passer par .espace__section (« {$classes} »)."
+                );
+            }
+        }
+    }
+
+    /**
+     * **Aucun écran d'espace ne salue par le nom.**
+     *
+     * « Bonjour X » prenait le premier mot du nom — c'est-à-dire le **nom de
+     * famille** dès qu'il est écrit à la malgache, « RAKOTOBE Hariony » — et
+     * le criait en capitales à quelqu'un qu'on voulait accueillir. Le nom du
+     * compte est de toute façon dans le menu de l'en-tête et au pied de la
+     * colonne. Un écran de travail **se nomme**, il ne salue pas.
+     */
+    public function test_aucun_ecran_d_espace_ne_salue_par_le_nom(): void
+    {
+        $ecrans = glob(resource_path('js/Pages/Owner').'/{,*/}*.vue', GLOB_BRACE)
+            + glob(resource_path('js/Pages/Auth').'/*.vue');
+
+        foreach ($ecrans as $fichier) {
+            $source = file_get_contents($fichier);
+
+            preg_match('/<template>(.*)<\/template>/s', $source, $balisage);
+
+            if (empty($balisage)) {
+                continue;
+            }
+
+            // Les commentaires sont retirés : la première version de ce test
+            // se déclenchait sur le commentaire qui explique justement la
+            // règle. Un test qui échoue parce qu'on a documenté ce qu'il
+            // vérifie n'apprend rien.
+            $vu = preg_replace('/<!--.*?-->/s', '', $balisage[1]);
+
+            $this->assertStringNotContainsString(
+                'Bonjour',
+                $vu,
+                basename($fichier).' salue par le nom : le premier mot est le patronyme.'
+            );
+        }
+    }
+
+    /**
+     * **La sortie est au pied de la colonne, et dans le menu de l'en-tête.**
+     *
+     * Ce n'est pas une redondance : dans un espace où l'on reste, la colonne
+     * est ce qu'on parcourt, et c'est là qu'on cherche à sortir. Le menu de
+     * l'en-tête sert partout ailleurs sur le site, où il n'y a pas de colonne.
+     */
+    public function test_la_sortie_est_au_pied_de_la_colonne(): void
+    {
+        $cadre = file_get_contents(resource_path('js/Components/SpaceShell.vue'));
+
+        preg_match('/<template>(.*)<\/template>/s', $cadre, $balisage);
+
+        $this->assertNotEmpty($balisage);
+        $this->assertStringContainsString('class="esp__sortir"', $balisage[1]);
+        $this->assertStringContainsString('Se déconnecter', $balisage[1]);
+
+        // Un POST, jamais un lien : un GET destructeur part au préchargement.
+        $this->assertStringContainsString('router.post(compte.value.sortie)', $cadre);
+    }
+
+    /**
+     * **Un message de retour n'est pas une dalle.** C'était un aplat d'encre
+     * plein, la chose la plus sombre de l'écran au-dessus d'un formulaire
+     * blanc : il prenait l'œil comme une alerte alors qu'il dit « c'est fait ».
+     * La carte est blanche ; seule sa petite marque ronde reste à l'encre.
+     */
+    /**
+     * **La coche est visible au repos ; l'animation ne fait qu'y arriver.**
+     * Posée invisible et révélée par l'animation, elle laissait un disque vide
+     * partout où l'animation ne se jouait pas. Et l'espace entre les deux
+     * phrases vit dans l'interpolation : en tête d'un nœud de texte, le
+     * compilateur le condensait — « Compte créé.Décrivez ».
+     */
+    public function test_la_coche_du_message_se_voit_sans_animation(): void
+    {
+        $cadre = file_get_contents(resource_path('js/Components/SpaceShell.vue'));
+
+        preg_match('/\n\.esp__flash-coche \{(.*?)\}/s', $cadre, $regle);
+
+        $this->assertNotEmpty($regle);
+        $this->assertStringContainsString('stroke-dashoffset: 0', $regle[1]);
+
+        $this->assertStringContainsString("return reste ? ` \${reste}` : ''", $cadre);
+    }
+
+    public function test_le_message_de_succes_est_une_carte_claire(): void
+    {
+        $cadre = file_get_contents(resource_path('js/Components/SpaceShell.vue'));
+
+        preg_match('/\n\.esp__flash \{(.*?)\}/s', $cadre, $regle);
+
+        $this->assertNotEmpty($regle, 'Le message de retour doit avoir sa règle.');
+        $this->assertStringContainsString('background: var(--white)', $regle[1]);
+        $this->assertDoesNotMatchRegularExpression(
+            '/\.esp__flash--ok \{[^}]*background: var\(--ink\)/',
+            $cadre,
+            'Le succès ne doit plus être un aplat d’encre.'
+        );
+    }
+
+    /**
+     * **Les deux espaces portent le même en-tête, celui du site.**
+     *
+     * L'espace propriétaire n'en avait pas, pour une raison précise : la barre
+     * **recrutait**, et « Devenir hôte » n'a aucun sens pour quelqu'un qui
+     * l'est déjà. Cette raison a disparu — l'en-tête suit la session, le
+     * bouton se retire pour un propriétaire, et « Connexion » est devenu le
+     * menu de son compte. Deux barres différentes pour deux espaces du même
+     * produit obligeaient à réapprendre où sont les choses en changeant de
+     * casquette.
+     *
+     * **Et `:search="false"` partout** : la forme compacte de l'en-tête efface
+     * la navigation pour y encastrer le moteur de recherche. Sans moteur, elle
+     * laisse une barre vide au premier défilement.
+     */
+    public function test_les_deux_espaces_portent_le_meme_en_tete(): void
+    {
+        $ecrans = [
+            'js/Pages/Owner/Partials/OwnerShell.vue',
+            'js/Pages/Auth/Bookings.vue',
+            'js/Pages/Auth/Messages.vue',
+            'js/Pages/Auth/Account.vue',
+        ];
+
+        foreach ($ecrans as $fichier) {
+            $this->assertStringContainsString(
+                '<SiteHeader :search="false" />',
+                file_get_contents(resource_path($fichier)),
+                $fichier.' doit monter l’en-tête du site, sans moteur de recherche.'
+            );
+        }
+
+        // Et le cadre n'en porte plus aucun à lui : c'est ce qui garantit
+        // qu'il n'y en aura pas deux.
+        $cadre = file_get_contents(resource_path('js/Components/SpaceShell.vue'));
+
+        preg_match('/<template>(.*)<\/template>/s', $cadre, $balisage);
+
+        $this->assertNotEmpty($balisage);
+        $this->assertStringNotContainsString('<header', $balisage[1]);
+    }
+
+    /**
+     * **L'espace client n'a plus sa propre sortie.**
+     *
+     * Se déconnecter vit dans le menu du compte, en haut à droite, sur toutes
+     * les pages du site. Le laisser aussi sur cet écran faisait deux sorties à
+     * quinze centimètres d'écart, et donnait à croire que celle-ci était
+     * particulière.
+     */
+    public function test_l_espace_client_n_a_plus_son_propre_bouton_de_sortie(): void
+    {
+        $source = file_get_contents(resource_path('js/Pages/Auth/Bookings.vue'));
+
+        // L'assertion regarde le **balisage**, pas le fichier : sa première
+        // version se déclenchait sur le commentaire qui explique justement la
+        // règle. Un test qui échoue parce qu'on a documenté ce qu'il vérifie
+        // n'apprend rien.
+        preg_match('/<template>(.*)<\/template>/s', $source, $balisage);
+
+        $this->assertNotEmpty($balisage);
+        $this->assertStringNotContainsString('Se déconnecter', $balisage[1]);
+        $this->assertStringNotContainsString("router.post('/deconnexion')", $source);
+    }
+
+    /**
+     * **Les deux déconnexions sont des POST, jamais des liens.**
+     *
+     * Un GET destructeur se déclenche au préchargement d'un navigateur ou d'un
+     * antivirus : on se retrouve dehors sans avoir rien touché. Le test tient
+     * les deux bouts — le composant ne pose pas de lien, et les routes elles-
+     * mêmes refusent le GET.
+     */
+    public function test_se_deconnecter_ne_se_fait_jamais_par_un_lien(): void
+    {
+        $source = file_get_contents(resource_path('js/Components/AccountMenu.vue'));
+
+        preg_match('/<template>(.*)<\/template>/s', $source, $balisage);
+
+        $this->assertNotEmpty($balisage);
+        $this->assertStringNotContainsString('/deconnexion"', $balisage[1]);
+        $this->assertStringContainsString('router.post(url)', $source);
+
+        $this->assertSame(405, $this->get('/deconnexion')->getStatusCode());
+        $this->assertSame(405, $this->get('/proprietaire/deconnexion')->getStatusCode());
+    }
+
+    /**
+     * **Connecté, l'en-tête montre le compte — pas un lien de plus.**
+     *
+     * Se déconnecter n'existait que *dans* `/mes-reservations` et *dans*
+     * l'espace propriétaire : depuis l'accueil, une fiche ou le catalogue, un
+     * voyageur connecté n'avait aucune sortie. Sur un téléphone partagé, c'est
+     * la session de quelqu'un d'autre qu'on prend pour la sienne.
+     */
+    public function test_l_en_tete_montre_le_compte_quand_la_session_est_ouverte(): void
+    {
+        $source = file_get_contents(resource_path('js/Components/SiteHeader.vue'));
+
+        preg_match('/<template>(.*)<\/template>/s', $source, $balisage);
+
+        $this->assertNotEmpty($balisage);
+        $this->assertStringContainsString('<AccountMenu v-if="connecte"', $balisage[1]);
+    }
+
     public function test_l_espace_client_ne_porte_que_la_connexion(): void
     {
         $this->get('/connexion/client')

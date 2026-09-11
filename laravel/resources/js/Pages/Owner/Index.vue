@@ -16,8 +16,13 @@
  *
  * Le cadre (bandeau, fond, messages de retour) est dans `OwnerShell`, partagé
  * avec le calendrier.
+ *
+ * **L'écran se nomme, il ne salue pas.** « Bonjour X » prenait le premier mot
+ * du nom — c'est-à-dire le **nom de famille** dès qu'il est écrit à la
+ * malgache, « RAKOTOBE Hariony » — et le criait en capitales à quelqu'un qu'on
+ * voulait accueillir. Le nom du compte est de toute façon dans le menu de
+ * l'en-tête et au pied de la colonne.
  */
-import { computed } from 'vue'
 import { Head } from '@inertiajs/vue3'
 
 import OwnerShell from './Partials/OwnerShell.vue'
@@ -35,20 +40,20 @@ const props = defineProps({
     demo: { type: Boolean, default: false },
 })
 
-/** Le prénom seul : on s'adresse à quelqu'un, pas à une ligne de base. */
-const prenom = computed(() => props.owner.name.split(' ')[0])
 </script>
 
 <template>
     <Head :title="`Espace propriétaire — ${owner.name}`" />
 
     <OwnerShell>
-        <div class="op__hello">
-            <h1 class="op__title">Bonjour {{ prenom }}</h1>
-            <p class="op__sub">
-                {{ owner.name }}<template v-if="owner.city"> · {{ owner.city }}</template>
+        <header class="espace__tete">
+            <h1 class="espace__titre">Demandes</h1>
+            <p class="espace__lede">
+                Ce qui attend votre réponse, puis vos séjours à venir. Une demande
+                sans réponse sous 48&nbsp;h se ferme, et les nuits repartent dans
+                votre calendrier.
             </p>
-        </div>
+        </header>
 
         <p v-if="demo" class="op__demo">
             <span class="chip chip--terre">Aperçu</span>
@@ -63,9 +68,6 @@ const prenom = computed(() => props.owner.name.split(' ')[0])
 </template>
 
 <style scoped>
-.op__hello { margin-bottom: 1.5rem; }
-.op__title { margin: 0; font-size: clamp(1.7rem, 4vw, 2.2rem); font-weight: 800; letter-spacing: -.045em; color: var(--ink); }
-.op__sub { margin: .35rem 0 0; font-size: .95rem; color: var(--text-2); }
 
 .op__demo {
     display: flex;

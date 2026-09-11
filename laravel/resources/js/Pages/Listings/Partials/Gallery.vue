@@ -100,7 +100,7 @@ onUnmounted(() => {
             <img
                 :src="photoSrc(lead, 1600)"
                 :srcset="photoSrcset(lead)"
-                sizes="(min-width: 1400px) 1304px, calc(100vw - 3rem)"
+                sizes="(min-width: 1400px) 1216px, (min-width: 1180px) calc(100vw - 11.5rem), calc(100vw - 3rem)"
                 :alt="lead.caption"
                 width="1600"
                 height="1200"
@@ -119,6 +119,14 @@ onUnmounted(() => {
             <TrustGauge :level="trust" />
             <span>{{ trustName }}</span>
         </p>
+
+        <!-- La surcouche épouse la photographie de tête, pas la galerie
+             entière : sans elle, tout ce qu'on y pose atterrirait au bas de la
+             pellicule. Elle ne capte pas le clic — la photo dessous reste
+             cliquable partout où la surcouche est vide. -->
+        <div v-if="$slots.surcouche" class="gal__over">
+            <slot name="surcouche" />
+        </div>
 
         <button v-if="count > 1" type="button" class="gal__all" @click="show(0, $event)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
@@ -249,7 +257,25 @@ onUnmounted(() => {
 
 <style scoped>
 /* ═══════════ TÊTE ET PELLICULE ═══════════ */
-.gal { position: relative; }
+/* **La géométrie de la photographie de tête vit ici, en jetons.** Elle est
+   lue à deux endroits — la photo elle-même et la surcouche qui porte les
+   raccourcis — et deux copies auraient fini par diverger : la surcouche se
+   serait décalée de la photo au premier ajustement du cadrage. */
+.gal {
+    position: relative;
+    --lead-ratio: 4 / 3;
+    --lead-max: min(58vh, 540px);
+}
+
+.gal__over {
+    position: absolute;
+    inset: 0 0 auto;
+    aspect-ratio: var(--lead-ratio);
+    max-height: var(--lead-max);
+    pointer-events: none;
+    z-index: 2;
+}
+.gal__over > * { pointer-events: auto; }
 
 .gal__lead {
     position: relative;
@@ -258,8 +284,8 @@ onUnmounted(() => {
     /* 4/3 sur téléphone, panoramique sur grand écran. La hauteur est bornée :
        une tête qui remplit l'écran cache le prix, les dates et le niveau de
        vérification — tout ce pour quoi on est venu. */
-    aspect-ratio: 4 / 3;
-    max-height: min(58vh, 540px);
+    aspect-ratio: var(--lead-ratio);
+    max-height: var(--lead-max);
     padding: 0;
     border: 0;
     border-radius: var(--r-xl);
@@ -372,7 +398,7 @@ onUnmounted(() => {
 .gal__tile:hover img { transform: scale(1.05); }
 
 @media (min-width: 760px) {
-    .gal__lead { aspect-ratio: 2 / 1; }
+    .gal { --lead-ratio: 2 / 1; }
 
     /* `--n` vient du composant : la pellicule occupe exactement la largeur. */
     .gal__strip > li { flex-basis: calc((100% - (var(--n) - 1) * .55rem) / var(--n)); }
