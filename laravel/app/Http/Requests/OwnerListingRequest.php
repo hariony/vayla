@@ -2,6 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\DTOs\Listings\AmenityChoiceDto;
+use App\DTOs\Listings\ListingDraftDto;
+use App\DTOs\Listings\ListingFicheDto;
 use App\Enums\PropertyType;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -96,9 +99,49 @@ class OwnerListingRequest extends FormRequest
         ]);
     }
 
-    /** Les champs de la fiche, sans les équipements qui passent par le pivot. */
-    public function fiche(): array
+    public function toDraftDto(): ListingDraftDto
     {
-        return $this->safe()->except('amenities');
+        return new ListingDraftDto($this->ficheDto(), $this->equipementsDto());
+    }
+
+    /**
+     * La fiche, nettoyée. `$featured` : seul le back-office met en avant ; nul,
+     * la colonne n'est pas écrite.
+     */
+    protected function ficheDto(?bool $featured = null): ListingFicheDto
+    {
+        $texte = fn (string $champ) => $this->filled($champ) ? trim($this->string($champ)->toString()) : null;
+        $entier = fn (string $champ) => $this->filled($champ) ? $this->integer($champ) : null;
+
+        return new ListingFicheDto(
+            title: trim($this->string('title')->toString()),
+            destinationId: $this->integer('destination_id'),
+            kind: $this->enum('kind', PropertyType::class),
+            summary: $texte('summary'),
+            description: $texte('description'),
+            guests: $this->integer('guests'),
+            bedrooms: $this->integer('bedrooms'),
+            beds: $this->integer('beds'),
+            bathrooms: $this->integer('bathrooms'),
+            surface: $entier('surface'),
+            price: $this->integer('price'),
+            minNights: $this->integer('min_nights'),
+            maxNights: $entier('max_nights'),
+            checkInFrom: $this->string('check_in_from')->toString(),
+            checkOutBefore: $this->string('check_out_before')->toString(),
+            petsAllowed: $this->boolean('pets_allowed'),
+            smokingAllowed: $this->boolean('smoking_allowed'),
+            eventsAllowed: $this->boolean('events_allowed'),
+            featured: $featured,
+        );
+    }
+
+    /** @return list<AmenityChoiceDto> */
+    protected function equipementsDto(): array
+    {
+        return array_values(array_map(
+            fn (array $c) => new AmenityChoiceDto((int) $c['id'], (bool) ($c['highlight'] ?? false)),
+            $this->validated('amenities', []),
+        ));
     }
 }

@@ -2,10 +2,10 @@
 
 namespace App\Services\Notifications;
 
+use App\Contracts\Repositories\OutboundMessageRepositoryInterface;
 use App\Enums\NotificationKind;
 use App\Models\Booking;
 use App\Models\Owner;
-use App\Contracts\Repositories\OutboundMessageRepositoryInterface;
 use App\Support\Telephone;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;

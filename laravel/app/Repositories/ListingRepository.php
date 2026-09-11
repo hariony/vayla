@@ -5,6 +5,7 @@ namespace App\Repositories;
 use App\Contracts\Repositories\ListingRepositoryInterface;
 use App\Data\ListingFiltreData;
 use App\Data\SejourData;
+use App\DTOs\Listings\ListingFacetsDto;
 use App\Enums\BookingStatus;
 use App\Enums\ListingSort;
 use App\Enums\ListingStatus;
@@ -133,7 +134,7 @@ class ListingRepository implements ListingRepositoryInterface
             ->get();
     }
 
-    public function facets(bool $includeDemo): array
+    public function facets(bool $includeDemo): ListingFacetsDto
     {
         // Une seule requête d'agrégat : le panneau de filtres n'a pas à
         // charger les annonces pour connaître ses bornes.
@@ -156,12 +157,12 @@ class ListingRepository implements ListingRepositoryInterface
             ->pluck('kind')
             ->all();
 
-        return [
-            'kinds' => $kinds,
-            'priceMin' => (int) ($bornes->min_price ?? 0),
-            'priceMax' => (int) ($bornes->max_price ?? 0),
-            'total' => (int) ($bornes->total ?? 0),
-        ];
+        return new ListingFacetsDto(
+            kinds: $kinds,
+            priceMin: (int) ($bornes->min_price ?? 0),
+            priceMax: (int) ($bornes->max_price ?? 0),
+            total: (int) ($bornes->total ?? 0),
+        );
     }
 
     /**

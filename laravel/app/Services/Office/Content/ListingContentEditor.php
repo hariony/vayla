@@ -65,8 +65,8 @@ final class ListingContentEditor
     public function creer(Admin $admin, Owner $owner, ListingContentDto $saisie): Listing
     {
         $listing = DB::transaction(function () use ($owner, $saisie) {
-            $listing = $this->redaction->creer($owner, $saisie->fiche->attributs());
-            $this->redaction->poserEquipements($listing, $saisie->choixEquipements());
+            $listing = $this->redaction->creer($owner, $saisie->fiche);
+            $this->redaction->poserEquipements($listing, $saisie->equipements);
             $this->poserCategories($listing, $saisie->categories);
 
             return $listing;
@@ -81,7 +81,7 @@ final class ListingContentEditor
     private function poserEquipements(Listing $listing, ListingContentDto $saisie): array
     {
         $avant = $this->contenu->empreinteEquipements($listing);
-        $this->redaction->poserEquipements($listing, $saisie->choixEquipements());
+        $this->redaction->poserEquipements($listing, $saisie->equipements);
 
         return $avant !== $this->contenu->empreinteEquipements($listing) ? ['equipements'] : [];
     }

@@ -2,9 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Contracts\Repositories\OutboundMessageRepositoryInterface;
 use App\Enums\NotificationKind;
 use App\Models\OutboundMessage;
-use App\Contracts\Repositories\OutboundMessageRepositoryInterface;
 use App\Support\Telephone;
 use Illuminate\Console\Command;
 
@@ -45,7 +45,7 @@ class SendWhatsAppMessages extends Command
         }
 
         $messages = $this->option('tout')
-            ? OutboundMessage::query()->with(['owner', 'booking'])->latest('id')->limit(50)->get()
+            ? $file->derniers()
             : $file->enAttente();
 
         if ($messages->isEmpty()) {
@@ -120,7 +120,7 @@ class SendWhatsAppMessages extends Command
 
     private function marquer(OutboundMessageRepositoryInterface $file, int $id): int
     {
-        $message = OutboundMessage::find($id);
+        $message = $file->trouver($id);
 
         if (! $message) {
             $this->error("Aucun message n°{$id}.");

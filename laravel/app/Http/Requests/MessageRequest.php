@@ -28,4 +28,9 @@ class MessageRequest extends FormRequest
             'body.max' => 'Message trop long : deux mille caractères au maximum.',
         ];
     }
+
+    public function body(): string
+    {
+        return $this->string('body')->toString();
+    }
 }

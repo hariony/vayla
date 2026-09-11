@@ -3,8 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Enums\VerificationKind;
-use App\Services\Verification\CodeSendingFailed;
-use App\Services\Verification\CodeThrottled;
+use App\Exceptions\CodeSendingFailed;
+use App\Exceptions\CodeThrottled;
 use App\Services\Verification\VerificationCodeService;
 use App\Support\Telephone;
 use Illuminate\Console\Command;

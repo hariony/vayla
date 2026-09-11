@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Contracts\Office\AdminPasswords;
+use App\Contracts\Repositories\AdminRepositoryInterface;
 use App\Models\Admin;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Validator;
@@ -37,8 +38,15 @@ class ManageAdmins extends Command
 
     protected $description = 'Ajoute, retire ou liste les membres de l’équipe du back-office';
 
-    public function handle(): int
+    private AdminRepositoryInterface $admins;
+
+    private AdminPasswords $motsDePasse;
+
+    public function handle(AdminRepositoryInterface $admins, AdminPasswords $motsDePasse): int
     {
+        $this->admins = $admins;
+        $this->motsDePasse = $motsDePasse;
+
         if ($this->option('liste') || ! $this->argument('email')) {
             return $this->lister();
         }
@@ -60,7 +68,7 @@ class ManageAdmins extends Command
 
     private function reinitialiser(string $email): int
     {
-        $admin = Admin::query()->where('email', $email)->first();
+        $admin = $this->admins->parEmail($email);
 
         if (! $admin) {
             $this->error("{$email} ne fait pas partie de l’équipe.");
@@ -68,7 +76,7 @@ class ManageAdmins extends Command
             return self::FAILURE;
         }
 
-        $this->montrer($admin, app(AdminPasswords::class)->provisoire($admin));
+        $this->montrer($admin, $this->motsDePasse->provisoire($admin));
 
         return self::SUCCESS;
     }
@@ -87,7 +95,7 @@ class ManageAdmins extends Command
 
     private function ajouter(string $email): int
     {
-        if (Admin::query()->where('email', $email)->exists()) {
+        if ($this->admins->parEmail($email)) {
             $this->warn("{$email} fait déjà partie de l’équipe.");
 
             return self::SUCCESS;
@@ -101,10 +109,10 @@ class ManageAdmins extends Command
             return self::FAILURE;
         }
 
-        $admin = Admin::create(['name' => $nom, 'email' => $email]);
+        $admin = $this->admins->creer($nom, $email);
 
         $this->info("{$nom} fait partie de l’équipe.");
-        $this->montrer($admin, app(AdminPasswords::class)->provisoire($admin));
+        $this->montrer($admin, $this->motsDePasse->provisoire($admin));
 
         return self::SUCCESS;
     }
@@ -120,7 +128,7 @@ class ManageAdmins extends Command
 
     private function retirer(string $email): int
     {
-        $admin = Admin::query()->where('email', $email)->first();
+        $admin = $this->admins->parEmail($email);
 
         if (! $admin) {
             $this->error("{$email} ne fait pas partie de l’équipe.");
@@ -128,7 +136,7 @@ class ManageAdmins extends Command
             return self::FAILURE;
         }
 
-        $admin->delete();
+        $this->admins->supprimer($admin);
         $this->info("{$admin->name} n’a plus accès au back-office. Ses gestes restent au journal, sous son nom.");
 
         return self::SUCCESS;
@@ -136,7 +144,7 @@ class ManageAdmins extends Command
 
     private function lister(): int
     {
-        $equipe = Admin::query()->orderBy('name')->get();
+        $equipe = $this->admins->tousParNom();
 
         if ($equipe->isEmpty()) {
             $this->warn('Personne n’a encore accès au back-office. Pour ajouter le premier membre :');

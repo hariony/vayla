@@ -20,27 +20,13 @@ class ListingController extends Controller
 
     public function index(ListingIndexRequest $request): JsonResponse
     {
-        $page = $this->service->search(
-            $request->toFiltre(),
-            (bool) config('vayla.demo')
-        );
-
-        return response()->json([
-            'data' => $page->items(),
-            'meta' => [
-                'page' => $page->currentPage(),
-                'per_page' => $page->perPage(),
-                'total' => $page->total(),
-                'pages' => $page->lastPage(),
-                'demo' => (bool) config('vayla.demo'),
-            ],
-        ]);
+        return response()->json($this->service->apiPage($request->toFiltre()));
     }
 
     public function show(string $slug): JsonResponse
     {
         return response()->json([
-            'data' => $this->service->show($slug, (bool) config('vayla.demo')),
+            'data' => $this->service->show($slug),
         ]);
     }
 }

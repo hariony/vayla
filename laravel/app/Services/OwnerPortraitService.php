@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Contracts\Repositories\OwnerRepositoryInterface;
+use App\Exceptions\PhotoRefusedException;
 use App\Models\Owner;
 use App\Services\Images\ImageSource;
 use Illuminate\Http\UploadedFile;
@@ -35,6 +37,10 @@ use RuntimeException;
  */
 class OwnerPortraitService
 {
+    public function __construct(
+        private OwnerRepositoryInterface $proprietaires,
+    ) {}
+
     /** @var array<int, int> */
     private const PALIERS = [160, 480];
 
@@ -51,18 +57,23 @@ class OwnerPortraitService
     /**
      * Pose le portrait, remplace le précédent, et rend sa clé.
      *
-     * @throws RuntimeException si l'image est illisible ou trop petite
+     * @throws PhotoRefusedException si l'image est illisible ou trop petite — message à montrer tel quel
      */
     public function poser(Owner $owner, UploadedFile $fichier): string
     {
         // Lue sans être recopiée en pleine taille : un portrait pris avec un
         // téléphone récent fait 48 Mpx, et le décodage complet dépassait la
         // mémoire de PHP.
-        $source = ImageSource::ouvrir($fichier->getRealPath());
+        try {
+            $source = ImageSource::ouvrir($fichier->getRealPath());
+        } catch (RuntimeException $e) {
+            throw new PhotoRefusedException($e->getMessage(), previous: $e);
+        }
+
         $cote = min($source->largeur, $source->hauteur);
 
         if ($cote < self::COTE_MINIMAL) {
-            throw new RuntimeException(
+            throw new PhotoRefusedException(
                 "Cette image fait {$cote} pixels de côté : il en faut au moins "
                 .self::COTE_MINIMAL.'. Prenez la photo avec l’appareil du téléphone '
                 .'plutôt que dans une conversation, qui les réduit beaucoup.'
@@ -87,7 +98,7 @@ class OwnerPortraitService
 
         $ancien = $owner->portrait;
 
-        $owner->forceFill(['portrait' => $cle])->save();
+        $this->proprietaires->poserPortrait($owner, $cle);
 
         if ($ancien) {
             $this->effacer($ancien);
@@ -105,7 +116,7 @@ class OwnerPortraitService
 
         $this->effacer($owner->portrait);
 
-        $owner->forceFill(['portrait' => null])->save();
+        $this->proprietaires->poserPortrait($owner, null);
     }
 
     private function effacer(string $cle): void

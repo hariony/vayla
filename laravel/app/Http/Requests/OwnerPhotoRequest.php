@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Contracts\Photos\PhotoProcessor;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\UploadedFile;
 
 /**
  * Le téléversement d'une photo.
@@ -38,5 +39,15 @@ class OwnerPhotoRequest extends FormRequest
             'photo.max' => 'Cette photo dépasse 40 Mo : exportez-la en qualité normale, ou en 6 000 pixels de large au plus.',
             'photo.uploaded' => 'La photo n’est pas arrivée : elle dépasse 40 Mo, ou la connexion a coupé pendant l’envoi. Réessayez.',
         ];
+    }
+
+    public function photo(): UploadedFile
+    {
+        return $this->file('photo');
+    }
+
+    public function legende(): ?string
+    {
+        return trim($this->string('caption')->toString()) ?: null;
     }
 }

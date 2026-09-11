@@ -2,12 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Contracts\Repositories\VerificationCodeRepositoryInterface;
+use App\Contracts\Verification\CodeSender;
 use App\Enums\VerificationKind;
 use App\Models\Listing;
 use App\Models\Owner;
 use App\Models\User;
 use App\Models\VerificationCode;
-use App\Services\Verification\CodeSender;
 use App\Services\Verification\VerificationCodeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -75,7 +76,7 @@ class RegistrationTest extends TestCase
                     return true;
                 }
             },
-        ]));
+        ], app(VerificationCodeRepositoryInterface::class)));
     }
 
     /** @return array<string, string> */

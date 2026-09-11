@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\DTOs\Owners\OwnerProfileDto;
 use App\Rules\TelephoneValide;
 use App\Support\Telephone;
 use Illuminate\Foundation\Http\FormRequest;
@@ -48,5 +49,10 @@ class OwnerProfileRequest extends FormRequest
             'phone.required' => 'Votre numéro WhatsApp : c’est par là que Vayla vous joint.',
             'phone.unique' => 'Un compte existe déjà avec ce numéro. Connectez-vous.',
         ];
+    }
+
+    public function toDto(): OwnerProfileDto
+    {
+        return new OwnerProfileDto(trim($this->string('name')->toString()), $this->string('phone')->toString());
     }
 }

@@ -2,13 +2,17 @@
 
 namespace App\Http\Middleware;
 
+use App\Contracts\Currency\ExchangeRateProvider;
 use App\Data\DeviseData;
+use App\Data\Shared\AuthOwnerData;
+use App\Data\Shared\AuthUserData;
+use App\Data\Shared\SocialOptionData;
 use App\Enums\SocialProvider;
 use App\Models\Owner;
+use App\Models\User;
 use App\Services\Content\Pages\SitePages;
 use App\Services\Content\Texts\SiteTexts;
 use App\Services\ConversationService;
-use App\Services\Currency\ExchangeRateProvider;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -20,6 +24,13 @@ class HandleInertiaRequests extends Middleware
     {
         return parent::version($request);
     }
+
+    public function __construct(
+        private SiteTexts $textes,
+        private SitePages $pages,
+        private ExchangeRateProvider $taux,
+        private ConversationService $conversations,
+    ) {}
 
     public function share(Request $request): array
     {
@@ -35,7 +46,7 @@ class HandleInertiaRequests extends Middleware
              */
             'social' => fn () => collect(SocialProvider::cases())
                 ->filter(fn (SocialProvider $p) => (bool) config("services.{$p->value}.client_id"))
-                ->map(fn (SocialProvider $p) => ['cle' => $p->value, 'label' => $p->label()])
+                ->map(fn (SocialProvider $p) => new SocialOptionData($p->value, $p->label()))
                 ->values()
                 ->all(),
             /*
@@ -62,19 +73,17 @@ class HandleInertiaRequests extends Middleware
                  * `auth.user`. La nommer rend la prop indépendante de qui a
                  * appelé `shouldUse`.
                  */
-                'user' => fn () => $request->user('web')?->only([
-                    'first_name', 'last_name', 'name', 'email', 'phone',
-                ]),
+                'user' => fn () => ($u = $request->user('web')) instanceof User ? AuthUserData::fromModel($u) : null,
                 // Le propriétaire connecté, sur sa propre garde : l'espace
                 // propriétaire et un éventuel back-office n'ont jamais la
                 // même session, et ne doivent jamais se confondre.
-                'owner' => fn () => $request->user('proprietaire')?->only(['name', 'phone', 'city', 'portrait']),
+                'owner' => fn () => ($o = $request->user('proprietaire')) instanceof Owner ? AuthOwnerData::fromModel($o) : null,
             ],
             // Les textes du site et les liens du pied de page, tenus depuis le
             // back-office. En cache jusqu'à la prochaine modification : ils
             // sont lus sur chaque page et changent une fois par mois.
-            'textes' => fn () => app(SiteTexts::class)->tous(),
-            'pied' => fn () => app(SitePages::class)->pied(),
+            'textes' => fn () => $this->textes->tous(),
+            'pied' => fn () => $this->pages->pied(),
             // Sans ça, accepter une demande renvoie sur la même page sans
             // rien dire : l'utilisateur reclique, et se demande si ça a marché.
             'flash' => [
@@ -85,19 +94,19 @@ class HandleInertiaRequests extends Middleware
             // ariary entiers dans les props, et chaque écran convertit ce
             // qu'il affiche. Un total qui n'existe que côté client — les
             // nuits choisies × le tarif — ne peut pas être converti ailleurs.
-            'devise' => fn () => DeviseData::depuis(app(ExchangeRateProvider::class)),
+            'devise' => fn () => DeviseData::depuis($this->taux),
             // Le compte de conversations en attente, porté par l'onglet
             // « Réservations ». Il est calculé paresseusement : les pages
             // publiques n'ont pas de propriétaire connecté et ne paient donc
             // jamais cette requête.
             'ownerUnread' => fn () => ($o = $request->user('proprietaire')) instanceof Owner
-                ? app(ConversationService::class)->nonLus($o)
+                ? $this->conversations->nonLus($o)
                 : 0,
             // Le même compte côté voyageur, porté par sa rubrique
             // « Messages ». Paresseux pour la même raison : une page publique
             // n'a personne de connecté et ne paie donc jamais la requête.
             'travellerUnread' => fn () => ($u = $request->user('web'))
-                ? app(ConversationService::class)->nonLusVoyageur($u->email)
+                ? $this->conversations->nonLusVoyageur($u->email)
                 : 0,
         ]);
     }

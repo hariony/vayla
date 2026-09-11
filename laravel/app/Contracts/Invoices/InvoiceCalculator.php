@@ -2,6 +2,8 @@
 
 namespace App\Contracts\Invoices;
 
+use App\Data\Invoices\InvoiceData;
+use App\Data\Invoices\InvoiceHistoryData;
 use App\Models\Owner;
 use Illuminate\Support\Carbon;
 
@@ -13,9 +15,7 @@ use Illuminate\Support\Carbon;
  */
 interface InvoiceCalculator
 {
-    /** @return array<string, mixed> */
-    public function forOwner(Owner $owner, ?Carbon $month = null): array;
+    public function forOwner(Owner $owner, ?Carbon $month = null): InvoiceData;
 
-    /** @return array{encours: array<string, mixed>, factures: array<int, array<string, mixed>>} */
-    public function historique(Owner $owner, int $mois = 6): array;
+    public function historique(Owner $owner, int $mois = 6): InvoiceHistoryData;
 }

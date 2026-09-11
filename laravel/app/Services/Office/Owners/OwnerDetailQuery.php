@@ -7,6 +7,7 @@ use App\Contracts\Office\JournalReader;
 use App\Contracts\Repositories\InvoiceSettlementRepositoryInterface;
 use App\Contracts\Repositories\OfficeBookingRepositoryInterface;
 use App\Contracts\Repositories\OfficeOwnerRepositoryInterface;
+use App\Data\Invoices\InvoiceData;
 use App\Data\Office\BookingRowData;
 use App\Data\Office\ListingRowData;
 use App\Data\Office\Owners\OwnerDetailData;
@@ -48,10 +49,10 @@ final class OwnerDetailQuery
         $historique = $this->factures->historique($owner, 12);
 
         return new OwnerInvoicesData(
-            encours: $this->lignes->resume($historique['encours'], null),
+            encours: $this->lignes->resume($historique->encours, null),
             passees: array_map(
-                fn (array $f) => $this->lignes->resume($f, $reglements[substr($f['period']['from'], 0, 7)] ?? null),
-                $historique['factures'],
+                fn (InvoiceData $f) => $this->lignes->resume($f, $reglements[$f->period->mois()] ?? null),
+                $historique->factures,
             ),
         );
     }

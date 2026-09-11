@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\BookingNotFoundException;
 use App\Exceptions\DestinationNotFoundException;
 use App\Exceptions\ListingNotFoundException;
 use App\Exceptions\OfficeRefusal;
@@ -77,13 +78,13 @@ return Application::configure(basePath: dirname(__DIR__))
         // une panne : il revient à l'écran, avec la phrase qui dit quoi faire.
         $exceptions->renderable(fn (OfficeRefusal $e) => back()->with('erreur', $e->getMessage()));
 
-        // « Introuvable » est un fait métier, pas une panne. Les deux
-        // exceptions du domaine sortent donc en 404 des deux côtés : en JSON
+        // « Introuvable » est un fait métier, pas une panne. Les exceptions
+        // du domaine sortent donc en 404 des deux côtés : en JSON
         // pour le client mobile, qui doit lire un statut et non une page
         // d'erreur, et en HTML pour le site — sans quoi une URL d'annonce
         // périmée renverrait un 500 et serait indexée comme telle.
         $exceptions->renderable(function (
-            DestinationNotFoundException|ListingNotFoundException $e,
+            BookingNotFoundException|DestinationNotFoundException|ListingNotFoundException $e,
             Request $request
         ) {
             if ($request->expectsJson()) {

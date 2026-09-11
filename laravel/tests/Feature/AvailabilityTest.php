@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Data\DateRangeData;
 use App\Models\Listing;
 use App\Models\Unavailability;
 use App\Services\AvailabilityService;
@@ -38,7 +39,7 @@ class AvailabilityTest extends TestCase
         $blocked = app(AvailabilityService::class)->blocked($listing->fresh('unavailabilities'));
 
         foreach ($blocked as $p) {
-            $this->assertGreaterThanOrEqual(Carbon::today()->toDateString(), $p['to']);
+            $this->assertGreaterThanOrEqual(Carbon::today()->toDateString(), $p->to);
         }
     }
 
@@ -57,7 +58,7 @@ class AvailabilityTest extends TestCase
 
         // Le passé n'occupe pas le calendrier : la période commence aujourd'hui.
         $this->assertTrue(
-            $blocked->contains(fn (array $p) => $p['from'] === $aujourdhui),
+            $blocked->contains(fn (DateRangeData $p) => $p->from === $aujourdhui),
             'La période à cheval devrait être tronquée à aujourd\'hui.'
         );
     }
@@ -74,8 +75,8 @@ class AvailabilityTest extends TestCase
 
         $calendrier = app(AvailabilityService::class)->calendar($listing->fresh('unavailabilities'));
 
-        foreach ($calendrier['blocked'] as $p) {
-            $this->assertLessThanOrEqual($calendrier['to'], $p['from']);
+        foreach ($calendrier->blocked as $p) {
+            $this->assertLessThanOrEqual($calendrier->to, $p->from);
         }
     }
 

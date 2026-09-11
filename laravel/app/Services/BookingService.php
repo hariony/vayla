@@ -3,16 +3,20 @@
 namespace App\Services;
 
 use App\Contracts\Bookings\BookingCancellation;
+use App\Contracts\Repositories\BookingMessageRepositoryInterface;
+use App\Contracts\Repositories\BookingRepositoryInterface;
+use App\Contracts\Settings\SettingsStore;
+use App\Data\DateRangeData;
 use App\Data\SejourData;
+use App\DTOs\Bookings\BookingTermsDto;
+use App\DTOs\Bookings\NewBookingDto;
 use App\Enums\BookingStatus;
 use App\Enums\MessageAuthor;
 use App\Exceptions\BookingRefusedException;
 use App\Models\Booking;
-use App\Models\BookingMessage;
 use App\Models\Listing;
 use App\Models\StayConfirmation;
 use App\Services\Notifications\OwnerNotifier;
-use App\Services\Settings\SettingsService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -47,55 +51,28 @@ class BookingService implements BookingCancellation
     public function __construct(
         private AvailabilityService $availability,
         private OwnerNotifier $notifier,
-        private SettingsService $reglages,
+        private SettingsStore $reglages,
+        private BookingRepositoryInterface $reservations,
+        private BookingMessageRepositoryInterface $messages,
     ) {}
 
-    /**
-     * @param  array<string, mixed>  $data
-     *
-     * @throws BookingRefusedException
-     */
-    public function book(Listing $listing, array $data): Booking
+    /** @throws BookingRefusedException */
+    public function book(Listing $listing, NewBookingDto $demande): Booking
     {
-        $arrival = Carbon::parse($data['arrival'])->startOfDay();
-        $departure = Carbon::parse($data['departure'])->startOfDay();
-        $nights = $arrival->diffInDays($departure);
+        $arrival = Carbon::parse($demande->arrival)->startOfDay();
+        $departure = Carbon::parse($demande->departure)->startOfDay();
+        $nights = (int) $arrival->diffInDays($departure);
 
-        $this->guard($listing, $arrival, $departure, $nights, (int) ($data['guests'] ?? 1));
+        $this->guard($listing, $arrival, $departure, $nights, $demande->guests);
 
-        $booking = DB::transaction(function () use ($listing, $data, $arrival, $departure, $nights) {
-            // Verrou sur les réservations de l'annonce : sans lui, deux
-            // demandes simultanées passeraient toutes les deux le contrôle
-            // de chevauchement, fait avant l'écriture.
-            Booking::query()
-                ->where('listing_id', $listing->id)
-                ->whereIn('status', array_column(BookingStatus::blocking(), 'value'))
-                ->lockForUpdate()
-                ->get();
+        $booking = DB::transaction(function () use ($listing, $demande, $arrival, $departure, $nights) {
+            $this->reservations->verrouiller($listing);
 
             if ($this->overlaps($listing, $arrival, $departure)) {
                 throw new BookingRefusedException('Ces nuits viennent d\'être prises.');
             }
 
-            $rate = $this->reglages->commission();
-
-            $booking = Booking::create([
-                'reference' => $this->reference(),
-                'listing_id' => $listing->id,
-                'traveller' => $data['traveller'],
-                'traveller_phone' => $data['traveller_phone'],
-                'traveller_email' => $data['traveller_email'] ?? null,
-                'guests' => $data['guests'] ?? 1,
-                'message' => $data['message'] ?? null,
-                'arrival' => $arrival->toDateString(),
-                'departure' => $departure->toDateString(),
-                'nights' => $nights,
-                'price_per_night' => $listing->price,
-                'total' => $listing->price * $nights,
-                'commission_rate' => $rate,
-                'status' => BookingStatus::Pending,
-                'hold_expires_at' => now()->addHours((int) config('vayla.booking.hold_hours')),
-            ]);
+            $booking = $this->reservations->creer($listing, $demande, $this->termes($listing, $nights));
 
             /*
              * Le mot déposé avec la demande **ouvre le fil d'échange**.
@@ -103,12 +80,8 @@ class BookingService implements BookingCancellation
              * les mots d'un voyageur — et l'écran finirait par n'en montrer
              * qu'un des deux, en général celui qui n'a pas la réponse.
              */
-            if (trim((string) ($data['message'] ?? '')) !== '') {
-                BookingMessage::create([
-                    'booking_id' => $booking->id,
-                    'author' => MessageAuthor::Traveller,
-                    'body' => trim($data['message']),
-                ]);
+            if (trim((string) $demande->message) !== '') {
+                $this->messages->ecrire($booking, MessageAuthor::Traveller, trim($demande->message));
             }
 
             return $booking;
@@ -129,36 +102,10 @@ class BookingService implements BookingCancellation
         return $booking;
     }
 
-    /**
-     * Les nuits retirées du calendrier par une réservation.
-     *
-     * `departure` n'est pas incluse : une nuit appartient à sa date
-     * d'arrivée, et le jour du départ est réservable par le suivant. Bloquer
-     * la date de départ retirerait une nuit vendable à chaque réservation.
-     *
-     * @return array<int, array{from: string, to: string}>
-     */
-    public function blockedNights(Listing $listing): array
-    {
-        return $listing->bookings
-            ->filter(fn (Booking $b) => $b->status->blocksDates() && ! $this->isStale($b))
-            ->map(fn (Booking $b) => [
-                'from' => $b->arrival->toDateString(),
-                'to' => $b->departure->copy()->subDay()->toDateString(),
-            ])
-            ->values()
-            ->all();
-    }
-
     public function accept(Booking $booking): Booking
     {
         $this->assertOpen($booking);
-
-        $booking->update([
-            'status' => BookingStatus::Accepted,
-            'answered_at' => now(),
-            'hold_expires_at' => null,
-        ]);
+        $this->reservations->accepter($booking);
 
         return $booking;
     }
@@ -166,13 +113,7 @@ class BookingService implements BookingCancellation
     public function decline(Booking $booking, ?string $reason = null): Booking
     {
         $this->assertOpen($booking);
-
-        $booking->update([
-            'status' => BookingStatus::Declined,
-            'answered_at' => now(),
-            'hold_expires_at' => null,
-            'closed_reason' => $reason,
-        ]);
+        $this->reservations->refuser($booking, $reason);
 
         return $booking;
     }
@@ -183,11 +124,7 @@ class BookingService implements BookingCancellation
             throw new BookingRefusedException('Cette réservation est déjà close.');
         }
 
-        $booking->update([
-            'status' => BookingStatus::Cancelled,
-            'hold_expires_at' => null,
-            'closed_reason' => $reason,
-        ]);
+        $this->reservations->annuler($booking, $reason);
 
         return $booking;
     }
@@ -203,28 +140,7 @@ class BookingService implements BookingCancellation
             throw new BookingRefusedException('Seule une réservation acceptée peut être confirmée.');
         }
 
-        return DB::transaction(function () use ($booking, $confirmation) {
-            $confirmation->update(['booking_id' => $booking->id]);
-
-            $booking->update([
-                'status' => BookingStatus::Completed,
-                'completed_at' => $confirmation->confirmed_at ?? now(),
-            ]);
-
-            return $booking;
-        });
-
-        /*
-         * **Le message part après la transaction, jamais dedans.** Écrit à
-         * l'intérieur, il annoncerait une demande qui n'existe pas le jour où
-         * la transaction est annulée — et le propriétaire répondrait à un
-         * séjour introuvable.
-         *
-         * Sans cette ligne, tout le reste ne sert à rien : une demande a
-         * quarante-huit heures pour être répondue, et il faudrait que le
-         * propriétaire pense à ouvrir Vayla dans cette fenêtre.
-         */
-        $this->notifier->nouvelleDemande($booking->load('listing.owner'));
+        DB::transaction(fn () => $this->reservations->terminer($booking, $confirmation));
 
         return $booking;
     }
@@ -235,22 +151,24 @@ class BookingService implements BookingCancellation
      */
     public function releaseExpired(): int
     {
-        return Booking::query()
-            ->where('status', BookingStatus::Pending->value)
-            ->whereNotNull('hold_expires_at')
-            ->where('hold_expires_at', '<', now())
-            ->update([
-                'status' => BookingStatus::Expired->value,
-                'closed_reason' => 'Sans réponse du propriétaire',
-            ]);
+        return $this->reservations->expirerLesDemandes();
     }
 
-    /** Une demande dont le délai a coulé, mais que la commande n'a pas encore vue. */
-    private function isStale(Booking $booking): bool
+    /**
+     * **Le prix et le taux sont figés à la réservation** : le propriétaire peut
+     * réévaluer son tarif, le taux peut monter — la ligne déjà engagée ne bouge
+     * pas.
+     */
+    private function termes(Listing $listing, int $nights): BookingTermsDto
     {
-        return $booking->status === BookingStatus::Pending
-            && $booking->hold_expires_at !== null
-            && $booking->hold_expires_at->isPast();
+        return new BookingTermsDto(
+            reference: $this->reference(),
+            nights: $nights,
+            pricePerNight: (int) $listing->price,
+            total: (int) $listing->price * $nights,
+            commissionRate: $this->reglages->commission(),
+            holdExpiresAt: Carbon::now()->addHours((int) config('vayla.booking.hold_hours')),
+        );
     }
 
     private function assertOpen(Booking $booking): void
@@ -301,7 +219,7 @@ class BookingService implements BookingCancellation
         // deuxième écriture, et deux écritures d'une même règle finissent
         // toujours par diverger.
         return collect($this->availability->blocked($listing->fresh(['unavailabilities', 'bookings'])))
-            ->contains(fn (array $p) => $sejour->couvre($p['from'], $p['to']));
+            ->contains(fn (DateRangeData $p) => $sejour->couvre($p->from, $p->to));
     }
 
     /**
@@ -313,7 +231,7 @@ class BookingService implements BookingCancellation
         do {
             $code = 'VY-'.Str::upper(Str::password(5, symbols: false, numbers: true, letters: true));
             $code = strtr($code, ['O' => 'R', '0' => '4', 'I' => 'K', '1' => '7', 'L' => 'M']);
-        } while (Booking::where('reference', $code)->exists());
+        } while ($this->reservations->referenceExiste($code));
 
         return $code;
     }

@@ -35,9 +35,9 @@ final readonly class ListingFicheDto
     ) {}
 
     /**
-     * Les colonnes de `listings`. **La frontière du lot 3** : `OwnerListingService`
-     * prend encore un tableau ; elle disparaîtra quand l'espace propriétaire
-     * passera aux DTO.
+     * Les colonnes de `listings`, pour les deux dépôts qui écrivent une fiche
+     * (celui du propriétaire, celui du back-office). `featured` n'y est que si
+     * le formulaire le porte.
      *
      * @return array<string, mixed>
      */

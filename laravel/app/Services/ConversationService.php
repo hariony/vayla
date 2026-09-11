@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Contracts\Bookings\BookingThread;
 use App\Contracts\Repositories\BookingMessageRepositoryInterface;
+use App\Data\Bookings\ConversationData;
+use App\Data\Bookings\MessageData;
 use App\Enums\MessageAuthor;
 use App\Models\Booking;
 use App\Models\BookingMessage;
@@ -43,19 +45,13 @@ class ConversationService implements BookingThread
      * par l'écran du propriétaire et par celui du voyageur, et c'est la seule
      * chose qui les distingue.
      *
-     * @return array<int, array<string, mixed>>
+     * @return list<MessageData>
      */
     public function fil(Booking $booking, MessageAuthor $lecteur): array
     {
         return $this->messages->fil($booking)
-            ->map(fn (BookingMessage $m) => [
-                'id' => $m->id,
-                'author' => $m->author->value,
-                'authorLabel' => $m->author->label(),
-                'moi' => $m->author === $lecteur,
-                'body' => $m->body,
-                'at' => $m->created_at->toIso8601String(),
-            ])
+            ->map(fn (BookingMessage $m) => MessageData::fromModel($m, $lecteur))
+            ->values()
             ->all();
     }
 
@@ -104,7 +100,7 @@ class ConversationService implements BookingThread
     /**
      * La boîte du propriétaire : une ligne par réservation qui porte un fil.
      *
-     * @return array<int, array<string, mixed>>
+     * @return list<ConversationData>
      */
     public function boiteDuProprietaire(Owner $owner): array
     {
@@ -121,7 +117,7 @@ class ConversationService implements BookingThread
      * encore le nom au moment de la demande — et le propriétaire n'a pas à
      * apparaître dans une liste avant d'avoir accepté.
      *
-     * @return array<int, array<string, mixed>>
+     * @return list<ConversationData>
      */
     public function boiteDuVoyageur(string $email): array
     {
@@ -137,36 +133,34 @@ class ConversationService implements BookingThread
      * Ne montrer que le dernier message reçu ferait disparaître sa propre
      * réponse : on ne saurait plus si on a répondu, ce qui est justement la
      * question qu'on se pose en ouvrant une boîte.
-     *
-     * @return array<string, mixed>
      */
-    private function ligne(Booking $booking, MessageAuthor $lecteur, ?string $sujet): array
+    private function ligne(Booking $booking, MessageAuthor $lecteur, ?string $sujet): ConversationData
     {
         $dernier = $booking->messages->last();
         $lu = $lecteur === MessageAuthor::Traveller
             ? $booking->traveller_read_at
             : $booking->owner_read_at;
 
-        return [
-            'reference' => $booking->reference,
-            'sujet' => $sujet,
-            'listing' => $booking->listing?->title,
-            'place' => $booking->listing?->destination?->name,
-            'arrival' => $booking->arrival->toDateString(),
-            'departure' => $booking->departure->toDateString(),
-            'statut' => $booking->status->value,
-            'statutLabel' => $booking->status->label(),
-            'auteur' => $dernier?->author->value,
-            'auteurLabel' => $dernier?->author->label(),
-            'extrait' => $dernier ? $this->extrait($dernier->body) : null,
-            'quand' => $dernier?->created_at->toIso8601String(),
+        return new ConversationData(
+            reference: $booking->reference,
+            sujet: $sujet,
+            listing: $booking->listing?->title,
+            place: $booking->listing?->destination?->name,
+            arrival: $booking->arrival->toDateString(),
+            departure: $booking->departure->toDateString(),
+            statut: $booking->status->value,
+            statutLabel: $booking->status->label(),
+            auteur: $dernier?->author->value,
+            auteurLabel: $dernier?->author->label(),
+            extrait: $dernier ? $this->extrait($dernier->body) : null,
+            quand: $dernier?->created_at->toIso8601String(),
             // Non lu : le dernier mot vient de l'autre partie, et il est
             // postérieur à la dernière ouverture du fil.
-            'nonLu' => $dernier !== null
+            nonLu: $dernier !== null
                 && $dernier->author !== $lecteur
                 && ($lu === null || $dernier->created_at->greaterThan($lu)),
-            'messages' => $booking->messages->count(),
-        ];
+            messages: $booking->messages->count(),
+        );
     }
 
     /**

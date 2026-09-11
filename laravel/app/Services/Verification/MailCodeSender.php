@@ -2,7 +2,9 @@
 
 namespace App\Services\Verification;
 
+use App\Contracts\Verification\CodeSender;
 use App\Enums\VerificationKind;
+use App\Exceptions\CodeSendingFailed;
 use App\Mail\CodeMail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;

@@ -2,6 +2,7 @@
 
 namespace App\Contracts\Bookings;
 
+use App\Data\Bookings\MessageData;
 use App\Enums\MessageAuthor;
 use App\Models\Booking;
 use App\Models\BookingMessage;
@@ -12,7 +13,7 @@ use App\Models\BookingMessage;
  */
 interface BookingThread
 {
-    /** @return array<int, array<string, mixed>> */
+    /** @return list<MessageData> */
     public function fil(Booking $booking, MessageAuthor $lecteur): array;
 
     public function ecrire(Booking $booking, MessageAuthor $auteur, string $corps): BookingMessage;

@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Data\SejourData;
 use App\Http\Requests\ListingIndexRequest;
+use App\Http\Requests\ListingShowRequest;
 use App\Services\CatalogueService;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -27,17 +26,11 @@ class ListingController extends Controller
 
     /**
      * Le séjour éventuellement porté par l'URL est **une suggestion, pas un
-     * critère** : il pré-remplit le calendrier de la fiche pour que le
-     * voyageur venu du moteur de recherche ne ressaisisse pas ses dates. Il
-     * n'est donc pas validé ici — `SejourData::depuis()` rend `null` sur
-     * n'importe quoi, et le composant refuse de son côté un séjour qui
-     * chevauche une nuit prise. Une suggestion irrecevable ne pré-remplit
-     * rien ; elle ne fait jamais échouer la page.
+     * critère** (`ListingShowRequest`) : le composant refuse de son côté un
+     * séjour qui chevauche une nuit prise.
      */
-    public function show(Request $request, string $slug): Response
+    public function show(ListingShowRequest $request, string $slug): Response
     {
-        $sejour = SejourData::depuis($request->query('arrival'), $request->query('departure'));
-
-        return Inertia::render('Listings/Show', $this->service->show($slug, $sejour));
+        return Inertia::render('Listings/Show', $this->service->show($slug, $request->sejour()));
     }
 }

@@ -2,7 +2,9 @@
 
 namespace App\Services\Verification;
 
+use App\Contracts\Verification\CodeSender;
 use App\Enums\VerificationKind;
+use App\Exceptions\CodeSendingFailed;
 use App\Support\Telephone;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;

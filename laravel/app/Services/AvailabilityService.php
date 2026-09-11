@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Data\DateRangeData;
+use App\Data\ListingCalendarData;
 use App\Models\Listing;
 use Illuminate\Support\Carbon;
 
@@ -66,7 +68,7 @@ class AvailabilityService
     /**
      * Les périodes occupées à venir, bornées à l'horizon.
      *
-     * @return array<int, array{from: string, to: string}>
+     * @return list<DateRangeData>
      */
     public function blocked(Listing $listing): array
     {
@@ -88,31 +90,27 @@ class AvailabilityService
             ->concat($this->fromBookings($listing))
             ->filter(fn (array $p) => $p['to'] >= $debut->toDateString()
                 && $p['from'] <= $fin->toDateString())
-            ->map(fn (array $p) => [
+            ->map(fn (array $p) => new DateRangeData(
                 // Une période commencée avant aujourd'hui est tronquée : le
                 // passé n'a pas à occuper le calendrier.
-                'from' => max($p['from'], $debut->toDateString()),
-                'to' => min($p['to'], $fin->toDateString()),
-            ])
+                from: max($p['from'], $debut->toDateString()),
+                to: min($p['to'], $fin->toDateString()),
+            ))
             ->sortBy('from')
             ->values()
             ->all();
     }
 
-    /** @return array<string, mixed> */
-    public function calendar(Listing $listing): array
+    public function calendar(Listing $listing): ListingCalendarData
     {
-        return [
-            'blocked' => $this->blocked($listing),
-            'from' => Carbon::today()->toDateString(),
-            'to' => Carbon::today()->addMonths(self::MOIS)->toDateString(),
-            'minNights' => $listing->min_nights,
-            'maxNights' => $listing->max_nights,
-            'price' => $listing->price,
-            // La saison voyage avec les disponibilités : les deux se lisent
-            // sur la même grille, les séparer obligerait le front à les
-            // recoller mois par mois.
-            'season' => $this->seasons->payload($listing->destination),
-        ];
+        return new ListingCalendarData(
+            blocked: $this->blocked($listing),
+            from: Carbon::today()->toDateString(),
+            to: Carbon::today()->addMonths(self::MOIS)->toDateString(),
+            minNights: (int) $listing->min_nights,
+            maxNights: $listing->max_nights,
+            price: (int) $listing->price,
+            season: $this->seasons->saison($listing->destination),
+        );
     }
 }

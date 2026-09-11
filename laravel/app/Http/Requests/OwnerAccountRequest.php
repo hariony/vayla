@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\DTOs\Owners\OwnerAccountDto;
+use App\Enums\MobileMoneyOperator;
 use App\Rules\TelephoneValide;
 use App\Support\Telephone;
 use Illuminate\Foundation\Http\FormRequest;
@@ -39,17 +41,6 @@ use Illuminate\Validation\Rule;
  */
 class OwnerAccountRequest extends FormRequest
 {
-    /**
-     * Les trois opérateurs qui existent à Madagascar, et rien d'autre.
-     *
-     * **Ce sont les libellés eux-mêmes, pas des clés.** La colonne porte déjà
-     * « MVola » et « Orange Money » — ceux que le seeder écrit et que la
-     * facture affiche telle quelle. Introduire des clés ici aurait obligé à
-     * une table de correspondance et à une migration des lignes existantes,
-     * pour trois valeurs qui ne changeront pas.
-     */
-    public const OPERATEURS = ['MVola', 'Orange Money', 'Airtel Money'];
-
     public function rules(): array
     {
         $moi = $this->user('proprietaire')?->id;
@@ -65,7 +56,7 @@ class OwnerAccountRequest extends FormRequest
             'mobile_money' => ['nullable', 'string', 'max:40', TelephoneValide::mobile()],
             // Une liste, pas un champ libre : un opérateur écrit de trois
             // façons est un opérateur qu'on ne peut plus regrouper.
-            'mobile_money_operator' => ['nullable', Rule::in(self::OPERATEURS)],
+            'mobile_money_operator' => ['nullable', Rule::enum(MobileMoneyOperator::class)],
         ];
     }
 
@@ -86,5 +77,19 @@ class OwnerAccountRequest extends FormRequest
             'phone.unique' => 'Ce numéro est déjà celui d’un autre compte Vayla.',
             'mobile_money_operator.in' => 'Choisissez un opérateur dans la liste.',
         ];
+    }
+
+    public function toDto(): OwnerAccountDto
+    {
+        $texte = fn (string $champ) => $this->filled($champ) ? trim($this->string($champ)->toString()) : null;
+
+        return new OwnerAccountDto(
+            name: trim($this->string('name')->toString()),
+            phone: $this->string('phone')->toString(),
+            city: $texte('city'),
+            address: $texte('address'),
+            mobileMoney: $texte('mobile_money'),
+            operator: $this->enum('mobile_money_operator', MobileMoneyOperator::class),
+        );
     }
 }

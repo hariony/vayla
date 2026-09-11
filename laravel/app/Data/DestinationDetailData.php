@@ -24,16 +24,14 @@ class DestinationDetailData extends Data
 {
     /**
      * @param  array<int, ListingData>  $listings
-     * @param  array<int, array<string, mixed>>  $trust
-     * @param  array<string, mixed>  $season
-     * @param  array{min: int|null, max: int|null}  $prices
+     * @param  list<TrustCountData>  $trust  les quatre barreaux, zéro compris
      */
     public function __construct(
         public readonly DestinationData $destination,
         public readonly AccessData $access,
         public readonly array $listings,
         public readonly array $trust,
-        public readonly array $season,
-        public readonly array $prices,
+        public readonly SeasonData $season,
+        public readonly PriceRangeData $prices,
     ) {}
 }

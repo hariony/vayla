@@ -2,6 +2,8 @@
 
 namespace App\Enums;
 
+use App\Data\OptionData;
+
 /**
  * Pourquoi un logement n'est pas libre sur une période.
  *
@@ -48,9 +50,6 @@ enum BlockReason: string
     /** Le vocabulaire publié au front : une seule source pour les libellés. */
     public static function options(): array
     {
-        return array_map(
-            fn (self $r) => ['value' => $r->value, 'label' => $r->label()],
-            self::cases(),
-        );
+        return array_map(fn (self $r) => new OptionData($r->value, $r->label()), self::cases());
     }
 }

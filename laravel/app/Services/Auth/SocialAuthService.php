@@ -2,13 +2,12 @@
 
 namespace App\Services\Auth;
 
+use App\Contracts\Repositories\SocialAccountRepositoryInterface;
+use App\DTOs\Auth\SocialIdentityDto;
 use App\Enums\EspaceSocial;
-use App\Enums\SocialProvider;
-use App\Models\SocialAccount;
+use App\Exceptions\LiaisonRefusee;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Laravel\Socialite\Contracts\User as SocialiteUser;
 
 /**
  * Rattacher une identité sociale à un compte Vayla.
@@ -40,46 +39,31 @@ use Laravel\Socialite\Contracts\User as SocialiteUser;
  */
 class SocialAuthService
 {
-    /**
-     * `compte` vaut `null` dans un seul cas : un **propriétaire inconnu**. Son
-     * compte exige un numéro joignable, que le fournisseur ne donne pas ; il
-     * passe par la fiche, qui crée tout d'un coup.
-     *
-     * @return array{compte: Model|null, nouveau: bool}
-     *
-     * @throws LiaisonRefusee quand l'adresse n'est pas garantie par le fournisseur
-     */
-    public function rattacher(SocialProvider $provider, SocialiteUser $identite, EspaceSocial $espace): array
-    {
-        $id = (string) $identite->getId();
-        $email = $this->adresse($identite);
-        $brut = $identite->user ?? [];
-        $garantie = $email !== null && $provider->garantitLAdresse(is_array($brut) ? $brut : []);
+    public function __construct(
+        private SocialAccountRepositoryInterface $liens,
+    ) {}
 
+    /** @throws LiaisonRefusee une adresse déjà connue, que le fournisseur n'atteste pas */
+    public function rattacher(SocialIdentityDto $identite, EspaceSocial $espace): SocialAttachment
+    {
         $modele = $espace->modele();
 
-        return DB::transaction(function () use ($provider, $identite, $id, $email, $garantie, $modele, $espace) {
+        return DB::transaction(function () use ($identite, $modele, $espace) {
             // ── 1. L'identité est déjà connue **dans cet espace**. Le type est
             // dans la clé : la même personne peut être voyageuse et
             // propriétaire avec le même compte Google, et ce sont bien deux
             // identités distinctes.
-            $lien = SocialAccount::query()
-                ->where('compte_type', $modele)
-                ->where('provider', $provider->value)
-                ->where('provider_user_id', $id)
-                ->first();
+            if ($lien = $this->liens->lien($modele, $identite)) {
+                $this->liens->rafraichir($lien, $identite);
 
-            if ($lien) {
-                $this->rafraichir($lien, $identite, $email, $garantie);
-
-                return ['compte' => $lien->compte, 'nouveau' => false];
+                return new SocialAttachment($lien->compte, nouveau: false);
             }
 
             // ── 2 et 3. Une adresse désigne peut-être un compte existant.
-            $existant = $email ? $modele::query()->where('email', $email)->first() : null;
+            $existant = $identite->email ? $this->liens->compteParEmail($modele, $identite->email) : null;
 
-            if ($existant && ! $garantie) {
-                throw new LiaisonRefusee($provider, $email);
+            if ($existant && ! $identite->verifie) {
+                throw new LiaisonRefusee($identite->provider, $identite->email);
             }
 
             // **Un propriétaire ne se crée pas ici.** `owners.phone` est
@@ -89,87 +73,19 @@ class SocialAuthService
             // sur la fiche, qui crée le compte **et** le lien, exactement comme
             // pour celui qui arrive par un code.
             if (! $existant && $espace === EspaceSocial::Proprietaire) {
-                return ['compte' => null, 'nouveau' => true];
+                return new SocialAttachment(null, nouveau: true);
             }
 
-            $compte = $existant ?? $this->creer($modele, $identite, $email, $garantie);
+            $compte = $existant ?? $this->liens->creerCompte($modele, $identite);
+            $this->liens->lier($compte, $identite);
 
-            $compte->socialAccounts()->create([
-                'provider' => $provider->value,
-                'provider_user_id' => $id,
-                'email' => $email,
-                'name' => $identite->getName(),
-                'avatar_url' => $identite->getAvatar(),
-                'email_verified' => $garantie,
-            ]);
-
-            return ['compte' => $compte, 'nouveau' => $existant === null];
+            return new SocialAttachment($compte, nouveau: $existant === null);
         });
     }
 
-    /**
-     * Lier une identité à un compte **déjà créé**.
-     *
-     * Sert au propriétaire, dont le compte naît sur la fiche et non au retour
-     * du fournisseur. Le lien est posé là, une fois le numéro connu.
-     */
-    public function lier(Model $compte, SocialProvider $provider, array $identite): void
+    /** Pose le lien sur un compte qui vient de naître — le propriétaire, après sa fiche. */
+    public function lier(Model $compte, SocialIdentityDto $identite): void
     {
-        $compte->socialAccounts()->firstOrCreate(
-            ['provider' => $provider->value, 'provider_user_id' => $identite['id']],
-            [
-                'email' => $identite['email'] ?? null,
-                'name' => $identite['name'] ?? null,
-                'avatar_url' => $identite['avatar'] ?? null,
-                'email_verified' => (bool) ($identite['verifie'] ?? false),
-            ]
-        );
-    }
-
-    /**
-     * Ce qu'on accepte de mettre à jour à chaque connexion : rien de critique.
-     *
-     * **Le nom d'Apple n'arrive qu'une fois.** Il n'est transmis qu'à la
-     * toute première autorisation ; ensuite il est absent. On ne l'écrase donc
-     * jamais avec du vide — sinon la deuxième connexion effacerait ce que la
-     * première avait appris.
-     */
-    private function rafraichir(SocialAccount $lien, SocialiteUser $identite, ?string $email, bool $garantie): void
-    {
-        $lien->fill(array_filter([
-            'name' => $identite->getName(),
-            'avatar_url' => $identite->getAvatar(),
-            'email' => $email,
-        ]) + ['email_verified' => $garantie])->save();
-
-        // Le compte Vayla ne prend un nom que s'il n'en avait pas : il est
-        // demandé plus tard, et l'utilisateur a pu le corriger.
-        if (! $lien->compte->name && $identite->getName()) {
-            $lien->compte->forceFill(['name' => $identite->getName()])->save();
-        }
-    }
-
-    private function creer(string $modele, SocialiteUser $identite, ?string $email, bool $garantie): Model
-    {
-        $compte = $modele::create([
-            'name' => $identite->getName(),
-            'email' => $email,
-        ]);
-
-        // L'adresse n'est marquée vérifiée que si le fournisseur l'atteste.
-        // Sans ça, on lui prêterait notre propre preuve — celle du code.
-        if ($email && $garantie) {
-            $compte->forceFill(['email_verified_at' => Carbon::now()])->save();
-        }
-
-        return $compte;
-    }
-
-    /** Les adresses vivent en minuscules : une boîte, un compte. */
-    private function adresse(SocialiteUser $identite): ?string
-    {
-        $email = $identite->getEmail();
-
-        return $email ? mb_strtolower(trim($email)) : null;
+        $this->liens->lier($compte, $identite);
     }
 }

@@ -594,7 +594,9 @@ En une phrase par couche :
   part (`…Query`). Transactions et journal ici.
 - **`Contracts`** : toute dépendance métier s'injecte par son interface — `Contracts/Repositories`
   pour les données, `Contracts/Photos` (traitement d'image, stockage), `Contracts/Destinations`,
-  `Contracts/Office` (journal, mots de passe), `Contracts/Settings`, `Contracts/Ai`. Liaisons dans
+  `Contracts/Office` (journal, mots de passe), `Contracts/Settings`, `Contracts/Ai`,
+  `Contracts/Currency` (le taux de change), `Contracts/Verification` (les canaux de code),
+  `Contracts/Listings`, `Contracts/Invoices`, `Contracts/Bookings`. Liaisons dans
   `AppServiceProvider::register()`. Des interfaces
   **étroites** : la photothèque a son `PhotoLibraryRepositoryInterface` plutôt que d'alourdir celui
   de la lecture publique.
@@ -604,8 +606,10 @@ En une phrase par couche :
 - **`Models`** : relations, casts, scopes simples. **Les règles qui dépendent d'une valeur vivent
   sur l'enum** (`PhotoProvenance`, `PhotoLicence`, `BookingOutcome`, `StatsPeriod`, comme
   `TrustLevel`) : testables sans base.
-- **`Exceptions`** : les refus métier (`OfficeRefusal`, `OfficeThrottled`…), jamais rangés avec
-  les services qui les lèvent.
+- **`Exceptions`** : les refus métier (`OfficeRefusal`, `OfficeThrottled`, `BookingRefusedException`,
+  `PhotoRefusedException`, `CodeThrottled`, `LiaisonRefusee`…) et les « introuvable » qui sortent en
+  404 (`ListingNotFoundException`, `DestinationNotFoundException`, `BookingNotFoundException`,
+  gestionnaire unique dans `bootstrap/app.php`), jamais rangés avec les services qui les lèvent.
 - **`Middleware`** : ce qui traverse tous les écrans (compteurs de la colonne, racine des URL),
   sous les mêmes règles qu'un contrôleur — `OfficeContext` passe par `OfficeCountersQuery`.
 
@@ -617,19 +621,43 @@ Deux pièges rencontrés en appliquant ces règles :
   objet `Data` y reviendrait en `__PHP_Incomplete_Class`. `SitePages` met en cache des tableaux et
   construit les `Data` à la lecture. Même règle que la session, sérialisée en JSON.
 
-**La mise en conformité avance par lots, et `ArchitectureTest` la tient.** Lot 1 (fait) : la
-photothèque, les demandes de séjour, la galerie des destinations, le traitement des photos. Lot 2
-(fait) : **tout le back-office** — contenu, modération, réservations, propriétaires, factures,
-journal, équipe, porte et compte, statistiques, pages et textes du site, compteurs de la colonne —
-et `/ai/chat`. Le test liste les contrôleurs, middlewares et services conformes et y interdit
-Eloquent (lecture comme écriture), le SQL, la validation en ligne et la Request dans un service ;
-chaque lot suivant y ajoute ses fichiers.
+**Tout le backend suit ces règles, et `ArchitectureTest` les tient sur des dossiers entiers** —
+`Http/Controllers`, `Http/Middleware`, `Services`, `Console/Commands` : un fichier qu'on ajoute est
+tenu d'emblée. Le test y interdit Eloquent (lecture comme écriture), le SQL, la validation en
+ligne et la Request dans un service. La mise en conformité s'est faite en trois lots : la
+photothèque et les demandes de séjour (1), le back-office (2), puis le site public, la
+réservation, les deux espaces et l'inscription (3). Seules exceptions, nommées dans le test : les
+deux commandes qui fabriquent un jeu de démonstration (`vayla:historique-demo`,
+`vayla:comptes-test`), locales et assimilées aux seeders.
 
-**Ce qui n'y est pas encore** — le site public, l'espace propriétaire, l'espace client, les
-réservations, l'inscription (lot 3) — suit l'ancienne manière : ne pas le copier comme modèle. Le
-back-office les atteint par des **contrats de frontière** (`ListingDrafting`, `ListingGallery`,
-`InvoiceCalculator`, `BookingCancellation`, `BookingThread`, `OwnerAccess`) qui prennent encore des
-tableaux : c'est au lot 3 de les resserrer en DTO, sans toucher aux appelants du back-office.
+Ce que le lot 3 a posé, et qui sert partout :
+
+- **`OwnerSpaceRepository` + `OwnerSpace` sont la portée de l'espace propriétaire.** Toute
+  réservation, tout logement s'y cherche **avec le propriétaire** ; celui d'un confrère répond
+  exactement comme ce qui n'existe pas (404 par `BookingNotFoundException` /
+  `ListingNotFoundException`). Le contrôle vivait dans chaque contrôleur ; il vit maintenant à un
+  endroit.
+- **`DemoMode` est le seul lecteur de `vayla.demo`** : les services le reçoivent, les contrôleurs
+  et l'API ne lisent plus la configuration.
+- **Les pages sortent en `Data` jusque dans leurs sous-parties** — le calendrier
+  (`ListingCalendarData`, avec `sansBornes()` pour l'espace propriétaire), la saison
+  (`SeasonData`), la facture (`InvoiceData`), le fil (`MessageData`), la fiche d'annonce
+  (`ListingFormData`, reprise par le back-office via `champs()`).
+- **Les contrats partagés avec le back-office prennent des DTO** : `ListingDrafting` reçoit un
+  `ListingFicheDto` (le même que celui du back-office, construit par `OwnerListingRequest` et
+  hérité par `OfficeListingRequest`), `InvoiceCalculator` rend des `InvoiceData`.
+- **Un refus d'image est une `PhotoRefusedException`**, pas une `RuntimeException` quelconque : un
+  contrôleur qui attrapait `RuntimeException` pour afficher « il faut 1 200 pixels » avalait aussi
+  le `ListingNotFoundException` d'une annonce qui n'était pas la sienne, et répondait 302 au lieu
+  de 404.
+
+Deux pièges de plus :
+
+- **`champs()` s'écrit à la main, jamais `get_object_vars($this)`** : sur un `Data`, il rend aussi
+  les propriétés internes de spatie/laravel-data, et l'étalement dans un constructeur échoue.
+- **Une sous-classe de FormRequest ne peut pas redéfinir `toDto()` avec un autre type de retour.**
+  `OfficeListingRequest` hérite d'`OwnerListingRequest` : le propriétaire a `toDraftDto()`, le
+  back-office `toDto()`, et les deux partagent `ficheDto()`.
 
 ### Domaine
 
@@ -1330,7 +1358,7 @@ sa présence — Vayla ne constitue pas de dossier.
 `$request->user()`, c'est-à-dire le **modèle entier** : pour un compte propriétaire, dont `$hidden`
 ne masque que la clé d'accès et le mot de passe, cela publiait l'adresse exacte, l'e-mail, la date
 de dernière connexion et l'état de vérification dans le `data-page` de **chaque** écran. La prop est
-maintenant une **projection explicite**, et la **garde est nommée** (`$request->user('web')`) :
+maintenant une **projection explicite** (`AuthUserData`, `AuthOwnerData`), et la **garde est nommée** (`$request->user('web')`) :
 sans elle, `actingAs($owner, 'proprietaire')` change la garde par défaut et un propriétaire se
 retrouve publié dans `auth.user`.
 
@@ -1906,8 +1934,22 @@ Pour ajouter un texte modifiable : une entrée au catalogue (clé, libellé, bor
 
 #### Les statistiques
 
-`/statistiques` (`Services/Office/Stats`, `Office/Stats/Index`) — des courbes, **et rien que des
-comptes définis**. Chaque graphique écrit sous son titre ce qu'il compte et à quelle date il le
+`/statistiques` (`Services/Office/Stats`, `Pages/Office/Stats`) — des courbes, **et rien que des
+comptes définis**.
+
+**Trois écrans, rangés en sous-menu sous « Statistiques »** : *Demandes* (`/statistiques`, issue,
+réponse, délai, destinations), *Séjours et commission* (`/statistiques/sejours`), *Catalogue et
+inscriptions* (`/statistiques/catalogue`). Tout tenait sur une page qui gonflait à chaque
+graphique. Séjours et commission partagent un écran parce qu'ils se rangent tous deux au mois du
+départ : les chiffres de l'un expliquent ceux de l'autre. Chaque écran a sa requête
+(`RequestStatsQuery`, `StayStatsQuery`, `CatalogueStatsQuery`) et ne calcule que ce qu'il montre ;
+`StatsFrame` leur donne le cadre commun (période, démonstration, mois), et
+`Partials/StatsHeader.vue` l'affiche.
+
+**Le sous-menu** (`sous` dans `Support/office.js`) **s'ouvre sous sa rubrique quand on y est**, et
+la rubrique mène au premier écran : la colonne reste courte, et les autres se découvrent au premier
+clic. **Il emporte la période et la démonstration** d'un écran à l'autre — changer d'écran ne fait
+pas repartir sur douze mois. Sous 960 px, il suit sa rubrique sur la rangée qui défile. Chaque graphique écrit sous son titre ce qu'il compte et à quelle date il le
 range, parce que deux écrans qui ne tombent pas sur le même chiffre font douter des deux :
 
 - une **demande** au mois où elle a été **faite**, par issue (acceptée, en attente, refusée,
@@ -1934,8 +1976,9 @@ propriétaire pour une somme qu'il ne doit pas encore. Un séjour confirmé **ap
 de son mois rouvre un reste sur ce mois. Les mois sans séjour ni règlement sortent du tableau,
 et l'écran dit combien. Le reste prend la terre ; le lagon n'y entre pas.
 
-**La grille est en `grid-auto-flow: dense`** : un bloc pleine largeur ne laisse pas de case vide
-derrière lui, à deux colonnes comme à trois.
+**La grille (`.of-graphes` dans `app.scss`) est en `grid-auto-flow: dense`** : un bloc pleine
+largeur (`.of-graphes__large`) ne laisse pas de case vide derrière lui, à deux colonnes comme à
+trois.
 
 **La démonstration est incluse tant qu'elle existe, et l'écran le dit** dans un bandeau, avec un
 bouton pour la retirer (`?demo=0`) : des courbes nourries de réservations fictives ne doivent
@@ -2103,7 +2146,7 @@ Conséquence assumée : deux écrans peuvent différer d'un euro sur des lignes 
 séparément ; le signe « ≈ » le dit, et Vayla n'encaisse aucun de ces montants.
 
 **Le taux vient d'une interface, pas d'un `config()` semé dans les vues** :
-`App\Services\Currency\ExchangeRateProvider`, aujourd'hui `ConfigExchangeRate`
+`App\Contracts\Currency\ExchangeRateProvider`, aujourd'hui `ConfigExchangeRate`
 (`VAYLA_EUR_RATE`, `VAYLA_EUR_RATE_DATE`), demain une API de change — seule la liaison
 d'`AppServiceProvider` changera. L'implémentation réseau devra **ne jamais lever ni bloquer une
 page** : une fiche de logement qui échoue parce qu'un service de change ne répond pas serait une

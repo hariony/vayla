@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\DTOs\Auth\TravellerAccountDto;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -52,5 +53,12 @@ class TravellerAccountRequest extends FormRequest
             'last_name.min' => 'Un nom d’au moins deux caractères, ou rien du tout.',
             'phone.min' => 'Un numéro joignable, ou rien du tout.',
         ];
+    }
+
+    public function toDto(): TravellerAccountDto
+    {
+        $texte = fn (string $champ) => $this->filled($champ) ? trim($this->string($champ)->toString()) : null;
+
+        return new TravellerAccountDto($texte('first_name'), $texte('last_name'), $texte('phone'));
     }
 }

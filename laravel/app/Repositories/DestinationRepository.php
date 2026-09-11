@@ -25,6 +25,11 @@ class DestinationRepository implements DestinationRepositoryInterface
         return Destination::query()->with('photo')->where('slug', $slug)->first();
     }
 
+    public function findWithGallery(string $slug): ?Destination
+    {
+        return Destination::query()->with(['photo', 'galerie'])->where('slug', $slug)->first();
+    }
+
     public function countListings(bool $includeDemo): array
     {
         $rows = Listing::query()

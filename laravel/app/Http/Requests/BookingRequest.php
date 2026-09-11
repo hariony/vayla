@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\DTOs\Bookings\NewBookingDto;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Carbon;
 
 /**
  * Validation d'une réservation.
@@ -45,5 +47,18 @@ class BookingRequest extends FormRequest
             'arrival.after_or_equal' => 'La date d\'arrivée est passée.',
             'departure.after' => 'Le départ doit être après l\'arrivée.',
         ];
+    }
+
+    public function toDto(): NewBookingDto
+    {
+        return new NewBookingDto(
+            traveller: trim($this->string('traveller')->toString()),
+            travellerPhone: trim($this->string('traveller_phone')->toString()),
+            travellerEmail: $this->filled('traveller_email') ? trim($this->string('traveller_email')->toString()) : null,
+            guests: $this->integer('guests'),
+            arrival: Carbon::parse($this->string('arrival')->toString())->toDateString(),
+            departure: Carbon::parse($this->string('departure')->toString())->toDateString(),
+            message: $this->filled('message') ? $this->string('message')->toString() : null,
+        );
     }
 }

@@ -2,11 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Data\SejourData;
-use App\Enums\BlockReason;
 use App\Exceptions\CalendarRefusedException;
 use App\Http\Requests\OwnerBlockRequest;
-use App\Models\Listing;
 use App\Services\OwnerCalendarService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -35,24 +32,19 @@ class OwnerCalendarController extends Controller
 
     public function show(Request $request, string $slug): Response
     {
-        return Inertia::render('Owner/Calendar', $this->calendrier->payload($this->logement($request, $slug)));
+        return Inertia::render('Owner/Calendar', $this->calendrier->page($request->user('proprietaire'), $slug));
     }
 
     public function store(OwnerBlockRequest $request, string $slug): RedirectResponse
     {
-        $listing = $this->logement($request, $slug);
-
-        // Les dates sont déjà validées ; `SejourData` n'est pas ici un
-        // garde-fou de plus, c'est le seul endroit du dépôt qui sait tirer
-        // la dernière nuit d'une date de départ.
-        $sejour = SejourData::depuis($request->input('arrival'), $request->input('departure'));
+        $sejour = $request->sejour();
 
         if (! $sejour) {
             return back()->with('erreur', 'Ces dates ne forment pas une période.');
         }
 
         try {
-            $this->calendrier->bloquer($listing, $sejour, BlockReason::from($request->input('reason')));
+            $this->calendrier->bloquer($request->user('proprietaire'), $slug, $sejour, $request->motif());
         } catch (CalendarRefusedException $e) {
             return back()->with('erreur', $e->getMessage());
         }
@@ -64,17 +56,11 @@ class OwnerCalendarController extends Controller
     public function destroy(Request $request, string $slug, int $id): RedirectResponse
     {
         try {
-            $this->calendrier->liberer($this->logement($request, $slug), $id);
+            $this->calendrier->liberer($request->user('proprietaire'), $slug, $id);
         } catch (CalendarRefusedException $e) {
             return back()->with('erreur', $e->getMessage());
         }
 
         return back()->with('succes', 'Période rouverte. Ces nuits sont de nouveau réservables.');
-    }
-
-    /** La session donne le propriétaire, le propriétaire donne ses logements — et pas ceux des autres. */
-    private function logement(Request $request, string $slug): Listing
-    {
-        return $request->user('proprietaire')->listings->firstWhere('slug', $slug) ?? abort(404);
     }
 }

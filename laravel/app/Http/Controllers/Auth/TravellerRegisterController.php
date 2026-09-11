@@ -2,15 +2,14 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Exceptions\CodeSendingFailed;
+use App\Exceptions\CodeThrottled;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\RegisterTravellerRequest;
-use App\Models\User;
+use App\Http\Requests\VerificationCodeRequest;
 use App\Services\Auth\PendingRegistration;
-use App\Services\Verification\CodeSendingFailed;
-use App\Services\Verification\CodeThrottled;
+use App\Services\Auth\TravellerSignIn;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -51,14 +50,6 @@ class TravellerRegisterController extends Controller
         return Inertia::render('Auth/Register');
     }
 
-    /**
-     * Le même formulaire, sous l'autre porte.
-     *
-     * `/connexion/client` et `/inscription` posent la même question et
-     * traversent le même code : seule l'accroche change, pour que celui qui
-     * revient et celui qui découvre se reconnaissent chacun. Deux contrôleurs
-     * auraient divergé sur le renvoi ou sur l'expiration.
-     */
     public function connexion(): Response
     {
         return Inertia::render('Access/Client');
@@ -67,7 +58,7 @@ class TravellerRegisterController extends Controller
     public function store(RegisterTravellerRequest $request): RedirectResponse
     {
         try {
-            $this->inscription->ouvrir(self::CLE, $request->validated());
+            $this->inscription->ouvrir(self::CLE, $request->email());
         } catch (CodeThrottled|CodeSendingFailed $e) {
             return back()->withInput()->withErrors(['email' => $e->getMessage()]);
         }
@@ -77,47 +68,22 @@ class TravellerRegisterController extends Controller
 
     public function codeForm(): Response|RedirectResponse
     {
-        $attente = $this->inscription->enAttente(self::CLE);
+        $page = $this->inscription->page(self::CLE, route('register.confirm'), route('register.resend'), route('register'));
 
-        if (! $attente) {
-            return redirect()->route('register');
-        }
-
-        return Inertia::render('Auth/Code', [
-            'email' => $attente['email'],
-            'action' => route('register.confirm'),
-            'renvoi' => route('register.resend'),
-            'retour' => route('register'),
-            'attente' => $this->inscription->attenteAvantRenvoi(self::CLE),
-        ]);
+        return $page ? Inertia::render('Auth/Code', $page) : redirect()->route('register');
     }
 
-    public function confirm(Request $request): RedirectResponse
+    public function confirm(VerificationCodeRequest $request, TravellerSignIn $porte): RedirectResponse
     {
-        $donnees = $this->inscription->confirmer(self::CLE, (string) $request->input('code'));
+        $email = $this->inscription->confirmer(self::CLE, $request->code());
 
-        if (! $donnees) {
+        if (! $email) {
             return back()->withErrors(['code' => 'Code incorrect ou expiré. Vérifiez-le, ou demandez-en un nouveau.']);
         }
 
-        // **Trouver ou créer**, et c'est toute la mécanique de la porte unique.
-        // Le code vient de prouver que celui qui le saisit relève cette boîte :
-        // que le compte existe déjà ou non ne change rien à ce qu'il a le droit
-        // d'ouvrir.
-        $user = User::query()->where('email', $donnees['email'])->first();
-        $nouveau = $user === null;
+        $entree = $porte->entrer($email);
 
-        if ($nouveau) {
-            // Ni nom ni mot de passe : le nom est demandé à la demande de
-            // séjour, où il sert ; le mot de passe n'existe plus.
-            $user = User::create(['email' => $donnees['email']]);
-        }
-
-        // Le code **est** la vérification de l'adresse : la redemander par un
-        // second message serait la même preuve, une deuxième fois.
-        $user->forceFill(['email_verified_at' => Carbon::now()])->save();
-
-        Auth::login($user, remember: true);
+        Auth::guard('web')->login($entree->user, remember: true);
         $request->session()->regenerate();
 
         /*
@@ -129,7 +95,7 @@ class TravellerRegisterController extends Controller
          */
         $vers = redirect()->route('traveller.bookings');
 
-        return $nouveau ? $vers->with('succes', 'Votre compte est ouvert.') : $vers;
+        return $entree->nouveau ? $vers->with('succes', 'Votre compte est ouvert.') : $vers;
     }
 
     public function resend(): RedirectResponse

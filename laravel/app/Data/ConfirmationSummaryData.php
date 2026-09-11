@@ -18,7 +18,7 @@ use Spatie\LaravelData\Data;
  */
 class ConfirmationSummaryData extends Data
 {
-    /** @param array<int, array<string, mixed>> $points */
+    /** @param  list<ConfirmationPointData>  $points  seulement ceux sur lesquels quelqu'un s'est prononcé */
     public function __construct(
         public readonly int $stays,
         public readonly int $nights,

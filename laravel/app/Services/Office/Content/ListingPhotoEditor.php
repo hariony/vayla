@@ -7,10 +7,10 @@ use App\Contracts\Office\ActionJournal;
 use App\Contracts\Repositories\OfficeListingContentRepositoryInterface;
 use App\Enums\AdminActionKind;
 use App\Exceptions\OfficeRefusal;
+use App\Exceptions\PhotoRefusedException;
 use App\Models\Admin;
 use App\Models\Listing;
 use Illuminate\Http\UploadedFile;
-use RuntimeException;
 
 /** Les photos d'une annonce, corrigées par l'équipe : remplacer une photo floue, ranger la galerie. */
 final class ListingPhotoEditor
@@ -25,7 +25,7 @@ final class ListingPhotoEditor
     {
         try {
             $this->galerie->ajouter($listing, $fichier, $legende);
-        } catch (RuntimeException $e) {
+        } catch (PhotoRefusedException $e) {
             throw new OfficeRefusal($e->getMessage());
         }
 

@@ -2,6 +2,7 @@
 
 namespace App\Services\Currency;
 
+use App\Contracts\Currency\ExchangeRateProvider;
 use App\Services\Settings\SettingsService;
 
 /**

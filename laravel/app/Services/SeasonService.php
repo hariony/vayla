@@ -2,6 +2,9 @@
 
 namespace App\Services;
 
+use App\Data\SeasonData;
+use App\Data\SeasonMonthData;
+use App\Data\SeasonYearMonthData;
 use App\Enums\ClimateZone;
 use App\Enums\SeasonKind;
 use App\Models\Destination;
@@ -48,15 +51,15 @@ class SeasonService
             [$etat, $note] = $profil[$curseur->month - 1];
             $kind = SeasonKind::from($etat);
 
-            $out[$curseur->format('Y-m')] = [
-                'month' => self::MOIS[$curseur->month - 1],
-                'kind' => $kind->value,
-                'label' => $kind->label(),
-                'icon' => $kind->icon(),
-                'note' => $note,
-                'warning' => $kind->isWarning(),
-                'best' => $kind->isBest(),
-            ];
+            $out[$curseur->format('Y-m')] = new SeasonMonthData(
+                month: self::MOIS[$curseur->month - 1],
+                kind: $kind->value,
+                label: $kind->label(),
+                icon: $kind->icon(),
+                note: $note,
+                warning: $kind->isWarning(),
+                best: $kind->isBest(),
+            );
 
             $curseur->addMonth();
         }
@@ -99,32 +102,32 @@ class SeasonService
             ->map(function (array $m, int $i) {
                 $kind = SeasonKind::from($m[0]);
 
-                return [
-                    'n' => $i + 1,
-                    'month' => self::MOIS[$i],
-                    'initial' => mb_strtoupper(mb_substr(self::MOIS[$i], 0, 1)),
-                    'kind' => $kind->value,
-                    'label' => $kind->label(),
-                    'note' => $m[1],
-                    'warning' => $kind->isWarning(),
-                    'best' => $kind->isBest(),
-                ];
+                return new SeasonYearMonthData(
+                    n: $i + 1,
+                    month: self::MOIS[$i],
+                    initial: mb_strtoupper(mb_substr(self::MOIS[$i], 0, 1)),
+                    kind: $kind->value,
+                    label: $kind->label(),
+                    note: $m[1],
+                    warning: $kind->isWarning(),
+                    best: $kind->isBest(),
+                );
             })
             ->values()
             ->all();
     }
 
     /** @return array<string, mixed> */
-    public function payload(Destination $destination): array
+    public function saison(Destination $destination): SeasonData
     {
-        return [
-            'zone' => ($destination->climate_zone ?? ClimateZone::HautesTerres)->label(),
-            'months' => $this->forDestination($destination),
-            'year' => $this->year($destination),
-            'best' => $this->bestMonths($destination),
+        return new SeasonData(
+            zone: ($destination->climate_zone ?? ClimateZone::HautesTerres)->label(),
+            months: $this->forDestination($destination),
+            year: $this->year($destination),
+            best: $this->bestMonths($destination),
             // Écrit à l'écran, pas seulement ici : le lecteur doit savoir ce
             // qu'il lit.
-            'caveat' => 'Tendances de saison observées sur cette façade — pas une prévision météo.',
-        ];
+            caveat: 'Tendances de saison observées sur cette façade — pas une prévision météo.',
+        );
     }
 }

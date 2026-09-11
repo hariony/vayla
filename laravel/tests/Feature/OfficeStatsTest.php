@@ -9,7 +9,8 @@ use App\Models\Admin;
 use App\Models\Booking;
 use App\Models\InvoiceSettlement;
 use App\Models\Listing;
-use App\Services\Office\Stats\StatsQuery;
+use App\Services\Office\Stats\RequestStatsQuery;
+use App\Services\Office\Stats\StayStatsQuery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
@@ -74,9 +75,16 @@ class OfficeStatsTest extends TestCase
         return $b;
     }
 
-    private function rapport(bool $avecDemo = true): array
+    /** Statistiques › Demandes, sur douze mois. */
+    private function demandes(bool $avecDemo = true): array
     {
-        return app(StatsQuery::class)->page(new StatsFilterDto(StatsPeriod::Douze, $avecDemo))->toArray();
+        return app(RequestStatsQuery::class)->page(new StatsFilterDto(StatsPeriod::Douze, $avecDemo))->toArray();
+    }
+
+    /** Statistiques › Séjours et commission, sur douze mois. */
+    private function sejours(bool $avecDemo = true): array
+    {
+        return app(StayStatsQuery::class)->page(new StatsFilterDto(StatsPeriod::Douze, $avecDemo))->toArray();
     }
 
     public function test_une_demande_se_range_au_mois_ou_elle_a_ete_faite(): void
@@ -85,7 +93,7 @@ class OfficeStatsTest extends TestCase
         $this->demande($ilYADeuxMois, BookingStatus::Accepted, 5);
         $this->demande($ilYADeuxMois, BookingStatus::Expired);
 
-        $r = $this->rapport();
+        $r = $this->demandes();
         $acceptees = collect($r['demandes'])->firstWhere('cle', 'acceptees')['valeurs'];
         $expirees = collect($r['demandes'])->firstWhere('cle', 'expirees')['valeurs'];
 
@@ -102,7 +110,7 @@ class OfficeStatsTest extends TestCase
         $this->demande($jour, BookingStatus::Declined, 4);
         $this->demande($jour, BookingStatus::Accepted, 47);
 
-        $this->assertSame(4.0, (float) $this->rapport()['chiffres']['delaiMedian']);
+        $this->assertSame(4.0, (float) $this->demandes()['chiffres']['delaiMedian']);
     }
 
     /** Une demande encore en attente n'a pas encore échoué : elle ne compte pas contre le taux. */
@@ -113,7 +121,7 @@ class OfficeStatsTest extends TestCase
         $this->demande($jour, BookingStatus::Expired);
         $this->demande($jour, BookingStatus::Pending);
 
-        $this->assertSame(50.0, (float) $this->rapport()['chiffres']['tauxReponse']);
+        $this->assertSame(50.0, (float) $this->demandes()['chiffres']['tauxReponse']);
     }
 
     /** Un séjour et sa commission se rangent au mois du départ — comme la facture. */
@@ -123,14 +131,15 @@ class OfficeStatsTest extends TestCase
         $depart = Carbon::today()->startOfMonth()->subMonthsNoOverflow(2)->addDays(5);
         $this->demande($faite, BookingStatus::Completed, 6, depart: $depart);
 
-        $r = $this->rapport();
+        $r = $this->sejours();
         $sejours = collect($r['sejours'])->firstWhere('cle', 'sejours')['valeurs'];
         $commission = collect($r['commission']['series'])->firstWhere('cle', 'facturee')['valeurs'];
 
         $this->assertSame(1, $sejours[9]);
         $this->assertSame(0, $sejours[8]);
         $this->assertSame(15000, $commission[9]);
-        $this->assertSame(15000, $r['chiffres']['commission']);
+        $this->assertSame(15000, $r['commission']['chiffres']['facturee']);
+        $this->assertSame(1, $r['chiffres']['sejours']);
     }
 
     /**
@@ -142,7 +151,7 @@ class OfficeStatsTest extends TestCase
         $depart = Carbon::today()->startOfMonth()->subMonthsNoOverflow(1)->addDays(4);
         $sejour = $this->demande($depart->copy()->subDays(10), BookingStatus::Completed, 2, depart: $depart);
 
-        $c = $this->rapport()['commission'];
+        $c = $this->sejours()['commission'];
         $this->assertSame(15000, $c['chiffres']['reste']);
         $this->assertSame(0.0, (float) $c['chiffres']['recouvrement']);
         $this->assertSame(5.0, (float) $c['chiffres']['taux']);
@@ -156,7 +165,7 @@ class OfficeStatsTest extends TestCase
             'settled_at' => now(),
         ]);
 
-        $c = $this->rapport()['commission'];
+        $c = $this->sejours()['commission'];
         $this->assertSame(0, $c['chiffres']['reste']);
         $this->assertSame(100.0, (float) $c['chiffres']['recouvrement']);
         $this->assertSame([], $c['debiteurs']);
@@ -168,7 +177,7 @@ class OfficeStatsTest extends TestCase
         $depart = Carbon::today()->startOfMonth()->addDays(1);
         $this->demande($depart->copy()->subDays(10), BookingStatus::Completed, 2, depart: $depart);
 
-        $c = $this->rapport()['commission'];
+        $c = $this->sejours()['commission'];
         $courant = $c['mois'][0];
 
         $this->assertTrue($courant['enCours']);
@@ -186,27 +195,48 @@ class OfficeStatsTest extends TestCase
         $this->demande($jour, BookingStatus::Accepted, 3, demo: true);
         $this->demande($jour, BookingStatus::Accepted, 3);
 
-        $this->assertSame(2, $this->rapport(true)['chiffres']['demandes']);
-        $this->assertSame(1, $this->rapport(false)['chiffres']['demandes']);
+        $this->assertSame(2, $this->demandes(true)['chiffres']['demandes']);
+        $this->assertSame(1, $this->demandes(false)['chiffres']['demandes']);
 
         $this->connecte()->get('http://office.localhost/statistiques?demo=0')
             ->assertOk()
-            ->assertInertia(fn ($page) => $page->where('demo.inclus', false)->where('chiffres.demandes', 1));
+            ->assertInertia(fn ($page) => $page->where('cadre.demo.inclus', false)->where('chiffres.demandes', 1));
     }
 
     public function test_la_periode_se_choisit_et_se_borne(): void
     {
         $this->connecte()->get('http://office.localhost/statistiques?periode=6')
-            ->assertInertia(fn ($page) => $page->where('periode.mois', 6)->where('mois.courts', fn ($m) => count($m) === 6));
+            ->assertInertia(fn ($page) => $page->where('cadre.periode.mois', 6)->where('cadre.mois.courts', fn ($m) => count($m) === 6));
 
         $this->connecte()->get('http://office.localhost/statistiques?periode=500')
-            ->assertInertia(fn ($page) => $page->where('periode.mois', 12));
+            ->assertInertia(fn ($page) => $page->where('cadre.periode.mois', 12));
+    }
+
+    /**
+     * **Trois écrans, et la vue suit de l'un à l'autre** : la période et le
+     * retrait de la démonstration valent sur chacun, comme sur le premier.
+     */
+    public function test_chaque_ecran_de_statistiques_repond_avec_sa_periode(): void
+    {
+        foreach ([
+            '/statistiques' => 'Office/Stats/Demandes',
+            '/statistiques/sejours' => 'Office/Stats/Sejours',
+            '/statistiques/catalogue' => 'Office/Stats/Catalogue',
+        ] as $adresse => $ecran) {
+            $this->connecte()->get("http://office.localhost{$adresse}?periode=24&demo=0")
+                ->assertOk()
+                ->assertInertia(fn ($page) => $page
+                    ->component($ecran)
+                    ->where('cadre.periode.mois', 24)
+                    ->where('cadre.demo.inclus', false)
+                    ->has('chiffres'));
+        }
     }
 
     /** Un mois sans demande tranchée n'est pas un taux nul : la courbe s'interrompt. */
     public function test_un_mois_sans_donnee_n_est_pas_un_zero(): void
     {
-        $taux = collect($this->rapport()['reponse'])->firstWhere('cle', 'taux')['valeurs'];
+        $taux = collect($this->demandes()['reponse'])->firstWhere('cle', 'taux')['valeurs'];
 
         $this->assertNull($taux[0]);
     }

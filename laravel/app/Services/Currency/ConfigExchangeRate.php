@@ -2,6 +2,8 @@
 
 namespace App\Services\Currency;
 
+use App\Contracts\Currency\ExchangeRateProvider;
+
 /**
  * Le taux tel qu'il est posé à la main dans la configuration.
  *

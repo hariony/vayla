@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Office;
 use App\Http\Requests\Office\AttachPhotoRequest;
 use App\Http\Requests\Office\OfficeDestinationPhotoRequest;
 use App\Http\Requests\Office\OfficeDestinationRequest;
-use App\Http\Requests\Office\PhotoOrderRequest;
+use App\Http\Requests\PhotoOrderRequest;
 use App\Models\Destination;
 use App\Services\Office\Content\DestinationEditor;
 use App\Services\Office\Content\DestinationGalleryEditor;

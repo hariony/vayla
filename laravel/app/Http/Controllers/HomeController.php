@@ -18,6 +18,6 @@ class HomeController extends Controller
 
     public function index(): Response
     {
-        return Inertia::render('Home/Index', $this->service->props());
+        return Inertia::render('Home/Index', $this->service->page());
     }
 }

@@ -2,16 +2,16 @@
 
 namespace App\Http\Controllers\Owner;
 
+use App\Exceptions\PhotoRefusedException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\OwnerAccountRequest;
 use App\Http\Requests\OwnerPortraitRequest;
-use App\Models\Owner;
 use App\Services\OwnerPortraitService;
+use App\Services\Owners\OwnerAccount;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-use RuntimeException;
 
 /**
  * Le compte du propriétaire — ce qu'il peut corriger lui-même.
@@ -30,65 +30,33 @@ use RuntimeException;
 class AccountController extends Controller
 {
     public function __construct(
+        private OwnerAccount $compte,
         private OwnerPortraitService $portraits,
     ) {}
 
     public function edit(Request $request): Response
     {
-        $owner = $request->user('proprietaire');
-
-        return Inertia::render('Owner/Account', [
-            'compte' => [
-                'name' => $owner->name,
-                'phone' => $owner->phone,
-                'email' => $owner->email,
-                'city' => $owner->city,
-                'address' => $owner->address,
-                'portrait' => $owner->portrait,
-                'mobileMoney' => $owner->mobile_money,
-                'operator' => $owner->mobile_money_operator,
-                // Le numéro est-il prouvé ? Il l'est par l'usage du lien
-                // WhatsApp, jamais par sa simple saisie.
-                'phoneVerifie' => $owner->phone_verified_at !== null,
-            ],
-            'operateurs' => OwnerAccountRequest::OPERATEURS,
-        ]);
+        return Inertia::render('Owner/Account', $this->compte->page($request->user('proprietaire')));
     }
 
     public function update(OwnerAccountRequest $request): RedirectResponse
     {
-        /** @var Owner $owner */
-        $owner = $request->user('proprietaire');
-        $donnees = $request->validated();
-
-        /*
-         * **Changer de numéro annule la preuve qu'on le tenait.**
-         * `phone_verified_at` n'enregistre pas une vérification maison : il
-         * enregistre le fait que le lien d'accès envoyé sur ce WhatsApp a été
-         * utilisé. Le numéro changé, cette preuve ne porte plus sur rien — la
-         * garder ferait dire au compte une chose fausse, et c'est précisément
-         * ce que Vayla reproche aux annonces qu'elle vérifie.
-         */
-        if ($donnees['phone'] !== $owner->phone) {
-            $donnees['phone_verified_at'] = null;
-        }
-
-        $owner->fill($donnees)->save();
+        $this->compte->modifier($request->user('proprietaire'), $request->toDto());
 
         return back()->with('succes', 'Votre compte est à jour.');
     }
 
     /**
      * **Le portrait est téléversé à part, pas avec le reste du formulaire.**
-     * Un fichier de dix mégaoctets qui repart à chaque correction de numéro
-     * serait une minute d'attente sur une connexion malgache, et un
+     * Un fichier de dix mégaoctets qui repartirait à chaque correction de
+     * numéro serait une minute d'attente sur une connexion malgache, et un
      * enregistrement perdu quand elle coupe.
      */
     public function portrait(OwnerPortraitRequest $request): RedirectResponse
     {
         try {
-            $this->portraits->poser($request->user('proprietaire'), $request->file('portrait'));
-        } catch (RuntimeException $e) {
+            $this->portraits->poser($request->user('proprietaire'), $request->portrait());
+        } catch (PhotoRefusedException $e) {
             // Un refus explicite — « il faut au moins 200 pixels » — plutôt
             // qu'un « fichier invalide » qui laisse chercher.
             return back()->withErrors(['portrait' => $e->getMessage()]);

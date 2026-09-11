@@ -3,6 +3,7 @@
 namespace App\Contracts\Repositories;
 
 use App\Data\ListingFiltreData;
+use App\DTOs\Listings\ListingFacetsDto;
 use App\Models\Listing;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -34,8 +35,6 @@ interface ListingRepositoryInterface
     /**
      * De quoi construire le panneau de filtres sans inventer de valeur :
      * les types réellement présents et les bornes de prix réelles.
-     *
-     * @return array{kinds: array<int, string>, priceMin: int, priceMax: int, total: int}
      */
-    public function facets(bool $includeDemo): array;
+    public function facets(bool $includeDemo): ListingFacetsDto;
 }

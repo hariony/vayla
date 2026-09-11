@@ -5,6 +5,7 @@ namespace App\Services\Office\Invoices;
 use App\Contracts\Invoices\InvoiceCalculator;
 use App\Contracts\Repositories\InvoiceSettlementRepositoryInterface;
 use App\Contracts\Repositories\OfficeOwnerRepositoryInterface;
+use App\Data\Invoices\InvoiceData;
 use App\Data\Office\Invoices\InvoiceSummaryData;
 use App\Data\Office\Invoices\SettlementData;
 use App\Models\InvoiceSettlement;
@@ -33,25 +34,24 @@ final class InvoiceLines
             ->map(function (Owner $o) use ($debut, $reglements) {
                 $facture = $this->factures->forOwner($o, $debut);
 
-                return $facture['stays'] > 0 ? $this->resume($facture, $reglements[$o->id] ?? null, $o->id) : null;
+                return $facture->stays > 0 ? $this->resume($facture, $reglements[$o->id] ?? null, $o->id) : null;
             })
             ->filter()
             ->values()
             ->all();
     }
 
-    /** @param  array<string, mixed>  $facture  telle que la rend `InvoiceCalculator` */
-    public function resume(array $facture, ?InvoiceSettlement $reglement, ?int $ownerId = null): InvoiceSummaryData
+    public function resume(InvoiceData $facture, ?InvoiceSettlement $reglement, ?int $ownerId = null): InvoiceSummaryData
     {
         return new InvoiceSummaryData(
-            mois: substr($facture['period']['from'], 0, 7),
-            label: $facture['period']['label'],
-            owner: $facture['owner'],
-            lines: $facture['lines'],
-            stays: $facture['stays'],
-            nights: $facture['nights'],
-            revenue: $facture['revenue'],
-            due: $facture['due'],
+            mois: $facture->period->mois(),
+            label: $facture->period->label,
+            owner: $facture->owner,
+            lines: $facture->lines,
+            stays: $facture->stays,
+            nights: $facture->nights,
+            revenue: $facture->revenue,
+            due: $facture->due,
             settlement: $reglement
                 ? new SettlementData($reglement->settled_at->toIso8601String(), $reglement->reference, (int) $reglement->amount)
                 : null,

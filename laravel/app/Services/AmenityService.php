@@ -2,11 +2,11 @@
 
 namespace App\Services;
 
+use App\Contracts\Repositories\AmenityRepositoryInterface;
 use App\Data\AmenityData;
 use App\Data\AmenityGroupData;
 use App\Enums\AmenityGroup;
 use App\Models\Amenity;
-use App\Contracts\Repositories\AmenityRepositoryInterface;
 use Illuminate\Support\Collection;
 
 /**

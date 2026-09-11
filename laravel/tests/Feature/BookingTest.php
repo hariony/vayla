@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Data\DateRangeData;
+use App\DTOs\Bookings\NewBookingDto;
 use App\Enums\BookingStatus;
 use App\Exceptions\BookingRefusedException;
 use App\Models\Booking;
@@ -39,7 +41,7 @@ class BookingTest extends TestCase
 
             for ($i = 0; $i < $nuits; $i++) {
                 $jour = $depart->copy()->addDays($i)->toDateString();
-                if ($prises->contains(fn (array $p) => $jour >= $p['from'] && $jour <= $p['to'])) {
+                if ($prises->contains(fn (DateRangeData $p) => $jour >= $p->from && $jour <= $p->to)) {
                     $libre = false;
                     break;
                 }
@@ -53,15 +55,16 @@ class BookingTest extends TestCase
         $this->fail('Aucune fenêtre libre trouvée.');
     }
 
-    private function reserve(Listing $listing, Carbon $arrivee, int $nuits = 3, array $extra = []): Booking
+    private function reserve(Listing $listing, Carbon $arrivee, int $nuits = 3, int $voyageurs = 2): Booking
     {
-        return app(BookingService::class)->book($listing, array_merge([
-            'traveller' => 'Rakoto',
-            'traveller_phone' => '+261 34 12 345 67',
-            'guests' => 2,
-            'arrival' => $arrivee->toDateString(),
-            'departure' => $arrivee->copy()->addDays($nuits)->toDateString(),
-        ], $extra));
+        return app(BookingService::class)->book($listing, new NewBookingDto(
+            traveller: 'Rakoto',
+            travellerPhone: '+261 34 12 345 67',
+            travellerEmail: null,
+            guests: $voyageurs,
+            arrival: $arrivee->toDateString(),
+            departure: $arrivee->copy()->addDays($nuits)->toDateString(),
+        ));
     }
 
     public function test_une_reservation_retire_ses_nuits_du_calendrier(): void
@@ -111,7 +114,7 @@ class BookingTest extends TestCase
         }
 
         $this->expectException(BookingRefusedException::class);
-        $this->reserve($this->listing(), $this->fenetre($listing), 3, ['guests' => 99]);
+        $this->reserve($this->listing(), $this->fenetre($listing), 3, voyageurs: 99);
     }
 
     public function test_le_prix_et_le_taux_sont_figes_a_la_reservation(): void

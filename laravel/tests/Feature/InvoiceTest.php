@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Data\DateRangeData;
+use App\DTOs\Bookings\NewBookingDto;
 use App\Models\Booking;
 use App\Models\Listing;
 use App\Models\Owner;
@@ -33,13 +35,14 @@ class InvoiceTest extends TestCase
         $service = app(BookingService::class);
         $listing = Listing::with(['unavailabilities', 'bookings'])->where('slug', $slug)->firstOrFail();
 
-        $booking = $service->book($listing, [
-            'traveller' => 'Rakoto',
-            'traveller_phone' => '+261 34 12 345 67',
-            'guests' => 2,
-            'arrival' => $arrivee->toDateString(),
-            'departure' => $arrivee->copy()->addDays($nuits)->toDateString(),
-        ]);
+        $booking = $service->book($listing, new NewBookingDto(
+            traveller: 'Rakoto',
+            travellerPhone: '+261 34 12 345 67',
+            travellerEmail: null,
+            guests: 2,
+            arrival: $arrivee->toDateString(),
+            departure: $arrivee->copy()->addDays($nuits)->toDateString(),
+        ));
 
         $service->accept($booking);
 
@@ -73,7 +76,7 @@ class InvoiceTest extends TestCase
             $libre = true;
             for ($i = 0; $i < $nuits; $i++) {
                 $jour = $debut->copy()->addDays($i)->toDateString();
-                if ($prises->contains(fn (array $p) => $jour >= $p['from'] && $jour <= $p['to'])) {
+                if ($prises->contains(fn (DateRangeData $p) => $jour >= $p->from && $jour <= $p->to)) {
                     $libre = false;
                     break;
                 }
@@ -96,13 +99,13 @@ class InvoiceTest extends TestCase
         // no-shows — le propriétaire refuserait de payer.
         $service = app(BookingService::class);
         $frais = Listing::with(['unavailabilities', 'bookings'])->where('slug', 'villa-ambatoloaka')->firstOrFail();
-        $service->accept($service->book($frais, [
-            'traveller' => 'Jamais venu', 'traveller_phone' => '+261 34 00 00 00', 'guests' => 2,
-            'arrival' => $this->fenetre($frais, 3)->toDateString(),
-            'departure' => $this->fenetre($frais, 3)->addDays(3)->toDateString(),
-        ]));
+        $service->accept($service->book($frais, new NewBookingDto(
+            traveller: 'Jamais venu', travellerPhone: '+261 34 00 00 00', travellerEmail: null, guests: 2,
+            arrival: $this->fenetre($frais, 3)->toDateString(),
+            departure: $this->fenetre($frais, 3)->addDays(3)->toDateString(),
+        )));
 
-        $facture = app(InvoiceService::class)->forOwner($termine->listing->owner, $termine->departure);
+        $facture = app(InvoiceService::class)->forOwner($termine->listing->owner, $termine->departure)->toArray();
 
         $this->assertSame(1, $facture['stays']);
         $this->assertSame($termine->reference, $facture['lines'][0]['reference']);
@@ -130,13 +133,13 @@ class InvoiceTest extends TestCase
             'departure' => $finDeMois,
         ]);
 
-        $facture = app(InvoiceService::class)->forOwner($booking->listing->owner, $finDeMois);
+        $facture = app(InvoiceService::class)->forOwner($booking->listing->owner, $finDeMois)->toArray();
 
         $this->assertSame(1, $facture['stays'], 'Le séjour du 31 doit figurer sur la facture de janvier.');
         $this->assertSame('2026-01-31', $facture['lines'][0]['departure']);
 
         // Et il n'est pas compté deux fois, sur le mois suivant.
-        $suivant = app(InvoiceService::class)->forOwner($booking->listing->owner, $finDeMois->copy()->addMonthNoOverflow());
+        $suivant = app(InvoiceService::class)->forOwner($booking->listing->owner, $finDeMois->copy()->addMonthNoOverflow())->toArray();
         $this->assertSame(0, $suivant['stays']);
     }
 
@@ -153,7 +156,7 @@ class InvoiceTest extends TestCase
         $booking->listing->update(['price' => $booking->listing->price * 3]);
         config(['vayla.commission.rate' => 0.10]);
 
-        $facture = app(InvoiceService::class)->forOwner($booking->listing->owner, $booking->departure);
+        $facture = app(InvoiceService::class)->forOwner($booking->listing->owner, $booking->departure)->toArray();
 
         $this->assertSame($attendu, $facture['due']);
         $this->assertSame(0.05, $facture['lines'][0]['rate']);
@@ -166,7 +169,7 @@ class InvoiceTest extends TestCase
 
         $this->assertEmpty($factures);
         $this->assertSame(0, app(InvoiceService::class)
-            ->forOwner(Owner::first(), Carbon::today())['stays']);
+            ->forOwner(Owner::first(), Carbon::today())->toArray()['stays']);
     }
 
     public function test_le_mois_retenu_est_celui_de_la_fin_du_sejour(): void
@@ -177,11 +180,11 @@ class InvoiceTest extends TestCase
         $service = app(InvoiceService::class);
 
         // Facturé au mois du départ, pas à celui de la réservation.
-        $this->assertSame(1, $service->forOwner($booking->listing->owner, $booking->departure)['stays']);
+        $this->assertSame(1, $service->forOwner($booking->listing->owner, $booking->departure)->toArray()['stays']);
         $this->assertSame(0, $service->forOwner(
             $booking->listing->owner,
             $booking->departure->copy()->addMonthNoOverflow()
-        )['stays']);
+        )->toArray()['stays']);
     }
 
     public function test_la_facture_porte_de_quoi_etre_reglee(): void
@@ -189,7 +192,7 @@ class InvoiceTest extends TestCase
         $listing = Listing::with(['unavailabilities', 'bookings'])->where('slug', 'villa-ambatoloaka')->firstOrFail();
         $booking = $this->sejourTermine('villa-ambatoloaka', $this->fenetre($listing), 3);
 
-        $facture = app(InvoiceService::class)->forOwner($booking->listing->owner, $booking->departure);
+        $facture = app(InvoiceService::class)->forOwner($booking->listing->owner, $booking->departure)->toArray();
 
         // Le propriétaire pousse l'argent : il lui faut son numéro et son
         // opérateur. Vayla ne stocke rien qui permettrait de le débiter.
@@ -235,7 +238,7 @@ class InvoiceTest extends TestCase
         $listing = Listing::with(['unavailabilities', 'bookings'])->where('slug', 'villa-ambatoloaka')->firstOrFail();
         $booking = $this->sejourTermine('villa-ambatoloaka', $this->fenetre($listing), 3);
 
-        $historique = app(InvoiceService::class)->historique($booking->listing->owner);
+        $historique = app(InvoiceService::class)->historique($booking->listing->owner)->toArray();
 
         // Un séjour terminé il y a douze jours tombe forcément dans la
         // fenêtre : soit dans le mois en cours, soit dans la facture qui

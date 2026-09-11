@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\DTOs\Bookings\NewBookingDto;
 use App\Enums\AdminActionKind;
 use App\Enums\BookingStatus;
 use App\Enums\CategoryIcon;
@@ -582,11 +583,11 @@ class OfficeContentTest extends TestCase
 
         $listing = Listing::query()->where('status', ListingStatus::Published->value)->firstOrFail();
         $arrivee = Carbon::today()->addDays(320);
-        $nouvelle = app(BookingService::class)->book($listing->load(['unavailabilities', 'bookings']), [
-            'traveller' => 'Rakoto', 'traveller_phone' => '+261 34 12 345 67', 'guests' => 1,
-            'arrival' => $arrivee->toDateString(),
-            'departure' => $arrivee->copy()->addDays(max(2, (int) $listing->min_nights))->toDateString(),
-        ]);
+        $nouvelle = app(BookingService::class)->book($listing->load(['unavailabilities', 'bookings']), new NewBookingDto(
+            traveller: 'Rakoto', travellerPhone: '+261 34 12 345 67', travellerEmail: null, guests: 1,
+            arrival: $arrivee->toDateString(),
+            departure: $arrivee->copy()->addDays(max(2, (int) $listing->min_nights))->toDateString(),
+        ));
 
         $this->assertSame(0.08, (float) $nouvelle->commission_rate);
         $this->assertSame(BookingStatus::Pending, $nouvelle->status);

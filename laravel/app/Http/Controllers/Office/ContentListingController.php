@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Office;
 
 use App\Http\Requests\Office\OfficeListingRequest;
-use App\Http\Requests\Office\PhotoOrderRequest;
 use App\Http\Requests\OwnerPhotoRequest;
+use App\Http\Requests\PhotoOrderRequest;
 use App\Models\Listing;
 use App\Models\Owner;
 use App\Services\Office\Content\ListingContentEditor;
@@ -48,7 +48,7 @@ class ContentListingController extends OfficeController
 
     public function uploadPhoto(OwnerPhotoRequest $request, Listing $listing, ListingPhotoEditor $photos): RedirectResponse
     {
-        $photos->ajouter($this->admin($request), $listing, $request->file('photo'), $request->string('caption')->value() ?: null);
+        $photos->ajouter($this->admin($request), $listing, $request->photo(), $request->legende());
 
         return back()->with('succes', 'Photo ajoutée.');
     }

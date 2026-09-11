@@ -244,11 +244,11 @@ class OwnerListingTest extends TestCase
 
     public function test_le_service_liste_toutes_les_rubriques_non_vides(): void
     {
-        $groupes = app(OwnerListingService::class)->vocabulaire()['amenityGroups'];
+        $groupes = app(OwnerListingService::class)->vocabulaire()->amenityGroups;
 
         foreach ($groupes as $g) {
-            $this->assertNotEmpty($g['amenities'], "Rubrique vide publiée : {$g['key']}");
-            $this->assertNotEmpty($g['label']);
+            $this->assertNotEmpty($g->amenities, "Rubrique vide publiée : {$g->key}");
+            $this->assertNotEmpty($g->label);
         }
     }
 

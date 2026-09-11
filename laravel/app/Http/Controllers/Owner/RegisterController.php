@@ -2,19 +2,15 @@
 
 namespace App\Http\Controllers\Owner;
 
-use App\Enums\SocialProvider;
-use App\Http\Controllers\Auth\SocialController;
+use App\Exceptions\CodeSendingFailed;
+use App\Exceptions\CodeThrottled;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\OwnerProfileRequest;
 use App\Http\Requests\RegisterOwnerRequest;
-use App\Models\Owner;
+use App\Http\Requests\VerificationCodeRequest;
 use App\Services\Auth\PendingRegistration;
-use App\Services\Auth\SocialAuthService;
-use App\Services\Verification\CodeSendingFailed;
-use App\Services\Verification\CodeThrottled;
+use App\Services\Owners\OwnerSignup;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -68,12 +64,9 @@ class RegisterController extends Controller
 {
     private const CLE = 'inscription.proprietaire';
 
-    /** L'adresse une fois le code passé, en attente de la fiche. */
-    private const CLE_VERIFIEE = 'inscription.proprietaire.verifiee';
-
     public function __construct(
         private PendingRegistration $inscription,
-        private SocialAuthService $social,
+        private OwnerSignup $signup,
     ) {}
 
     public function form(): Response
@@ -81,7 +74,6 @@ class RegisterController extends Controller
         return Inertia::render('Owner/Register');
     }
 
-    /** Le même formulaire, sous l'autre porte : « Me connecter ». */
     public function connexion(): Response
     {
         return Inertia::render('Owner/Login');
@@ -90,7 +82,7 @@ class RegisterController extends Controller
     public function store(RegisterOwnerRequest $request): RedirectResponse
     {
         try {
-            $this->inscription->ouvrir(self::CLE, $request->validated());
+            $this->inscription->ouvrir(self::CLE, $request->email());
         } catch (CodeThrottled|CodeSendingFailed $e) {
             return back()->withInput()->withErrors(['email' => $e->getMessage()]);
         }
@@ -100,104 +92,45 @@ class RegisterController extends Controller
 
     public function codeForm(): Response|RedirectResponse
     {
-        $attente = $this->inscription->enAttente(self::CLE);
+        $page = $this->inscription->page(self::CLE, route('owner.register.confirm'), route('owner.register.resend'), route('owner.register'));
 
-        if (! $attente) {
-            return redirect()->route('owner.register');
-        }
-
-        return Inertia::render('Auth/Code', [
-            'email' => $attente['email'],
-            'action' => route('owner.register.confirm'),
-            'renvoi' => route('owner.register.resend'),
-            'retour' => route('owner.register'),
-            'attente' => $this->inscription->attenteAvantRenvoi(self::CLE),
-        ]);
+        return $page ? Inertia::render('Auth/Code', $page) : redirect()->route('owner.register');
     }
 
-    /**
-     * Le code valide l'adresse — il ne crée pas encore le compte.
-     *
-     * L'adresse prouvée retourne en session, sous une clé distincte de celle
-     * de l'attente : la seconde a été consommée, et laisser la première la
-     * réutiliser rouvrirait la porte à un code déjà servi.
-     */
-    public function confirm(Request $request): RedirectResponse
+    public function confirm(VerificationCodeRequest $request): RedirectResponse
     {
-        $donnees = $this->inscription->confirmer(self::CLE, (string) $request->input('code'));
+        $email = $this->inscription->confirmer(self::CLE, $request->code());
 
-        if (! $donnees) {
+        if (! $email) {
             return back()->withErrors(['code' => 'Code incorrect ou expiré. Vérifiez-le, ou demandez-en un nouveau.']);
         }
 
-        // **Trouver ou créer**, et c'est toute la mécanique de la porte unique.
-        // Le code vient de prouver que celui qui le saisit relève cette boîte.
-        $owner = Owner::query()->where('email', $donnees['email'])->first();
+        $owner = $this->signup->apresCode($email);
 
-        if ($owner) {
-            Auth::guard('proprietaire')->login($owner, remember: true);
-            $request->session()->regenerate();
-
-            return redirect()->route('owner.home');
+        if (! $owner) {
+            return redirect()->route('owner.register.profile');
         }
 
-        $request->session()->put(self::CLE_VERIFIEE, $donnees['email']);
+        Auth::guard('proprietaire')->login($owner, remember: true);
+        $request->session()->regenerate();
 
-        return redirect()->route('owner.register.profile');
+        return redirect()->route('owner.home');
     }
 
-    public function profileForm(Request $request): Response|RedirectResponse
+    public function profileForm(): Response|RedirectResponse
     {
-        $email = $request->session()->get(self::CLE_VERIFIEE);
+        $page = $this->signup->page();
 
-        if (! $email) {
-            return redirect()->route('owner.register');
-        }
-
-        return Inertia::render('Owner/Profile', ['email' => $email]);
+        return $page ? Inertia::render('Owner/Profile', $page) : redirect()->route('owner.register');
     }
 
-    /**
-     * La fiche, et seulement là le compte.
-     *
-     * Le numéro arrive déjà en E.164 : `OwnerProfileRequest` le normalise
-     * **avant** la validation, sans quoi la règle d'unicité comparerait une
-     * saisie brute à une valeur normalisée et laisserait passer un second
-     * compte sur le même numéro écrit autrement.
-     */
     public function profile(OwnerProfileRequest $request): RedirectResponse
     {
-        $email = $request->session()->get(self::CLE_VERIFIEE);
+        $owner = $this->signup->creer($request->toDto());
 
-        if (! $email) {
+        if (! $owner) {
             return redirect()->route('owner.register');
         }
-
-        $donnees = $request->validated();
-
-        $owner = Owner::create([
-            'name' => $donnees['name'],
-            'email' => $email,
-            'phone' => $donnees['phone'],
-            // La clé d'accès est posée dès maintenant : c'est le lien WhatsApp
-            // qui ouvre l'espace en un geste, sans passer par la boîte mail.
-            'access_key' => Owner::nouvelleCle(),
-            'access_key_set_at' => Carbon::now(),
-            'is_demo' => false,
-        ]);
-
-        $owner->forceFill(['email_verified_at' => Carbon::now()])->save();
-
-        // **L'identité sociale se lie ici, pas au retour du fournisseur.** Le
-        // compte n'existait pas encore à ce moment-là : `owners.phone` est
-        // obligatoire, et le fournisseur ne le donne pas.
-        if ($identite = $request->session()->pull(SocialController::IDENTITE)) {
-            if ($provider = SocialProvider::tryFrom($identite['provider'] ?? '')) {
-                $this->social->lier($owner, $provider, $identite);
-            }
-        }
-
-        $request->session()->forget(self::CLE_VERIFIEE);
 
         Auth::guard('proprietaire')->login($owner, remember: true);
         $request->session()->regenerate();

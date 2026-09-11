@@ -2,7 +2,7 @@
 
 namespace App\Data;
 
-use App\Services\Currency\ExchangeRateProvider;
+use App\Contracts\Currency\ExchangeRateProvider;
 use Spatie\LaravelData\Data;
 
 /**

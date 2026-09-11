@@ -2,14 +2,22 @@
 
 namespace App\Services;
 
+use App\Contracts\Repositories\UnavailabilityRepositoryInterface;
+use App\Data\Owners\BookedPeriodData;
+use App\Data\Owners\CalendarListingData;
+use App\Data\Owners\DeclaredPeriodData;
+use App\Data\Owners\OwnerCalendarPageData;
 use App\Data\SejourData;
 use App\Enums\BlockReason;
-use App\Enums\BookingStatus;
 use App\Exceptions\CalendarRefusedException;
+use App\Exceptions\ListingNotFoundException;
 use App\Models\Booking;
 use App\Models\Listing;
+use App\Models\Owner;
 use App\Models\Unavailability;
-use App\Contracts\Repositories\UnavailabilityRepositoryInterface;
+use App\Services\Owners\OwnerSpace;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 /**
  * Le calendrier vu du côté du propriétaire.
@@ -43,119 +51,64 @@ class OwnerCalendarService
     public function __construct(
         private UnavailabilityRepositoryInterface $periodes,
         private AvailabilityService $availability,
+        private OwnerSpace $portee,
     ) {}
 
-    /**
-     * Ce que l'écran affiche pour un logement.
-     *
-     * @return array<string, mixed>
-     */
-    public function payload(Listing $listing): array
+    /** @throws ListingNotFoundException */
+    public function page(Owner $owner, string $slug): OwnerCalendarPageData
     {
-        return [
-            'listing' => [
-                'slug' => $listing->slug,
-                'title' => $listing->title,
-                'place' => $listing->destination?->name,
-            ],
+        $listing = $this->portee->logement($owner, $slug);
+
+        return new OwnerCalendarPageData(
+            listing: CalendarListingData::fromModel($listing),
             // Les bornes de séjour du logement sont **retirées** : elles
             // encadrent ce qu'un voyageur peut réserver, pas ce que le
             // propriétaire peut fermer. Un logement qui se loue au minimum
             // trois nuits doit pouvoir être bloqué une seule soirée.
-            'calendar' => ['minNights' => 1, 'maxNights' => null] + $this->availability->calendar($listing),
-            'declared' => $this->declarees($listing),
-            'booked' => $this->reservees($listing),
-            'reasons' => BlockReason::options(),
-        ];
+            calendar: $this->availability->calendar($listing)->sansBornes(),
+            declared: $this->periodes->aVenir($listing)->map(fn (Unavailability $u) => DeclaredPeriodData::fromModel($u))->values()->all(),
+            booked: $this->reservees($listing)->map(fn (Booking $b) => BookedPeriodData::fromModel($b))->values()->all(),
+            reasons: BlockReason::options(),
+        );
     }
 
-    /**
-     * Les périodes que le propriétaire a posées lui-même — les seules qu'il
-     * puisse reprendre.
-     *
-     * @return array<int, array<string, mixed>>
-     */
-    private function declarees(Listing $listing): array
+    /** @throws ListingNotFoundException|CalendarRefusedException */
+    public function bloquer(Owner $owner, string $slug, SejourData $sejour, BlockReason $motif): Unavailability
     {
-        return $this->periodes->aVenir($listing)
-            ->map(fn (Unavailability $u) => [
-                'id' => $u->id,
-                'from' => $u->starts_on->toDateString(),
-                // La dernière nuit occupée, telle qu'elle est stockée. Le
-                // front affiche à côté le jour de libération : c'est là que
-                // se joue toute la compréhension de la règle.
-                'to' => $u->ends_on->toDateString(),
-                'nights' => (int) $u->starts_on->diffInDays($u->ends_on) + 1,
-                'reason' => $u->reason?->value,
-                'reasonLabel' => $u->reason?->label(),
-            ])
-            ->all();
-    }
+        $listing = $this->portee->logement($owner, $slug);
 
-    /**
-     * Les nuits retirées par une réservation. Lecture seule, et le libellé
-     * dit où aller pour les récupérer.
-     *
-     * @return array<int, array<string, mixed>>
-     */
-    private function reservees(Listing $listing): array
-    {
-        return $listing->bookings
-            ->filter(fn (Booking $b) => $b->status->blocksDates()
-                && ! ($b->hold_expires_at !== null && $b->hold_expires_at->isPast()))
-            ->filter(fn (Booking $b) => $b->departure->greaterThanOrEqualTo(now()->startOfDay()))
-            ->sortBy('arrival')
-            ->map(fn (Booking $b) => [
-                'reference' => $b->reference,
-                'traveller' => $b->traveller,
-                'from' => $b->arrival->toDateString(),
-                'to' => $b->departure->copy()->subDay()->toDateString(),
-                'nights' => $b->nights,
-                'pending' => $b->status === BookingStatus::Pending,
-            ])
-            ->values()
-            ->all();
-    }
-
-    /**
-     * Ferme un séjour au calendrier.
-     *
-     * @throws CalendarRefusedException si les nuits sont déjà prises
-     */
-    public function bloquer(Listing $listing, SejourData $sejour, BlockReason $motif): Unavailability
-    {
         $this->refuserSiReserve($listing, $sejour);
         $this->refuserSiDejaBloque($listing, $sejour);
 
         return $this->periodes->bloquer($listing, $sejour, $motif);
     }
 
-    /**
-     * Rouvre une période déclarée.
-     *
-     * Aucune confirmation n'est demandée côté écran, et c'est cohérent avec
-     * le reste de l'espace : on confirme ce qui est irréversible. Rouvrir des
-     * nuits se défait en trois clics ; refuser une demande, non.
-     *
-     * @throws CalendarRefusedException si la période n'est pas à ce logement
-     */
-    public function liberer(Listing $listing, int $id): void
+    /** @throws ListingNotFoundException|CalendarRefusedException */
+    public function liberer(Owner $owner, string $slug, int $id): void
     {
-        if (! $this->periodes->liberer($listing, $id)) {
+        if (! $this->periodes->liberer($this->portee->logement($owner, $slug), $id)) {
             throw new CalendarRefusedException("Cette période n'existe plus.");
         }
     }
 
-    /**
-     * Une réservation en cours interdit le blocage — et le message nomme la
-     * réservation. Le propriétaire doit savoir **laquelle** répondre ou
-     * annuler ; sans la référence, il revient au tableau de bord chercher.
-     */
+    /** @return Collection<int, Booking> les réservations qui tiennent des nuits à venir */
+    private function reservees(Listing $listing): Collection
+    {
+        return $this->bloquantes($listing)
+            ->filter(fn (Booking $b) => $b->departure->greaterThanOrEqualTo(Carbon::today()))
+            ->sortBy('arrival');
+    }
+
+    /** Une demande dont le délai a coulé ne tient plus rien, même avant le passage de la commande. */
+    private function bloquantes(Listing $listing): Collection
+    {
+        return $listing->bookings->filter(fn (Booking $b) => $b->status->blocksDates()
+            && ! ($b->hold_expires_at !== null && $b->hold_expires_at->isPast()));
+    }
+
     private function refuserSiReserve(Listing $listing, SejourData $sejour): void
     {
-        $conflit = $listing->bookings
-            ->filter(fn (Booking $b) => $b->status->blocksDates()
-                && ! ($b->hold_expires_at !== null && $b->hold_expires_at->isPast()))
+        $conflit = $this->bloquantes($listing)
             ->first(fn (Booking $b) => $sejour->couvre(
                 $b->arrival->toDateString(),
                 $b->departure->copy()->subDay()->toDateString(),

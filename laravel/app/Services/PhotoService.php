@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use App\Data\PhotoData;
 use App\Contracts\Repositories\PhotoRepositoryInterface;
+use App\Data\PhotoData;
 
 /**
  * Les crédits photo ne sont pas décoratifs : CC BY et CC BY-SA les exigent.
@@ -17,11 +17,11 @@ class PhotoService
         private PhotoRepositoryInterface $repository,
     ) {}
 
-    /** @return array<string, array<string, mixed>> */
+    /** @return array<string, PhotoData> par clé */
     public function map(): array
     {
         return $this->repository->all()
-            ->mapWithKeys(fn ($p) => [$p->key => PhotoData::fromModel($p)->toArray()])
+            ->mapWithKeys(fn ($p) => [$p->key => PhotoData::fromModel($p)])
             ->all();
     }
 

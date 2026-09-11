@@ -2,7 +2,11 @@
 
 namespace App\Services\Verification;
 
+use App\Contracts\Repositories\VerificationCodeRepositoryInterface;
+use App\Contracts\Verification\CodeSender;
 use App\Enums\VerificationKind;
+use App\Exceptions\CodeSendingFailed;
+use App\Exceptions\CodeThrottled;
 use App\Models\VerificationCode;
 use App\Support\Telephone;
 use Illuminate\Support\Carbon;
@@ -41,6 +45,7 @@ class VerificationCodeService
     /** @param  iterable<CodeSender>  $canaux */
     public function __construct(
         private iterable $canaux,
+        private VerificationCodeRepositoryInterface $codes,
     ) {}
 
     /**
@@ -56,18 +61,9 @@ class VerificationCodeService
 
         $code = $this->tirer();
 
-        VerificationCode::query()
-            ->where('destination', $cible)
-            ->whereNull('verified_at')
-            ->update(['expires_at' => Carbon::now()]);
+        $this->codes->expirerEnCours($cible);
 
-        $ligne = VerificationCode::create([
-            'destination' => $cible,
-            'kind' => $kind,
-            'code_hash' => Hash::make($code),
-            'channel' => $canal->canal(),
-            'expires_at' => Carbon::now()->addMinutes((int) config('vayla.otp.ttl_minutes')),
-        ]);
+        $ligne = $this->codes->creer($cible, $kind, Hash::make($code), $canal->canal(), Carbon::now()->addMinutes((int) config('vayla.otp.ttl_minutes')));
 
         try {
             $canal->envoyer($cible, $code);
@@ -75,7 +71,7 @@ class VerificationCodeService
             // Un code qui n'est pas parti ne doit pas rester jouable : il
             // occuperait le quota horaire et bloquerait la vraie tentative
             // suivante.
-            $ligne->forceFill(['expires_at' => Carbon::now()])->save();
+            $this->codes->expirer($ligne);
 
             throw $e;
         }
@@ -92,17 +88,13 @@ class VerificationCodeService
         $cible = $this->normaliser($kind, $destination);
         $maximum = (int) config('vayla.otp.max_attempts');
 
-        $ligne = VerificationCode::query()
-            ->where('destination', $cible)
-            ->whereNull('verified_at')
-            ->latest('id')
-            ->first();
+        $ligne = $this->codes->dernierEnCours($cible);
 
         if (! $ligne || ! $ligne->vivant($maximum)) {
             return false;
         }
 
-        $ligne->increment('attempts');
+        $this->codes->compterEssai($ligne);
 
         // `Hash::check` compare en temps constant : une comparaison naïve
         // laisserait mesurer le nombre de caractères justes.
@@ -110,7 +102,7 @@ class VerificationCodeService
             return false;
         }
 
-        $ligne->forceFill(['verified_at' => Carbon::now()])->save();
+        $this->codes->marquerVerifie($ligne);
 
         return true;
     }
@@ -118,20 +110,13 @@ class VerificationCodeService
     /** Une destination prouvée dans l'heure : ce que le formulaire d'inscription lira. */
     public function estVerifiee(VerificationKind $kind, string $destination): bool
     {
-        return VerificationCode::query()
-            ->where('destination', $this->normaliser($kind, $destination))
-            ->whereNotNull('verified_at')
-            ->where('verified_at', '>=', Carbon::now()->subHour())
-            ->exists();
+        return $this->codes->verifieDepuis($this->normaliser($kind, $destination), Carbon::now()->subHour());
     }
 
     /** Secondes restantes avant de pouvoir en redemander un. Zéro = tout de suite. */
     public function attenteAvantRenvoi(VerificationKind $kind, string $destination): int
     {
-        $dernier = VerificationCode::query()
-            ->where('destination', $this->normaliser($kind, $destination))
-            ->latest('id')
-            ->first();
+        $dernier = $this->codes->dernier($this->normaliser($kind, $destination));
 
         if (! $dernier) {
             return 0;
@@ -168,7 +153,7 @@ class VerificationCodeService
     /** @throws CodeThrottled */
     private function verifierLesBornes(string $cible): void
     {
-        $dernier = VerificationCode::query()->where('destination', $cible)->latest('id')->first();
+        $dernier = $this->codes->dernier($cible);
 
         if ($dernier) {
             $reste = max(0, (int) config('vayla.otp.resend_seconds')
@@ -183,10 +168,7 @@ class VerificationCodeService
             }
         }
 
-        $parHeure = VerificationCode::query()
-            ->where('destination', $cible)
-            ->where('created_at', '>=', Carbon::now()->subHour())
-            ->count();
+        $parHeure = $this->codes->nombreDepuis($cible, Carbon::now()->subHour());
 
         if ($parHeure >= (int) config('vayla.otp.max_per_hour')) {
             throw new CodeThrottled(

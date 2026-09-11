@@ -41,6 +41,17 @@ const url = computed(() => page.url.split('?')[0])
 /** Le tableau de bord n'est actif que sur lui-même : sinon il le serait partout. */
 const actif = (item) => (item.href === '/' ? url.value === '/' : url.value.startsWith(item.href))
 
+/**
+ * Un sous-écran n'est actif que sur lui-même : le premier partage l'adresse
+ * de sa rubrique. Et **il emporte les réglages de l'adresse** (la période, la
+ * démonstration) : changer d'écran ne doit pas faire repartir sur douze mois.
+ */
+const sousActif = (s) => url.value === s.href
+const requete = computed(() => {
+    const i = page.url.indexOf('?')
+    return i === -1 ? '' : page.url.slice(i)
+})
+
 const compteur = (item) => (item.compteur ? compteurs.value[item.compteur] ?? 0 : 0)
 
 /** Le fait en gras, la suite en romain — la même coupe que dans les espaces. */
@@ -91,21 +102,33 @@ const MARQUE = 'M2.18,4.81 L19.79,45.70 Q38.12,20.37 45.82,2.30 L38.58,4.12 '
                 <div v-for="(groupe, i) in RUBRIQUES_OFFICE" :key="groupe.titre ?? i" class="of__groupe">
                     <p v-if="groupe.titre" class="of__groupe-t" data-rail-item>{{ groupe.titre }}</p>
 
-                    <Link
-                        v-for="item in groupe.items"
-                        :key="item.href"
-                        :href="item.href"
-                        class="of__lien"
-                        :class="{ 'is-on': actif(item) }"
-                        :aria-current="actif(item) ? 'page' : undefined"
-                        data-rail-item
-                    >
-                        <OfficeIcon :name="item.icone" />
-                        <span class="of__label">{{ item.label }}</span>
-                        <span v-if="compteur(item)" class="of__badge of-num">
-                            {{ compteur(item) }}<span class="sr-only"> en attente</span>
-                        </span>
-                    </Link>
+                    <template v-for="item in groupe.items" :key="item.href">
+                        <Link
+                            :href="item.href"
+                            class="of__lien"
+                            :class="{ 'is-on': actif(item) }"
+                            :aria-current="actif(item) && ! item.sous ? 'page' : undefined"
+                            data-rail-item
+                        >
+                            <OfficeIcon :name="item.icone" />
+                            <span class="of__label">{{ item.label }}</span>
+                            <span v-if="compteur(item)" class="of__badge of-num">
+                                {{ compteur(item) }}<span class="sr-only"> en attente</span>
+                            </span>
+                        </Link>
+
+                        <!-- Le sous-menu s'ouvre sous sa rubrique quand on y est. -->
+                        <div v-if="item.sous && actif(item)" class="of__sous" role="group" :aria-label="item.label">
+                            <Link
+                                v-for="s in item.sous"
+                                :key="s.href"
+                                :href="s.href + requete"
+                                class="of__sous-lien"
+                                :class="{ 'is-on': sousActif(s) }"
+                                :aria-current="sousActif(s) ? 'page' : undefined"
+                            >{{ s.label }}</Link>
+                        </div>
+                    </template>
                 </div>
             </nav>
 
@@ -244,6 +267,47 @@ const MARQUE = 'M2.18,4.81 L19.79,45.70 Q38.12,20.37 45.82,2.30 L38.58,4.12 '
 .of__lien.is-on .oi { color: var(--terre-300); }
 
 .of__label { flex: 1; }
+
+/* Le sous-menu : sous sa rubrique, aligné sur son libellé, tenu par un filet.
+   Plus léger que les rubriques — on y choisit un écran, pas un endroit. La
+   cible reste de 2,75 rem : c'est une cible tactile comme les autres. */
+.of__sous {
+    display: flex;
+    flex-direction: column;
+    gap: .05rem;
+    margin: .1rem 0 .35rem 1.55rem;
+    padding-left: .6rem;
+    border-left: 1px solid rgba(255, 255, 255, .14);
+}
+.of__sous-lien {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: 2.75rem;
+    padding: .3rem .65rem;
+    border-radius: var(--r-sm);
+    font-size: .84rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, .62);
+    text-decoration: none;
+    transition: background-color .2s var(--ease), color .2s var(--ease);
+}
+.of__sous-lien::before {
+    content: '';
+    position: absolute;
+    left: calc(-.6rem - 1px);
+    top: 50%;
+    width: 2px;
+    height: 1.2rem;
+    border-radius: 2px;
+    background: var(--terre-400);
+    transform: translateY(-50%) scaleY(0);
+    transition: transform .3s var(--ease);
+}
+.of__sous-lien:hover { background: rgba(255, 255, 255, .06); color: var(--white); }
+.of__sous-lien:focus-visible { outline: 2px solid var(--terre-400); outline-offset: -2px; }
+.of__sous-lien.is-on { color: var(--white); font-weight: 700; }
+.of__sous-lien.is-on::before { transform: translateY(-50%) scaleY(1); }
 
 .of__badge {
     display: grid;
@@ -395,6 +459,11 @@ a.of__sortir { text-decoration: none; }
     .of__groupe-t { display: none; }
     .of__lien { flex: none; white-space: nowrap; }
     .of__lien::before { display: none; }
+    /* Sur la rangée, le sous-menu suit sa rubrique, en pastilles plus claires. */
+    .of__sous { flex-direction: row; gap: .2rem; margin: 0; padding: 0; border: 0; }
+    .of__sous-lien { flex: none; white-space: nowrap; background: rgba(255, 255, 255, .05); }
+    .of__sous-lien::before { display: none; }
+    .of__sous-lien.is-on { background: rgba(255, 255, 255, .14); }
 
     .of__moi {
         grid-row: 1;

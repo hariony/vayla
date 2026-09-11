@@ -2,9 +2,11 @@
 
 namespace App\Services\Auth;
 
+use App\Data\Auth\CodePageData;
 use App\Enums\VerificationKind;
+use App\Exceptions\CodeSendingFailed;
+use App\Exceptions\CodeThrottled;
 use App\Services\Verification\VerificationCodeService;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Session;
 
 /**
@@ -17,14 +19,14 @@ use Illuminate\Support\Facades\Session;
  * de l'adresse se voie refuser l'inscription. En gardant l'inscription en
  * session, une tentative abandonnée ne laisse rien derrière elle.
  *
- * **Le mot de passe est haché dès la première étape.** Il traverse la session
- * — c'est-à-dire, selon la configuration, un fichier ou une table — et un mot
- * de passe en clair qui transite quelque part finit par y rester.
+ * **Elle ne porte plus que l'adresse** : ni nom ni mot de passe à la première
+ * étape — le voyageur n'en a plus, le propriétaire donne les siens après le
+ * code.
  *
  * La mécanique est la même pour le voyageur et pour le propriétaire : seule
- * la clé de session et les champs changent. Deux copies auraient divergé sur
- * le renvoi de code ou sur l'expiration, et l'une des deux aurait fini par
- * laisser passer ce que l'autre refuse.
+ * la clé de session change. Deux copies auraient divergé sur le renvoi de
+ * code ou sur l'expiration, et l'une des deux aurait fini par laisser passer
+ * ce que l'autre refuse.
  */
 class PendingRegistration
 {
@@ -32,59 +34,55 @@ class PendingRegistration
         private VerificationCodeService $codes,
     ) {}
 
-    /**
-     * Retient l'inscription et envoie le code.
-     *
-     * @param  array<string, mixed>  $donnees  le mot de passe en clair sous `password`
-     */
-    public function ouvrir(string $cle, array $donnees): void
+    /** @throws CodeThrottled|CodeSendingFailed */
+    public function ouvrir(string $cle, string $email): void
     {
-        $donnees['email'] = mb_strtolower(trim($donnees['email']));
-
-        if (isset($donnees['password'])) {
-            $donnees['password'] = Hash::make($donnees['password']);
-        }
+        $email = mb_strtolower(trim($email));
 
         // Le code part **avant** d'écrire en session : si l'envoi échoue,
         // rien n'est retenu et l'utilisateur recommence proprement plutôt
         // que d'arriver sur un écran de code qu'il ne recevra jamais.
-        $this->codes->demander(VerificationKind::Email, $donnees['email']);
+        $this->codes->demander(VerificationKind::Email, $email);
 
-        Session::put($cle, $donnees);
+        Session::put($cle, ['email' => $email]);
     }
 
-    /** @return array<string, mixed>|null */
-    public function enAttente(string $cle): ?array
+    /** L'adresse de l'inscription en cours, ou `null`. */
+    public function email(string $cle): ?string
     {
-        return Session::get($cle);
+        return Session::get($cle)['email'] ?? null;
     }
 
     /**
-     * Vérifie le code et rend les données, ou `null`.
-     *
-     * La session est vidée **seulement en cas de succès** : effacer sur un
-     * mauvais code obligerait à tout ressaisir pour une faute de frappe.
-     *
-     * @return array<string, mixed>|null
+     * L'écran de saisie du code, ou `null` s'il n'y a pas d'inscription en
+     * cours — l'écran renvoie alors au formulaire.
      */
-    public function confirmer(string $cle, string $code): ?array
+    public function page(string $cle, string $action, string $renvoi, string $retour): ?CodePageData
     {
-        $donnees = $this->enAttente($cle);
+        $email = $this->email($cle);
 
-        if (! $donnees || ! $this->codes->verifier(VerificationKind::Email, $donnees['email'], $code)) {
+        return $email ? new CodePageData($email, $action, $renvoi, $retour, $this->attenteAvantRenvoi($cle)) : null;
+    }
+
+    /** L'adresse prouvée, ou `null` si le code est faux, expiré, ou sans inscription. */
+    public function confirmer(string $cle, string $code): ?string
+    {
+        $email = $this->email($cle);
+
+        if (! $email || ! $this->codes->verifier(VerificationKind::Email, $email, $code)) {
             return null;
         }
 
         Session::forget($cle);
 
-        return $donnees;
+        return $email;
     }
 
-    /** Renvoie un code à l'adresse en attente. Les bornes du service s'appliquent. */
+    /** @throws CodeThrottled|CodeSendingFailed */
     public function renvoyer(string $cle): void
     {
-        if ($donnees = $this->enAttente($cle)) {
-            $this->codes->demander(VerificationKind::Email, $donnees['email']);
+        if ($email = $this->email($cle)) {
+            $this->codes->demander(VerificationKind::Email, $email);
         }
     }
 
@@ -93,13 +91,10 @@ class PendingRegistration
         Session::forget($cle);
     }
 
-    /** Secondes avant de pouvoir redemander un code, pour l'écran. */
     public function attenteAvantRenvoi(string $cle): int
     {
-        $donnees = $this->enAttente($cle);
+        $email = $this->email($cle);
 
-        return $donnees
-            ? $this->codes->attenteAvantRenvoi(VerificationKind::Email, $donnees['email'])
-            : 0;
+        return $email ? $this->codes->attenteAvantRenvoi(VerificationKind::Email, $email) : 0;
     }
 }

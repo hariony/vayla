@@ -2,13 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Contracts\Repositories\VerificationCodeRepositoryInterface;
+use App\Contracts\Verification\CodeSender;
 use App\Enums\VerificationKind;
+use App\Exceptions\CodeSendingFailed;
+use App\Exceptions\CodeThrottled;
 use App\Mail\CodeMail;
 use App\Models\VerificationCode;
 use App\Providers\AppServiceProvider;
-use App\Services\Verification\CodeSender;
-use App\Services\Verification\CodeSendingFailed;
-use App\Services\Verification\CodeThrottled;
 use App\Services\Verification\VerificationCodeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -65,7 +66,7 @@ class VerificationCodeTest extends TestCase
                     return true;
                 }
             },
-        ]));
+        ], app(VerificationCodeRepositoryInterface::class)));
     }
 
     public static ?string $dernier = null;
@@ -246,7 +247,7 @@ class VerificationCodeTest extends TestCase
                     return true;
                 }
             },
-        ]));
+        ], app(VerificationCodeRepositoryInterface::class)));
 
         try {
             $this->service()->demander(VerificationKind::Phone, $this->numero);

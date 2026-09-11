@@ -2,14 +2,16 @@
 
 namespace App\Services;
 
+use App\Contracts\Repositories\DestinationRepositoryInterface;
 use App\Data\DestinationData;
 use App\Exceptions\DestinationNotFoundException;
-use App\Contracts\Repositories\DestinationRepositoryInterface;
+use App\Services\Support\DemoMode;
 
 class DestinationService
 {
     public function __construct(
         private DestinationRepositoryInterface $repository,
+        private DemoMode $demo,
     ) {}
 
     /**
@@ -22,9 +24,9 @@ class DestinationService
      *
      * @return array<int, DestinationData>
      */
-    public function atlas(bool $includeDemo): array
+    public function atlas(): array
     {
-        $counts = $this->repository->countListings($includeDemo);
+        $counts = $this->repository->countListings($this->demo->actif());
 
         $destinations = $this->repository->all()
             ->map(fn ($d) => DestinationData::fromModel($d, $counts[$d->slug] ?? 0))
@@ -39,12 +41,12 @@ class DestinationService
         return $destinations;
     }
 
-    public function show(string $slug, bool $includeDemo): DestinationData
+    public function show(string $slug): DestinationData
     {
         $destination = $this->repository->findBySlug($slug)
             ?? throw new DestinationNotFoundException($slug);
 
-        $counts = $this->repository->countListings($includeDemo);
+        $counts = $this->repository->countListings($this->demo->actif());
 
         return DestinationData::fromModel($destination, $counts[$slug] ?? 0);
     }

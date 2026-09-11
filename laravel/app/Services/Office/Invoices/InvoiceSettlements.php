@@ -38,14 +38,14 @@ final class InvoiceSettlements
 
         $facture = $this->factures->forOwner($owner, $debut);
 
-        if ($facture['due'] <= 0) {
+        if ($facture->due <= 0) {
             throw new OfficeRefusal('Aucune commission due ce mois-là : il n’y a rien à régler.');
         }
 
-        $this->reglements->consigner($owner, $debut, $facture['due'], $reglement->reference, $admin->id);
+        $this->reglements->consigner($owner, $debut, $facture->due, $reglement->reference, $admin->id);
 
         $this->journal->consigner($admin, AdminActionKind::InvoiceSettled, $owner,
-            "Facture de {$facture['period']['label']} réglée par {$owner->name} — ".$this->ariary($facture['due']).'.',
+            "Facture de {$facture->period->label} réglée par {$owner->name} — ".$this->ariary($facture->due).'.',
             $reglement->reference ? 'Référence : '.$reglement->reference : null);
 
         return $owner;

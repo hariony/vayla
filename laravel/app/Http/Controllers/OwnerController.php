@@ -3,10 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Exceptions\BookingRefusedException;
-use App\Models\Booking;
+use App\Http\Requests\OwnerDeclineRequest;
 use App\Models\Owner;
-use App\Services\BookingService;
-use App\Services\OwnerSpaceService;
+use App\Services\Owners\OwnerDashboardQuery;
+use App\Services\Owners\OwnerResponses;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -29,49 +29,31 @@ use Inertia\Response;
  */
 class OwnerController extends Controller
 {
-    public function __construct(
-        private OwnerSpaceService $space,
-        private BookingService $bookings,
-    ) {}
-
-    public function show(Request $request): Response
+    public function show(Request $request, OwnerDashboardQuery $tableau): Response
     {
-        return Inertia::render('Owner/Index', $this->space->dashboard($this->proprietaire($request)));
+        return Inertia::render('Owner/Index', $tableau->page($this->proprietaire($request)));
     }
 
-    public function accept(Request $request, string $reference): RedirectResponse
+    public function accept(Request $request, string $reference, OwnerResponses $reponses): RedirectResponse
     {
-        return $this->repondre($request, $reference, fn (Booking $b) => $this->bookings->accept($b),
-            'Demande acceptée. Le voyageur est prévenu et vos dates sont bloquées.');
-    }
-
-    public function decline(Request $request, string $reference): RedirectResponse
-    {
-        $motif = $request->string('reason')->trim()->value() ?: null;
-
-        return $this->repondre($request, $reference, fn (Booking $b) => $this->bookings->decline($b, $motif),
-            'Demande refusée. Les nuits sont rendues à votre calendrier.');
-    }
-
-    /** Le tronc commun : vérifier l'appartenance, agir, revenir. */
-    private function repondre(Request $request, string $reference, callable $action, string $message): RedirectResponse
-    {
-        $owner = $this->proprietaire($request);
-
-        $booking = Booking::query()
-            ->where('reference', $reference)
-            // La session seule ne suffit pas : la réservation doit porter sur
-            // un logement de ce propriétaire.
-            ->whereIn('listing_id', $owner->listings->pluck('id'))
-            ->firstOr(fn () => abort(404));
-
         try {
-            $action($booking);
+            $reponses->accepter($this->proprietaire($request), $reference);
         } catch (BookingRefusedException $e) {
             return back()->with('erreur', $e->getMessage());
         }
 
-        return back()->with('succes', $message);
+        return back()->with('succes', 'Demande acceptée. Le voyageur est prévenu et vos dates sont bloquées.');
+    }
+
+    public function decline(OwnerDeclineRequest $request, string $reference, OwnerResponses $reponses): RedirectResponse
+    {
+        try {
+            $reponses->refuser($this->proprietaire($request), $reference, $request->motif());
+        } catch (BookingRefusedException $e) {
+            return back()->with('erreur', $e->getMessage());
+        }
+
+        return back()->with('succes', 'Demande refusée. Les nuits sont rendues à votre calendrier.');
     }
 
     private function proprietaire(Request $request): Owner

@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use App\Data\CategoryData;
 use App\Contracts\Repositories\CategoryRepositoryInterface;
+use App\Data\CategoryData;
 
 class CategoryService
 {

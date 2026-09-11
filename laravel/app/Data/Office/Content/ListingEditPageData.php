@@ -6,19 +6,15 @@ use App\Data\Office\OwnerRefData;
 use Spatie\LaravelData\Data;
 
 /**
- * Les props de `Office/Listings/Edit`. `annonce` et `vocabulaire` reprennent la
- * forme de `OwnerListingService` — le même formulaire que celui du
- * propriétaire — et deviendront typés avec lui, au lot 3.
+ * Les props de `Office/Listings/Edit` : le même formulaire que celui du
+ * propriétaire, plus ce que seule l'équipe touche. `annonce` est nulle quand
+ * l'équipe saisit une annonce pour un propriétaire.
  */
 final class ListingEditPageData extends Data
 {
-    /**
-     * @param  array<string, mixed>|null  $annonce
-     * @param  array<string, mixed>  $vocabulaire
-     */
     public function __construct(
-        public readonly ?array $annonce,
+        public readonly ?OfficeListingFormData $annonce,
         public readonly ?OwnerRefData $proprietaire,
-        public readonly array $vocabulaire,
+        public readonly OfficeListingVocabularyData $vocabulaire,
     ) {}
 }

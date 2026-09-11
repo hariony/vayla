@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Data\SejourData;
 use App\Enums\BlockReason;
 use App\Services\AvailabilityService;
 use Illuminate\Foundation\Http\FormRequest;
@@ -49,5 +50,20 @@ class OwnerBlockRequest extends FormRequest
             'reason.required' => 'Indiquez pourquoi ces nuits sont fermées.',
             'reason.in' => 'Indiquez pourquoi ces nuits sont fermées.',
         ];
+    }
+
+    /**
+     * La période, déjà validée. `SejourData` n'est pas ici un garde-fou de
+     * plus : c'est le seul endroit du dépôt qui sait tirer la dernière nuit
+     * d'une date de départ.
+     */
+    public function sejour(): ?SejourData
+    {
+        return SejourData::depuis($this->string('arrival')->toString(), $this->string('departure')->toString());
+    }
+
+    public function motif(): BlockReason
+    {
+        return BlockReason::from($this->string('reason')->toString());
     }
 }

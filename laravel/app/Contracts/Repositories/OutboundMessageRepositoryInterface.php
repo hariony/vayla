@@ -19,4 +19,9 @@ interface OutboundMessageRepositoryInterface
     public function enAttente(int $limite = 50): Collection;
 
     public function marquerEnvoye(OutboundMessage $message): void;
+
+    /** @return Collection<int, OutboundMessage> les plus récents, envoyés ou non */
+    public function derniers(int $limite = 50): Collection;
+
+    public function trouver(int $id): ?OutboundMessage;
 }

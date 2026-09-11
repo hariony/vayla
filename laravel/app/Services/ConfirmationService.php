@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Data\ConfirmationData;
+use App\Data\ConfirmationPointData;
 use App\Data\ConfirmationSummaryData;
 use App\Enums\ConfirmationPoint;
 use App\Models\Listing;
@@ -50,21 +51,21 @@ class ConfirmationService
                 $confirmed = $rows->filter(fn ($c) => in_array($p->value, $c->points ?? [], true))->count();
                 $flagged = $rows->filter(fn ($c) => in_array($p->value, $c->flagged ?? [], true))->count();
 
-                return [
-                    'key' => $p->value,
-                    'label' => $p->short(),
-                    'long' => $p->label(),
-                    'icon' => $p->icon(),
-                    'confirmed' => $confirmed,
-                    'flagged' => $flagged,
+                return new ConfirmationPointData(
+                    key: $p->value,
+                    label: $p->short(),
+                    long: $p->label(),
+                    icon: $p->icon(),
+                    confirmed: $confirmed,
+                    flagged: $flagged,
                     // Le total des réponses reçues sur CE point : un voyageur
                     // qui n'a pas répondu ne compte ni pour ni contre.
-                    'answered' => $confirmed + $flagged,
-                ];
+                    answered: $confirmed + $flagged,
+                );
             })
             // Un point sur lequel personne ne s'est prononcé n'a pas de barre :
             // une barre vide se lit comme un échec.
-            ->filter(fn (array $p) => $p['answered'] > 0)
+            ->filter(fn (ConfirmationPointData $p) => $p->answered > 0)
             ->values()
             ->all();
 

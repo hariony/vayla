@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Contracts\Currency\ExchangeRateProvider;
 use App\Data\DeviseData;
 use App\Http\Controllers\Controller;
-use App\Services\Currency\ExchangeRateProvider;
 use Illuminate\Http\JsonResponse;
 
 /**

@@ -15,10 +15,10 @@ use App\Http\Controllers\Office\NotFoundController;
 use App\Http\Controllers\Office\OwnerController;
 use App\Http\Controllers\Office\PageController;
 use App\Http\Controllers\Office\PhotoLibraryController;
-use App\Http\Controllers\Office\StayRequestController;
 use App\Http\Controllers\Office\SettingsController;
 use App\Http\Controllers\Office\SiteTextController;
 use App\Http\Controllers\Office\StatsController;
+use App\Http\Controllers\Office\StayRequestController;
 use App\Http\Controllers\Office\TeamController;
 use App\Http\Controllers\Office\TravellerController;
 use App\Http\Controllers\Office\WhatsAppController;
@@ -62,7 +62,9 @@ Route::domain(config('vayla.office.domaine'))
 
         Route::middleware(['auth:admin', 'office.mot-de-passe'])->group(function () {
             Route::get('/', DashboardController::class)->name('home');
-            Route::get('/statistiques', StatsController::class)->name('stats');
+            Route::get('/statistiques', [StatsController::class, 'demandes'])->name('stats');
+            Route::get('/statistiques/sejours', [StatsController::class, 'sejours'])->name('stats.stays');
+            Route::get('/statistiques/catalogue', [StatsController::class, 'catalogue'])->name('stats.catalogue');
 
             Route::get('/annonces', [ListingController::class, 'index'])->name('listings');
             Route::get('/annonces/{listing}', [ListingController::class, 'show'])

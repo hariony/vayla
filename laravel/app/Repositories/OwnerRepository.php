@@ -3,6 +3,8 @@
 namespace App\Repositories;
 
 use App\Contracts\Repositories\OwnerRepositoryInterface;
+use App\DTOs\Owners\OwnerAccountDto;
+use App\DTOs\Owners\OwnerProfileDto;
 use App\Models\Owner;
 use App\Support\Telephone;
 use Illuminate\Support\Carbon;
@@ -66,6 +68,60 @@ class OwnerRepository implements OwnerRepositoryInterface
         // nombre de propriétaires se compte en dizaines.
         return Owner::query()->get()
             ->first(fn (Owner $o) => $cherche->equivaut(Telephone::depuis((string) $o->phone)));
+    }
+
+    public function modifierCompte(Owner $owner, OwnerAccountDto $compte, bool $oublierVerification): void
+    {
+        $owner->fill([
+            'name' => $compte->name,
+            'phone' => $compte->phone,
+            'city' => $compte->city,
+            'address' => $compte->address,
+            'mobile_money' => $compte->mobileMoney,
+            'mobile_money_operator' => $compte->operator?->value,
+        ]);
+
+        if ($oublierVerification) {
+            $owner->phone_verified_at = null;
+        }
+
+        $owner->save();
+    }
+
+    public function poserPortrait(Owner $owner, ?string $cle): void
+    {
+        $owner->forceFill(['portrait' => $cle])->save();
+    }
+
+    public function parEmail(string $email): ?Owner
+    {
+        return Owner::query()->where('email', $email)->first();
+    }
+
+    public function creerDepuisInscription(OwnerProfileDto $fiche, string $email): Owner
+    {
+        $owner = Owner::create([
+            'name' => $fiche->name,
+            'email' => $email,
+            'phone' => $fiche->phone,
+            'access_key' => Owner::nouvelleCle(),
+            'access_key_set_at' => Carbon::now(),
+            'is_demo' => false,
+        ]);
+
+        $owner->forceFill(['email_verified_at' => Carbon::now()])->save();
+
+        return $owner;
+    }
+
+    public function marquerConnexion(Owner $owner): void
+    {
+        $owner->forceFill(['last_login_at' => Carbon::now()])->save();
+    }
+
+    public function marquerTelephoneVerifie(Owner $owner): void
+    {
+        $owner->forceFill(['phone_verified_at' => Carbon::now()])->save();
     }
 
     public function tous(): Collection

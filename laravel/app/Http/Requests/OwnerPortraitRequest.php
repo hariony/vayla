@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Contracts\Photos\PhotoProcessor;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\UploadedFile;
 
 /**
  * Le téléversement d'un portrait.
@@ -33,5 +34,10 @@ class OwnerPortraitRequest extends FormRequest
             'portrait.max' => 'Cette photo dépasse 40 Mo : exportez-la en qualité normale, ou en 6 000 pixels de large au plus.',
             'portrait.uploaded' => 'La photo n’est pas arrivée : elle dépasse 40 Mo, ou la connexion a coupé pendant l’envoi. Réessayez.',
         ];
+    }
+
+    public function portrait(): UploadedFile
+    {
+        return $this->file('portrait');
     }
 }

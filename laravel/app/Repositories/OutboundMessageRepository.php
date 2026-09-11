@@ -57,6 +57,16 @@ class OutboundMessageRepository implements OutboundMessageRepositoryInterface
             ->get();
     }
 
+    public function derniers(int $limite = 50): Collection
+    {
+        return OutboundMessage::query()->with(['owner', 'booking'])->latest('id')->limit($limite)->get();
+    }
+
+    public function trouver(int $id): ?OutboundMessage
+    {
+        return OutboundMessage::query()->find($id);
+    }
+
     public function marquerEnvoye(OutboundMessage $message): void
     {
         $message->forceFill(['sent_at' => Carbon::now(), 'failure' => null])->save();

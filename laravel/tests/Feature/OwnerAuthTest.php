@@ -2,9 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Contracts\Repositories\VerificationCodeRepositoryInterface;
+use App\Contracts\Verification\CodeSender;
 use App\Enums\VerificationKind;
 use App\Models\Owner;
-use App\Services\Verification\CodeSender;
 use App\Services\Verification\VerificationCodeService;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -59,7 +60,7 @@ class OwnerAuthTest extends TestCase
                     return true;
                 }
             },
-        ]));
+        ], app(VerificationCodeRepositoryInterface::class)));
     }
 
     private function hanta(): Owner

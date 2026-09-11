@@ -2,11 +2,8 @@
 
 namespace App\Console\Commands;
 
-use App\Enums\BookingStatus;
-use App\Models\Booking;
-use App\Services\Notifications\OwnerNotifier;
+use App\Services\Bookings\PendingReminders;
 use Illuminate\Console\Command;
-use Illuminate\Support\Carbon;
 
 /**
  * Le rappel avant expiration.
@@ -29,26 +26,13 @@ class RemindPendingBookings extends Command
 
     protected $description = 'Rappelle aux propriétaires les demandes sur le point d’expirer';
 
-    public function handle(OwnerNotifier $notifier): int
+    public function handle(PendingReminders $rappels): int
     {
-        $seuil = Carbon::now()->addHours(max(2, (int) round(config('vayla.booking.hold_hours') / 3)));
+        $n = $rappels->rappeler();
 
-        $demandes = Booking::query()
-            ->with('listing.owner')
-            ->where('status', BookingStatus::Pending->value)
-            ->whereNotNull('hold_expires_at')
-            // Ni déjà expirée — la libération s'en charge — ni encore loin.
-            ->where('hold_expires_at', '>', Carbon::now())
-            ->where('hold_expires_at', '<=', $seuil)
-            ->get();
-
-        foreach ($demandes as $demande) {
-            $notifier->demandeExpireBientot($demande);
-        }
-
-        $this->info($demandes->isEmpty()
+        $this->info($n === 0
             ? 'Aucune demande à rappeler.'
-            : $demandes->count().' rappel(s) mis en file. `php artisan vayla:whatsapp` pour les envoyer.');
+            : $n.' rappel(s) mis en file. `php artisan vayla:whatsapp` pour les envoyer.');
 
         return self::SUCCESS;
     }

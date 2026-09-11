@@ -647,6 +647,20 @@ body::before {
    uns sous les autres. */
 .of-num { font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
 
+/* ── La grille des graphiques (statistiques) ──────────────────────────
+   Deux colonnes, trois au-delà de 1600 px, une sous 1000. `.of-graphes__large`
+   prend toute la largeur ; `dense` : il ne laisse pas de case vide derrière
+   lui, le bloc suivant qui tient vient la combler. */
+.of-graphes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-flow: row dense; gap: 1rem; }
+.of-graphes__large { grid-column: 1 / -1; }
+
+@media (min-width: 1600px) {
+    .of-graphes { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 1000px) {
+    .of-graphes { grid-template-columns: minmax(0, 1fr); }
+}
+
 /* ── Les listes ────────────────────────────────────────────────────────
    Une ligne entière est un lien : on vise une annonce, pas un mot bleu au
    milieu d'elle. Elle a donc sa hauteur de cible, son survol **et** son focus,

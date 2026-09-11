@@ -2,6 +2,10 @@
 
 namespace App\Contracts\Listings;
 
+use App\Data\Listings\ListingFormData;
+use App\Data\Listings\ListingVocabularyData;
+use App\DTOs\Listings\AmenityChoiceDto;
+use App\DTOs\Listings\ListingFicheDto;
 use App\Models\Listing;
 use App\Models\Owner;
 
@@ -14,15 +18,12 @@ use App\Models\Owner;
  */
 interface ListingDrafting
 {
-    /** @param  array<string, mixed>  $donnees */
-    public function creer(Owner $owner, array $donnees): Listing;
+    public function creer(Owner $owner, ListingFicheDto $fiche): Listing;
 
-    /** @param  array<int, array{id: int, highlight?: bool}>  $choix */
+    /** @param  list<AmenityChoiceDto>  $choix */
     public function poserEquipements(Listing $listing, array $choix): void;
 
-    /** @return array<string, mixed> */
-    public function pourEdition(Listing $listing): array;
+    public function pourEdition(Listing $listing): ListingFormData;
 
-    /** @return array<string, mixed> */
-    public function vocabulaire(): array;
+    public function vocabulaire(): ListingVocabularyData;
 }

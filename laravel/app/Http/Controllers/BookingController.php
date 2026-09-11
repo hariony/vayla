@@ -2,15 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\MessageAuthor;
 use App\Exceptions\BookingRefusedException;
+use App\Http\Requests\BookingFormRequest;
 use App\Http\Requests\BookingRequest;
 use App\Http\Requests\MessageRequest;
-use App\Models\Booking;
-use App\Services\BookingPageService;
-use App\Services\ConversationService;
+use App\Services\Bookings\BookingConfirmationQuery;
+use App\Services\Bookings\BookingFormQuery;
+use App\Services\Bookings\BookingSubmitter;
+use App\Services\Bookings\TravellerThread;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -23,29 +23,16 @@ use Inertia\Response;
  */
 class BookingController extends Controller
 {
-    public function __construct(
-        private BookingPageService $service,
-        private ConversationService $conversations,
-    ) {}
-
-    public function create(Request $request, string $slug): Response
+    /** Connecté, ses coordonnées pré-remplissent le formulaire ; sans compte, les champs sont vides. */
+    public function create(BookingFormRequest $request, string $slug, BookingFormQuery $formulaire): Response
     {
-        return Inertia::render('Bookings/Create', $this->service->form(
-            $slug,
-            $request->query('arrivee'),
-            $request->query('depart'),
-            $request->integer('voyageurs') ?: null,
-            // Connecté, ses coordonnées pré-remplissent le formulaire. Le
-            // compte n'est toujours pas exigé : sans lui, les champs sont
-            // simplement vides.
-            $request->user(),
-        ));
+        return Inertia::render('Bookings/Create', $formulaire->page($slug, $request->toDto(), $request->user('web')));
     }
 
-    public function store(BookingRequest $request, string $slug): RedirectResponse
+    public function store(BookingRequest $request, string $slug, BookingSubmitter $demandes): RedirectResponse
     {
         try {
-            $booking = $this->service->book($slug, $request->validated());
+            $booking = $demandes->soumettre($slug, $request->toDto());
         } catch (BookingRefusedException $e) {
             // Un refus métier n'est pas une panne : il revient dans le
             // formulaire, à côté des dates, là où il se corrige.
@@ -55,38 +42,19 @@ class BookingController extends Controller
         return to_route('bookings.show', $booking->reference);
     }
 
-    public function show(string $reference): Response
+    public function show(string $reference, BookingConfirmationQuery $confirmation): Response
     {
-        $booking = $this->reservation($reference);
-
-        // Ouvrir la page vaut lecture : un bouton « marquer comme lu » de plus
-        // n'apprendrait rien à personne.
-        $this->conversations->marquerLu($booking, MessageAuthor::Traveller);
-
-        return Inertia::render('Bookings/Confirmed', $this->service->confirmed($reference) + [
-            'messages' => $this->conversations->fil($booking, MessageAuthor::Traveller),
-        ]);
+        return Inertia::render('Bookings/Confirmed', $confirmation->page($reference));
     }
 
     /**
-     * Le voyageur écrit dans le fil de sa réservation.
-     *
-     * **Il n'a pas de compte, et c'est délibéré** : la référence tient lieu de
-     * droit d'accès, comme pour la page elle-même. La limite de débit est ce
-     * qui tient la porte — une référence courte se devine à force d'essais, et
-     * sans elle on pourrait écrire chez des inconnus.
+     * Le voyageur écrit dans le fil de sa réservation — sans compte : la
+     * référence tient lieu de droit d'accès (`TravellerThread`).
      */
-    public function reply(MessageRequest $request, string $reference): RedirectResponse
+    public function reply(MessageRequest $request, string $reference, TravellerThread $fil): RedirectResponse
     {
-        $booking = $this->reservation($reference);
-
-        $this->conversations->ecrire($booking, MessageAuthor::Traveller, $request->string('body')->value());
+        $fil->ecrire($reference, $request->body());
 
         return back()->with('succes', 'Message envoyé au propriétaire.');
-    }
-
-    private function reservation(string $reference): Booking
-    {
-        return Booking::query()->where('reference', $reference)->firstOr(fn () => abort(404));
     }
 }

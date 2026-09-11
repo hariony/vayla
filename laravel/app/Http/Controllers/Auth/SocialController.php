@@ -2,12 +2,16 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\DTOs\Auth\SocialIdentityDto;
 use App\Enums\EspaceSocial;
 use App\Enums\SocialProvider;
+use App\Exceptions\LiaisonRefusee;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\OneTapRequest;
 use App\Services\Auth\GoogleIdToken;
-use App\Services\Auth\LiaisonRefusee;
+use App\Services\Auth\PendingSocialIdentity;
 use App\Services\Auth\SocialAuthService;
+use App\Services\Owners\OwnerSignup;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -41,11 +45,10 @@ class SocialController extends Controller
     /** La clé de session qui retient l'espace visé pendant l'aller-retour. */
     private const ESPACE = 'social.espace';
 
-    /** L'identité sociale en attente, le temps que la fiche crée le compte. */
-    public const IDENTITE = 'social.identite';
-
     public function __construct(
         private SocialAuthService $social,
+        private PendingSocialIdentity $identites,
+        private OwnerSignup $signup,
     ) {}
 
     /**
@@ -100,7 +103,7 @@ class SocialController extends Controller
         }
 
         try {
-            $identite = Socialite::driver($choisi->value)->user();
+            $identite = SocialIdentityDto::depuis($choisi, Socialite::driver($choisi->value)->user());
         } catch (Throwable $e) {
             // Le message, jamais la requête : elle porte le code d'échange.
             Log::warning('Échec OAuth', ['provider' => $choisi->value, 'raison' => $e->getMessage()]);
@@ -110,7 +113,7 @@ class SocialController extends Controller
         }
 
         try {
-            ['compte' => $compte, 'nouveau' => $nouveau] = $this->social->rattacher($choisi, $identite, $espace);
+            $rattachement = $this->social->rattacher($identite, $espace);
         } catch (LiaisonRefusee $refus) {
             return redirect()->route($espace->retour())->withErrors(['email' => $refus->getMessage()]);
         }
@@ -118,23 +121,14 @@ class SocialController extends Controller
         // Propriétaire inconnu : rien n'est créé, on passe par la fiche qui
         // demande le numéro. L'adresse vérifiée et l'identité sociale voyagent
         // en session — le lien sera posé quand le compte existera.
-        if ($compte === null) {
-            $request->session()->put('inscription.proprietaire.verifiee', $identite->getEmail()
-                ? mb_strtolower(trim($identite->getEmail()))
-                : null);
-            $request->session()->put(self::IDENTITE, [
-                'provider' => $choisi->value,
-                'id' => (string) $identite->getId(),
-                'email' => $identite->getEmail(),
-                'name' => $identite->getName(),
-                'avatar' => $identite->getAvatar(),
-                'verifie' => $choisi->garantitLAdresse(is_array($identite->user) ? $identite->user : []),
-            ]);
+        if ($rattachement->compte === null) {
+            $this->signup->retenirAdresse($identite->email);
+            $this->identites->retenir($identite);
 
             return redirect()->route('owner.register.profile');
         }
 
-        Auth::guard($espace->garde())->login($compte, remember: true);
+        Auth::guard($espace->garde())->login($rattachement->compte, remember: true);
 
         // Contre la fixation de session : l'identifiant qui a servi à arriver
         // ici ne doit pas être celui qui porte la session authentifiée.
@@ -153,7 +147,7 @@ class SocialController extends Controller
          */
         $vers = redirect()->intended(route($espace->destination()));
 
-        return $nouveau ? $vers->with('succes', 'Votre compte est ouvert.') : $vers;
+        return $rattachement->nouveau ? $vers->with('succes', 'Votre compte est ouvert.') : $vers;
     }
 
     /**
@@ -172,10 +166,10 @@ class SocialController extends Controller
      * redirection : mêmes quatre cas, même refus quand l'adresse n'est pas
      * garantie, donc aucun doublon d'utilisateur.
      */
-    public function oneTap(Request $request, GoogleIdToken $jetons): RedirectResponse
+    public function oneTap(OneTapRequest $request, GoogleIdToken $jetons): RedirectResponse
     {
         try {
-            $identite = $jetons->verifier((string) $request->input('credential'));
+            $identite = SocialIdentityDto::depuis(SocialProvider::Google, $jetons->verifier($request->credential()));
         } catch (Throwable $e) {
             Log::warning('One Tap refusé', ['raison' => $e->getMessage()]);
 
@@ -183,16 +177,12 @@ class SocialController extends Controller
         }
 
         try {
-            ['compte' => $compte] = $this->social->rattacher(
-                SocialProvider::Google,
-                $identite,
-                EspaceSocial::Voyageur
-            );
+            $rattachement = $this->social->rattacher($identite, EspaceSocial::Voyageur);
         } catch (LiaisonRefusee $refus) {
             return back()->withErrors(['email' => $refus->getMessage()]);
         }
 
-        Auth::login($compte, remember: true);
+        Auth::guard('web')->login($rattachement->compte, remember: true);
         $request->session()->regenerate();
 
         return redirect()->intended(route('traveller.bookings'));

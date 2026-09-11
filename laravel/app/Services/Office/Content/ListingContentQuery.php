@@ -7,10 +7,13 @@ use App\Contracts\Repositories\OfficeCategoryRepositoryInterface;
 use App\Contracts\Repositories\OfficeListingContentRepositoryInterface;
 use App\Data\Office\Content\EditorialCategoryData;
 use App\Data\Office\Content\ListingEditPageData;
+use App\Data\Office\Content\OfficeListingFormData;
+use App\Data\Office\Content\OfficeListingVocabularyData;
 use App\Data\Office\OwnerRefData;
 use App\Models\Category;
 use App\Models\Listing;
 use App\Models\Owner;
+use App\Support\PublicUrl;
 
 /** Le formulaire de contenu d'une annonce — le même que celui du propriétaire, plus la mise en avant et les catégories. */
 final class ListingContentQuery
@@ -27,20 +30,19 @@ final class ListingContentQuery
         $owner ??= $listing?->owner;
 
         return new ListingEditPageData(
-            annonce: $listing ? [
-                ...$this->redaction->pourEdition($listing),
-                'id' => $listing->id,
-                'featured' => (bool) $listing->featured,
-                'categories' => $this->contenu->categories($listing),
-                'isDemo' => (bool) $listing->is_demo,
-                'publicUrl' => rtrim((string) config('app.url'), '/').'/logements/'.$listing->slug,
-            ] : null,
+            annonce: $listing ? OfficeListingFormData::depuis(
+                $this->redaction->pourEdition($listing),
+                id: $listing->id,
+                featured: (bool) $listing->featured,
+                categories: $this->contenu->categories($listing),
+                isDemo: (bool) $listing->is_demo,
+                publicUrl: PublicUrl::de('/logements/'.$listing->slug),
+            ) : null,
             proprietaire: $owner ? new OwnerRefData($owner->id, $owner->name) : null,
-            vocabulaire: [
-                ...$this->redaction->vocabulaire(),
-                'categories' => $this->categories->editoriales()
-                    ->map(fn (Category $c) => EditorialCategoryData::fromModel($c))->all(),
-            ],
+            vocabulaire: OfficeListingVocabularyData::depuis(
+                $this->redaction->vocabulaire(),
+                $this->categories->editoriales()->map(fn (Category $c) => EditorialCategoryData::fromModel($c))->values()->all(),
+            ),
         );
     }
 }

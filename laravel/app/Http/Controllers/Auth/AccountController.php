@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\TravellerAccountRequest;
-use App\Models\Booking;
+use App\Services\Travellers\TravellerSpace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -31,26 +31,18 @@ use Inertia\Response;
  */
 class AccountController extends Controller
 {
+    public function __construct(
+        private TravellerSpace $espace,
+    ) {}
+
     public function edit(Request $request): Response
     {
-        $user = $request->user();
-
-        return Inertia::render('Auth/Account', [
-            'compte' => [
-                'firstName' => $user->first_name,
-                'lastName' => $user->last_name,
-                'phone' => $user->phone,
-                'email' => $user->email,
-                // Ce que l'adresse rattache : c'est la seule façon de
-                // comprendre pourquoi elle ne se change pas d'un clic.
-                'sejours' => Booking::query()->where('traveller_email', $user->email)->count(),
-            ],
-        ]);
+        return Inertia::render('Auth/Account', $this->espace->compte($request->user('web')));
     }
 
     public function update(TravellerAccountRequest $request): RedirectResponse
     {
-        $request->user()->fill($request->validated())->save();
+        $this->espace->modifier($request->user('web'), $request->toDto());
 
         return back()->with('succes', 'Vos informations sont à jour.');
     }

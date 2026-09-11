@@ -2,11 +2,15 @@
 
 namespace App\Services;
 
+use App\Contracts\Repositories\ListingRepositoryInterface;
+use App\Data\Api\ListingIndexData;
+use App\Data\Api\ListingIndexMetaData;
 use App\Data\ListingData;
 use App\Data\ListingDetailData;
 use App\Data\ListingFiltreData;
+use App\DTOs\Listings\ListingFacetsDto;
 use App\Exceptions\ListingNotFoundException;
-use App\Contracts\Repositories\ListingRepositoryInterface;
+use App\Services\Support\DemoMode;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class ListingService
@@ -15,6 +19,7 @@ class ListingService
         private ListingRepositoryInterface $repository,
         private AvailabilityService $availability,
         private ConfirmationService $confirmations,
+        private DemoMode $demo,
     ) {}
 
     /**
@@ -24,17 +29,17 @@ class ListingService
      *
      * @return array<int, ListingData>
      */
-    public function forHome(bool $includeDemo): array
+    public function forHome(): array
     {
-        return $this->repository->published($includeDemo)
+        return $this->repository->published($this->demo->actif())
             ->map(fn ($l) => ListingData::fromModel($l))
             ->values()
             ->all();
     }
 
-    public function search(ListingFiltreData $filtre, bool $includeDemo): LengthAwarePaginator
+    public function search(ListingFiltreData $filtre): LengthAwarePaginator
     {
-        return $this->repository->paginate($filtre, $includeDemo)
+        return $this->repository->paginate($filtre, $this->demo->actif())
             ->through(fn ($l) => ListingData::fromModel($l));
     }
 
@@ -42,8 +47,9 @@ class ListingService
      * La fiche complète : la liste sert les trois équipements mis en avant,
      * la fiche les sert tous, groupés par rubrique.
      */
-    public function show(string $slug, bool $includeDemo): ListingDetailData
+    public function show(string $slug): ListingDetailData
     {
+        $includeDemo = $this->demo->actif();
         $listing = $this->repository->findBySlug($slug, $includeDemo)
             ?? throw new ListingNotFoundException($slug);
 
@@ -61,8 +67,9 @@ class ListingService
      *
      * @return array<int, ListingData>
      */
-    public function similar(string $slug, bool $includeDemo, int $limit = 3): array
+    public function similar(string $slug, int $limit = 3): array
     {
+        $includeDemo = $this->demo->actif();
         $listing = $this->repository->findBySlug($slug, $includeDemo)
             ?? throw new ListingNotFoundException($slug);
 
@@ -73,8 +80,19 @@ class ListingService
     }
 
     /** @return array{kinds: array<int, string>, priceMin: int, priceMax: int, total: int} */
-    public function facets(bool $includeDemo): array
+    public function facets(): ListingFacetsDto
     {
-        return $this->repository->facets($includeDemo);
+        return $this->repository->facets($this->demo->actif());
+    }
+
+    /**
+     * Une page de `/api/v1/listings` : les annonces, et où l'on en est. `demo`
+     * y est dit, comme le bandeau « Aperçu » le dit à l'écran.
+     */
+    public function apiPage(ListingFiltreData $filtre): ListingIndexData
+    {
+        $page = $this->search($filtre);
+
+        return new ListingIndexData($page->items(), ListingIndexMetaData::fromPaginator($page, $this->demo->actif()));
     }
 }

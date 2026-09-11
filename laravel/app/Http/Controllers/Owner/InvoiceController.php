@@ -3,8 +3,7 @@
 namespace App\Http\Controllers\Owner;
 
 use App\Http\Controllers\Controller;
-use App\Services\InvoiceService;
-use App\Services\Settings\SettingsService;
+use App\Services\Owners\OwnerInvoicesQuery;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -24,15 +23,8 @@ use Inertia\Response;
  */
 class InvoiceController extends Controller
 {
-    public function __construct(
-        private InvoiceService $invoices,
-    ) {}
-
-    public function index(Request $request): Response
+    public function index(Request $request, OwnerInvoicesQuery $facturation): Response
     {
-        return Inertia::render('Owner/Invoices', [
-            'facturation' => $this->invoices->historique($request->user('proprietaire')),
-            'taux' => app(SettingsService::class)->commission(),
-        ]);
+        return Inertia::render('Owner/Invoices', $facturation->page($request->user('proprietaire')));
     }
 }

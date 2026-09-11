@@ -2,14 +2,18 @@
 
 namespace App\Services;
 
+use App\Contracts\Repositories\DestinationRepositoryInterface;
+use App\Contracts\Repositories\ListingRepositoryInterface;
 use App\Data\AccessData;
 use App\Data\DestinationDetailData;
 use App\Data\ListingData;
+use App\Data\Pages\AtlasPageData;
+use App\Data\Pages\DestinationPageData;
+use App\Data\PriceRangeData;
+use App\Data\TrustCountData;
 use App\Enums\TrustLevel;
 use App\Exceptions\DestinationNotFoundException;
-use App\Models\Destination;
-use App\Models\Listing;
-use App\Contracts\Repositories\ListingRepositoryInterface;
+use App\Services\Support\DemoMode;
 use Illuminate\Support\Collection;
 
 /**
@@ -29,73 +33,60 @@ class DestinationPageService
 {
     public function __construct(
         private ListingRepositoryInterface $listings,
+        private DestinationRepositoryInterface $lieux,
         private DestinationService $destinations,
         private SeasonService $seasons,
         private PhotoService $photos,
+        private DemoMode $demo,
     ) {}
 
-    /** @return array<string, mixed> */
-    public function show(string $slug): array
+    public function show(string $slug): DestinationPageData
     {
-        $demo = (bool) config('vayla.demo');
+        $destination = $this->lieux->findWithGallery($slug) ?? throw new DestinationNotFoundException($slug);
+        $rows = $this->listings->forDestination($slug, $this->demo->actif());
 
-        $destination = Destination::query()->with(['photo', 'galerie'])->where('slug', $slug)->first()
-            ?? throw new DestinationNotFoundException($slug);
-
-        $rows = $this->listings->forDestination($slug, $demo);
-
-        return [
-            'fiche' => new DestinationDetailData(
-                destination: $this->destinations->show($slug, $demo),
+        return new DestinationPageData(
+            fiche: new DestinationDetailData(
+                destination: $this->destinations->show($slug),
                 access: AccessData::fromModel($destination),
                 listings: $rows->map(fn ($l) => ListingData::fromModel($l))->values()->all(),
                 trust: $this->trust($rows),
-                season: $this->seasons->payload($destination),
-                prices: [
-                    'min' => $rows->min('price'),
-                    'max' => $rows->max('price'),
-                ],
+                season: $this->seasons->saison($destination),
+                prices: new PriceRangeData($rows->min('price'), $rows->max('price')),
             ),
-            'destinations' => $this->destinations->atlas($demo),
-            'demo' => $demo,
+            destinations: $this->destinations->atlas(),
+            demo: $this->demo->actif(),
             // La galerie, dans l'ordre choisi au back-office : la première est
             // la couverture, celle de l'atlas.
-            'galerie' => $destination->galerie->pluck('key')->values()->all(),
-            'photos' => $this->photos->map(),
-            'credits' => $this->photos->credits(),
-        ];
+            galerie: $destination->galerie->pluck('key')->values()->all(),
+            photos: $this->photos->map(),
+            credits: $this->photos->credits(),
+        );
     }
 
-    /** @return array<string, mixed> */
-    public function index(): array
+    public function index(): AtlasPageData
     {
-        $demo = (bool) config('vayla.demo');
-
-        return [
-            'destinations' => $this->destinations->atlas($demo),
-            'demo' => $demo,
-            'photos' => $this->photos->map(),
-            'credits' => $this->photos->credits(),
-        ];
+        return new AtlasPageData(
+            destinations: $this->destinations->atlas(),
+            demo: $this->demo->actif(),
+            photos: $this->photos->map(),
+            credits: $this->photos->credits(),
+        );
     }
 
     /**
-     * La répartition par barreau. Les niveaux à zéro sortent aussi : une
-     * échelle amputée de ses barreaux vides ne se lit plus comme une échelle.
+     * Les quatre barreaux, zéro compris : une échelle amputée de ses barreaux
+     * vides ne se lit plus comme une échelle.
      *
-     * @param  Collection<int, Listing>  $rows
-     * @return array<int, array<string, mixed>>
+     * @return list<TrustCountData>
      */
-    private function trust($rows): array
+    private function trust(Collection $rows): array
     {
-        return collect(TrustLevel::ladder())
-            ->map(fn (TrustLevel $level) => [
-                'level' => $level->value,
-                'key' => $level->key(),
-                'name' => $level->label(),
-                'count' => $rows->where('trust_level', $level)->count(),
-            ])
-            ->values()
-            ->all();
+        return array_map(fn (TrustLevel $level) => new TrustCountData(
+            level: $level->value,
+            key: $level->key(),
+            name: $level->label(),
+            count: $rows->where('trust_level', $level)->count(),
+        ), TrustLevel::ladder());
     }
 }

@@ -15,14 +15,14 @@ class DestinationController extends Controller
     public function index(): JsonResponse
     {
         return response()->json([
-            'data' => $this->service->atlas((bool) config('vayla.demo')),
+            'data' => $this->service->atlas(),
         ]);
     }
 
     public function show(string $slug): JsonResponse
     {
         return response()->json([
-            'data' => $this->service->show($slug, (bool) config('vayla.demo')),
+            'data' => $this->service->show($slug),
         ]);
     }
 }

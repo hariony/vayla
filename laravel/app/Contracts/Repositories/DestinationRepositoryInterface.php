@@ -12,6 +12,9 @@ interface DestinationRepositoryInterface
 
     public function findBySlug(string $slug): ?Destination;
 
+    /** Avec sa galerie, dans l'ordre choisi au back-office : la page publique d'une destination. */
+    public function findWithGallery(string $slug): ?Destination;
+
     public function findById(int $id): ?Destination;
 
     /**

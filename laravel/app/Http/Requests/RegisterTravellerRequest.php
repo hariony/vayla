@@ -48,4 +48,10 @@ class RegisterTravellerRequest extends FormRequest
             'email.email' => 'Cette adresse ne ressemble pas à une adresse e-mail.',
         ];
     }
+
+    /** En minuscules, sans espaces : normalisée avant la validation. */
+    public function email(): string
+    {
+        return $this->string('email')->toString();
+    }
 }

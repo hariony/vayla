@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Contracts\Ai\AiChat;
 use App\Contracts\Bookings\BookingCancellation;
 use App\Contracts\Bookings\BookingThread;
+use App\Contracts\Currency\ExchangeRateProvider;
 use App\Contracts\Destinations\DestinationGallery;
 use App\Contracts\Invoices\InvoiceCalculator;
 use App\Contracts\Listings\ListingDrafting;
@@ -19,10 +20,13 @@ use App\Contracts\Repositories\AdminActionRepositoryInterface;
 use App\Contracts\Repositories\AdminRepositoryInterface;
 use App\Contracts\Repositories\AmenityRepositoryInterface;
 use App\Contracts\Repositories\BookingMessageRepositoryInterface;
+use App\Contracts\Repositories\BookingRepositoryInterface;
 use App\Contracts\Repositories\CategoryRepositoryInterface;
 use App\Contracts\Repositories\DestinationGalleryRepositoryInterface;
 use App\Contracts\Repositories\DestinationRepositoryInterface;
 use App\Contracts\Repositories\InvoiceSettlementRepositoryInterface;
+use App\Contracts\Repositories\ListingDraftRepositoryInterface;
+use App\Contracts\Repositories\ListingGalleryRepositoryInterface;
 use App\Contracts\Repositories\ListingRepositoryInterface;
 use App\Contracts\Repositories\OfficeAmenityRepositoryInterface;
 use App\Contracts\Repositories\OfficeBookingRepositoryInterface;
@@ -36,22 +40,29 @@ use App\Contracts\Repositories\OfficeTravellerRepositoryInterface;
 use App\Contracts\Repositories\OfficeWhatsAppRepositoryInterface;
 use App\Contracts\Repositories\OutboundMessageRepositoryInterface;
 use App\Contracts\Repositories\OwnerRepositoryInterface;
+use App\Contracts\Repositories\OwnerSpaceRepositoryInterface;
 use App\Contracts\Repositories\PageRepositoryInterface;
 use App\Contracts\Repositories\PhotoLibraryRepositoryInterface;
 use App\Contracts\Repositories\PhotoRepositoryInterface;
 use App\Contracts\Repositories\SettingRepositoryInterface;
 use App\Contracts\Repositories\SiteTextRepositoryInterface;
+use App\Contracts\Repositories\SocialAccountRepositoryInterface;
 use App\Contracts\Repositories\StayRequestRepositoryInterface;
+use App\Contracts\Repositories\TravellerRepositoryInterface;
 use App\Contracts\Repositories\UnavailabilityRepositoryInterface;
+use App\Contracts\Repositories\VerificationCodeRepositoryInterface;
 use App\Contracts\Settings\SettingsStore;
 use App\Repositories\AdminActionRepository;
 use App\Repositories\AdminRepository;
 use App\Repositories\AmenityRepository;
 use App\Repositories\BookingMessageRepository;
+use App\Repositories\BookingRepository;
 use App\Repositories\CategoryRepository;
 use App\Repositories\DestinationGalleryRepository;
 use App\Repositories\DestinationRepository;
 use App\Repositories\InvoiceSettlementRepository;
+use App\Repositories\ListingDraftRepository;
+use App\Repositories\ListingGalleryRepository;
 use App\Repositories\ListingRepository;
 use App\Repositories\OfficeAmenityRepository;
 use App\Repositories\OfficeBookingRepository;
@@ -65,17 +76,20 @@ use App\Repositories\OfficeTravellerRepository;
 use App\Repositories\OfficeWhatsAppRepository;
 use App\Repositories\OutboundMessageRepository;
 use App\Repositories\OwnerRepository;
+use App\Repositories\OwnerSpaceRepository;
 use App\Repositories\PageRepository;
 use App\Repositories\PhotoLibraryRepository;
 use App\Repositories\PhotoRepository;
 use App\Repositories\SettingRepository;
 use App\Repositories\SiteTextRepository;
+use App\Repositories\SocialAccountRepository;
 use App\Repositories\StayRequestRepository;
+use App\Repositories\TravellerRepository;
 use App\Repositories\UnavailabilityRepository;
+use App\Repositories\VerificationCodeRepository;
 use App\Services\Ai\AiService;
 use App\Services\BookingService;
 use App\Services\ConversationService;
-use App\Services\Currency\ExchangeRateProvider;
 use App\Services\Currency\SettingExchangeRate;
 use App\Services\Destinations\DestinationGalleryService;
 use App\Services\InvoiceService;
@@ -114,6 +128,13 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(OwnerRepositoryInterface::class, OwnerRepository::class);
         $this->app->bind(UnavailabilityRepositoryInterface::class, UnavailabilityRepository::class);
         $this->app->bind(BookingMessageRepositoryInterface::class, BookingMessageRepository::class);
+        $this->app->bind(BookingRepositoryInterface::class, BookingRepository::class);
+        $this->app->bind(OwnerSpaceRepositoryInterface::class, OwnerSpaceRepository::class);
+        $this->app->bind(ListingDraftRepositoryInterface::class, ListingDraftRepository::class);
+        $this->app->bind(ListingGalleryRepositoryInterface::class, ListingGalleryRepository::class);
+        $this->app->bind(TravellerRepositoryInterface::class, TravellerRepository::class);
+        $this->app->bind(SocialAccountRepositoryInterface::class, SocialAccountRepository::class);
+        $this->app->bind(VerificationCodeRepositoryInterface::class, VerificationCodeRepository::class);
         $this->app->bind(OutboundMessageRepositoryInterface::class, OutboundMessageRepository::class);
         $this->app->bind(PhotoLibraryRepositoryInterface::class, PhotoLibraryRepository::class);
         $this->app->bind(DestinationGalleryRepositoryInterface::class, DestinationGalleryRepository::class);
@@ -176,14 +197,14 @@ class AppServiceProvider extends ServiceProvider
          * configuration — sinon la mise au point d'un écran part sur de vrais
          * téléphones, et se facture.
          */
-        $this->app->bind(VerificationCodeService::class, fn () => new VerificationCodeService([
+        $this->app->bind(VerificationCodeService::class, fn ($app) => new VerificationCodeService([
             new MailCodeSender,
             match (config('vayla.otp.driver')) {
                 'whatsapp' => new WhatsAppCodeSender,
                 'sms' => new SmsCodeSender,
                 default => new LogCodeSender,
             },
-        ]));
+        ], $app->make(VerificationCodeRepositoryInterface::class)));
     }
 
     public function boot(): void

@@ -2,9 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Contracts\Currency\ExchangeRateProvider;
 use App\Data\DeviseData;
 use App\Services\Currency\ConfigExchangeRate;
-use App\Services\Currency\ExchangeRateProvider;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 

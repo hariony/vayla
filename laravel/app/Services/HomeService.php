@@ -2,9 +2,13 @@
 
 namespace App\Services;
 
+use App\Data\Pages\HomePageData;
+use App\Services\Support\DemoMode;
+
 /**
  * Orchestrateur de la page d'accueil : il assemble ce que les cinq services
- * métier produisent, et il est le seul à connaître le drapeau `vayla.demo`.
+ * métier produisent. Le drapeau `vayla.demo` lui vient de `DemoMode`, seul à
+ * le lire.
  *
  * Ce drapeau tient deux choses ensemble : les annonces fictives servies, et
  * le bandeau « Aperçu » qui le dit à l'écran. Les séparer rendrait possible
@@ -19,21 +23,19 @@ class HomeService
         private CategoryService $categories,
         private TrustLadderService $trust,
         private PhotoService $photos,
+        private DemoMode $demo,
     ) {}
 
-    /** @return array<string, mixed> */
-    public function props(): array
+    public function page(): HomePageData
     {
-        $demo = (bool) config('vayla.demo');
-
-        return [
-            'destinations' => $this->destinations->atlas($demo),
-            'trustLevels' => $this->trust->ladder(),
-            'categories' => $this->categories->rail(),
-            'listings' => $this->listings->forHome($demo),
-            'demo' => $demo,
-            'photos' => $this->photos->map(),
-            'credits' => $this->photos->credits(),
-        ];
+        return new HomePageData(
+            destinations: $this->destinations->atlas(),
+            trustLevels: $this->trust->ladder(),
+            categories: $this->categories->rail(),
+            listings: $this->listings->forHome(),
+            demo: $this->demo->actif(),
+            photos: $this->photos->map(),
+            credits: $this->photos->credits(),
+        );
     }
 }

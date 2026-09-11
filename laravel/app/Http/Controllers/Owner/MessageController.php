@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Owner;
 
 use App\Http\Controllers\Controller;
-use App\Services\ConversationService;
+use App\Services\Bookings\InboxQuery;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -24,14 +24,8 @@ use Inertia\Response;
  */
 class MessageController extends Controller
 {
-    public function __construct(
-        private ConversationService $conversations,
-    ) {}
-
-    public function index(Request $request): Response
+    public function index(Request $request, InboxQuery $boites): Response
     {
-        return Inertia::render('Owner/Messages', [
-            'conversations' => $this->conversations->boiteDuProprietaire($request->user('proprietaire')),
-        ]);
+        return Inertia::render('Owner/Messages', $boites->proprietaire($request->user('proprietaire')));
     }
 }

@@ -20,7 +20,6 @@ class ListingDetailData extends Data
     /**
      * @param  array<int, AmenityGroupData>  $amenities
      * @param  array<int, PhotoData>  $gallery
-     * @param  array<string, mixed>  $calendar
      * @param  array<int, ConfirmationData>  $confirmations
      */
     public function __construct(
@@ -29,18 +28,17 @@ class ListingDetailData extends Data
         public readonly array $amenities,
         public readonly array $gallery,
         public readonly StayRulesData $rules,
-        public readonly array $calendar,
+        public readonly ListingCalendarData $calendar,
         public readonly array $confirmations,
         public readonly ?ConfirmationSummaryData $confirmed,
     ) {}
 
     /**
-     * @param  array<string, mixed>  $calendar
      * @param  array<int, ConfirmationData>  $confirmations
      */
     public static function fromModel(
         Listing $listing,
-        array $calendar = [],
+        ListingCalendarData $calendar,
         array $confirmations = [],
         ?ConfirmationSummaryData $confirmed = null,
     ): self {

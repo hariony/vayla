@@ -2,9 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\Owner;
 use App\Contracts\Repositories\OwnerRepositoryInterface;
-use Illuminate\Support\Carbon;
+use App\Models\Owner;
 use Illuminate\Support\Facades\Auth;
 
 /**
@@ -59,7 +58,7 @@ class OwnerAuthService
          * la noter.
          */
         if (! $owner->telephoneVerifie()) {
-            $owner->forceFill(['phone_verified_at' => Carbon::now()])->save();
+            $this->owners->marquerTelephoneVerifie($owner);
         }
 
         return $owner;
@@ -80,6 +79,6 @@ class OwnerAuthService
     {
         Auth::guard('proprietaire')->login($owner, $seSouvenir);
 
-        $owner->forceFill(['last_login_at' => Carbon::now()])->save();
+        $this->owners->marquerConnexion($owner);
     }
 }

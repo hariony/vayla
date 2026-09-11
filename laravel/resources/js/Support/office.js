@@ -11,12 +11,26 @@
  *
  * `compteur` nomme une clé de `officeCompteurs` (partagé par `OfficeContext`) :
  * ce sont les trois files qui attendent quelqu'un.
+ *
+ * `sous` : les écrans d'une rubrique qui a grandi. **Ils s'ouvrent sous elle
+ * quand on y est**, et la rubrique mène au premier — la colonne reste courte,
+ * et on découvre les autres au premier clic. Les statistiques tenaient sur une
+ * seule page, qui gonflait à chaque graphique.
  */
 export const RUBRIQUES_OFFICE = [
     {
         items: [
             { href: '/', label: 'Tableau de bord', icone: 'tableau' },
-            { href: '/statistiques', label: 'Statistiques', icone: 'courbes' },
+            {
+                href: '/statistiques',
+                label: 'Statistiques',
+                icone: 'courbes',
+                sous: [
+                    { href: '/statistiques', label: 'Demandes' },
+                    { href: '/statistiques/sejours', label: 'Séjours et commission' },
+                    { href: '/statistiques/catalogue', label: 'Catalogue et inscriptions' },
+                ],
+            },
         ],
     },
     {
