@@ -2,50 +2,48 @@
 
 namespace App\Http\Controllers\Office;
 
+use App\Http\Requests\Office\MoveRequest;
 use App\Http\Requests\Office\OfficeCategoryRequest;
 use App\Models\Category;
-use App\Services\Office\OfficeContentReadService;
-use App\Services\Office\OfficeContentService;
+use App\Services\Office\Content\CategoryEditor;
+use App\Services\Office\Content\CategoryQuery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
+/** Le rail de catégories de l'accueil. */
 class CategoryController extends OfficeController
 {
-    public function __construct(
-        private OfficeContentService $contenu,
-    ) {}
-
-    public function index(OfficeContentReadService $lecture): Response
+    public function index(CategoryQuery $lecture): Response
     {
-        return Inertia::render('Office/Categories/Index', $lecture->categories());
+        return Inertia::render('Office/Categories/Index', $lecture->page());
     }
 
-    public function store(OfficeCategoryRequest $request): RedirectResponse
+    public function store(OfficeCategoryRequest $request, CategoryEditor $categories): RedirectResponse
     {
-        $categorie = $this->contenu->enregistrerCategorie($this->admin($request), null, $request->validated());
+        $categorie = $categories->creer($this->admin($request), $request->toDto());
 
         return back()->with('succes', "« {$categorie->label} » ajoutée au bout du rail.");
     }
 
-    public function update(OfficeCategoryRequest $request, Category $categorie): RedirectResponse
+    public function update(OfficeCategoryRequest $request, Category $categorie, CategoryEditor $categories): RedirectResponse
     {
-        $this->contenu->enregistrerCategorie($this->admin($request), $categorie, $request->validated());
+        $categories->modifier($this->admin($request), $categorie, $request->toDto());
 
         return back()->with('succes', "« {$categorie->label} » enregistrée.");
     }
 
-    public function move(Request $request, Category $categorie): RedirectResponse
+    public function move(MoveRequest $request, Category $categorie, CategoryEditor $categories): RedirectResponse
     {
-        $this->contenu->deplacerCategorie($this->admin($request), $categorie, $request->input('sens') === 'haut' ? 'haut' : 'bas');
+        $categories->deplacer($this->admin($request), $categorie, $request->sens());
 
         return back();
     }
 
-    public function destroy(Request $request, Category $categorie): RedirectResponse
+    public function destroy(Request $request, Category $categorie, CategoryEditor $categories): RedirectResponse
     {
-        $this->contenu->supprimerCategorie($this->admin($request), $categorie);
+        $categories->supprimer($this->admin($request), $categorie);
 
         return back()->with('succes', "« {$categorie->label} » supprimée.");
     }

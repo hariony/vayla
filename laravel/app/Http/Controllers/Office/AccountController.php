@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\Office;
 
+use App\Contracts\Office\AdminPasswords;
+use App\Data\Office\Account\AccountData;
+use App\Data\Office\Account\AccountPageData;
 use App\Http\Requests\Office\OfficePasswordRequest;
-use App\Services\Office\OfficeAuthService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -21,24 +23,15 @@ class AccountController extends OfficeController
 {
     public function edit(Request $request): Response
     {
-        $admin = $this->admin($request);
-
-        return Inertia::render('Office/Account', [
-            'compte' => [
-                'name' => $admin->name,
-                'email' => $admin->email,
-                'provisoire' => ! $admin->motDePasseChoisi(),
-                'depuis' => $admin->password_set_at?->toIso8601String(),
-            ],
-        ]);
+        return Inertia::render('Office/Account', new AccountPageData(AccountData::fromModel($this->admin($request))));
     }
 
-    public function update(OfficePasswordRequest $request, OfficeAuthService $auth): RedirectResponse
+    public function update(OfficePasswordRequest $request, AdminPasswords $motsDePasse): RedirectResponse
     {
         $admin = $this->admin($request);
         $premier = ! $admin->motDePasseChoisi();
 
-        $auth->choisir($admin, $request->validated('password'));
+        $motsDePasse->choisir($admin, $request->nouveauMotDePasse());
 
         // Les autres sessions de ce compte tombent : un mot de passe changé
         // parce qu'on le croit connu d'un autre ne doit pas laisser ouverte la

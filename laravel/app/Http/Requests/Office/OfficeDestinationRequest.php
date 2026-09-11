@@ -2,8 +2,9 @@
 
 namespace App\Http\Requests\Office;
 
+use App\DTOs\Content\DestinationDto;
 use App\Enums\ClimateZone;
-use App\Services\Office\OfficeContentReadService;
+use App\Enums\DestinationScene;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -14,8 +15,8 @@ use Illuminate\Validation\Rule;
  * parce que la vérité est une fourchette — « 3 à 4 h ».
  *
  * **Les photos ne passent pas par ici** : elles ont leur galerie, et leurs
- * propres gestes (`OfficeContentService::ajouterDeLaPhototheque()` et
- * suivants), qui n'acceptent que de vraies photographies de lieux.
+ * propres gestes (`DestinationGalleryEditor`), qui n'acceptent que de vraies
+ * photographies de lieux.
  */
 class OfficeDestinationRequest extends FormRequest
 {
@@ -26,7 +27,7 @@ class OfficeDestinationRequest extends FormRequest
             'region' => ['required', 'string', 'max:60'],
             'tagline' => ['required', 'string', 'min:8', 'max:120'],
             'climate_zone' => ['required', Rule::enum(ClimateZone::class)],
-            'scene' => ['required', Rule::in(array_keys(OfficeContentReadService::SCENES))],
+            'scene' => ['required', Rule::enum(DestinationScene::class)],
             'featured' => ['boolean'],
             'airport_code' => ['nullable', 'string', 'size:3', 'alpha'],
             'airport_name' => ['nullable', 'string', 'max:60'],
@@ -51,5 +52,26 @@ class OfficeDestinationRequest extends FormRequest
         return [
             'airport_code.size' => 'Le code d’aéroport fait trois lettres (NOS, TNR, SMS…).',
         ];
+    }
+
+    public function toDto(): DestinationDto
+    {
+        $texte = fn (string $champ) => $this->filled($champ) ? trim($this->string($champ)->toString()) : null;
+
+        return new DestinationDto(
+            name: trim($this->string('name')->toString()),
+            region: trim($this->string('region')->toString()),
+            tagline: trim($this->string('tagline')->toString()),
+            climateZone: $this->enum('climate_zone', ClimateZone::class),
+            scene: $this->enum('scene', DestinationScene::class),
+            featured: $this->boolean('featured'),
+            airportCode: $texte('airport_code'),
+            airportName: $texte('airport_name'),
+            flightFromTana: $texte('flight_from_tana'),
+            roadRoute: $texte('road_route'),
+            roadKm: $this->filled('road_km') ? $this->integer('road_km') : null,
+            roadHours: $texte('road_hours'),
+            roadNote: $texte('road_note'),
+        );
     }
 }

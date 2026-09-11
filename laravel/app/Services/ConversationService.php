@@ -2,11 +2,12 @@
 
 namespace App\Services;
 
+use App\Contracts\Bookings\BookingThread;
+use App\Contracts\Repositories\BookingMessageRepositoryInterface;
 use App\Enums\MessageAuthor;
 use App\Models\Booking;
 use App\Models\BookingMessage;
 use App\Models\Owner;
-use App\Repositories\Contracts\BookingMessageRepositoryInterface;
 use App\Services\Notifications\OwnerNotifier;
 
 /**
@@ -28,7 +29,7 @@ use App\Services\Notifications\OwnerNotifier;
  * **Vayla peut lire, et c'est écrit à l'écran.** Une trace dont personne ne
  * sait qu'elle est lisible ne sert de médiation à personne.
  */
-class ConversationService
+class ConversationService implements BookingThread
 {
     public function __construct(
         private BookingMessageRepositoryInterface $messages,

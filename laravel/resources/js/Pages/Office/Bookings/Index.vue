@@ -33,7 +33,7 @@ useOfficeMotion(racine)
 
 const puce = (s) => ({ pending: 'of-chip--attente', accepted: 'of-chip--actif', completed: 'of-chip--actif' }[s] ?? 'of-chip--clos')
 
-const params = props.filtre.filtre !== 'attente' ? { filtre: props.filtre.filtre } : {}
+const params = props.filtre.onglet !== 'attente' ? { filtre: props.filtre.onglet } : {}
 </script>
 
 <template>
@@ -43,7 +43,7 @@ const params = props.filtre.filtre !== 'attente' ? { filtre: props.filtre.filtre
         <OfficeHead kicker="Séjours" titre="Réservations" lede="Une demande bloque les nuits 48 h. Sans réponse, elle expire et les rend au calendrier : c'est ici qu'on la voit venir." />
 
         <div class="bi__outils">
-            <OfficeTabs :onglets="onglets" :actif="filtre.filtre" base="/reservations" param="filtre" defaut="attente" :q="filtre.q" />
+            <OfficeTabs :onglets="onglets" :actif="filtre.onglet" base="/reservations" param="filtre" defaut="attente" :q="filtre.q" />
             <OfficeSearch base="/reservations" :q="filtre.q" :params="params" placeholder="Référence, voyageur, e-mail, téléphone…" label="Rechercher une réservation" />
         </div>
 

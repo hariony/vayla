@@ -2,11 +2,11 @@
 
 namespace App\Repositories;
 
+use App\Contracts\Repositories\OutboundMessageRepositoryInterface;
 use App\Enums\NotificationKind;
 use App\Models\Booking;
 use App\Models\OutboundMessage;
 use App\Models\Owner;
-use App\Repositories\Contracts\OutboundMessageRepositoryInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 

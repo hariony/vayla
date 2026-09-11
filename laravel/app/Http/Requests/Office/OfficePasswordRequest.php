@@ -41,4 +41,10 @@ class OfficePasswordRequest extends FormRequest
             'password.uncompromised' => 'Ce mot de passe figure dans des fuites de données connues : choisissez-en un autre.',
         ];
     }
+
+    /** Le nouveau mot de passe, tel que saisi : le cast `hashed` du modèle le hachera. */
+    public function nouveauMotDePasse(): string
+    {
+        return $this->string('password')->toString();
+    }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Contracts\Invoices\InvoiceCalculator;
 use App\Enums\BookingStatus;
 use App\Models\Booking;
 use App\Models\Owner;
@@ -30,7 +31,7 @@ use Illuminate\Support\Carbon;
  * n'y a pas d'espace propriétaire pour l'afficher et en suivre le règlement,
  * la stocker créerait un état que personne ne lit.
  */
-class InvoiceService
+class InvoiceService implements InvoiceCalculator
 {
     /**
      * Les lignes d'un mois, pour un propriétaire.

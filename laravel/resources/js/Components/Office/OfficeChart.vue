@@ -42,6 +42,12 @@ const props = defineProps({
     hauteur: { type: Number, default: 240 },
     /** Borne haute imposée — 100 pour un pourcentage. */
     plafond: { type: Number, default: null },
+    /**
+     * Posé dans un bloc qui porte déjà son titre et son tableau (la
+     * commission) : ni carte, ni titre, ni tableau replié — une carte dans une
+     * carte, et deux tableaux des mêmes chiffres.
+     */
+    nu: { type: Boolean, default: false },
 })
 
 const TEINTES = {
@@ -228,8 +234,8 @@ watch(() => [props.labels, props.series], () => {
 </script>
 
 <template>
-    <figure class="oc of-card" data-reveal>
-        <figcaption class="oc__tete">
+    <figure class="oc" :class="nu ? 'oc--nu' : 'of-card'" :data-reveal="nu ? undefined : ''">
+        <figcaption v-if="! nu" class="oc__tete">
             <h3 class="oc__titre">{{ titre }}</h3>
             <p v-if="definition" class="oc__def">{{ definition }}</p>
         </figcaption>
@@ -328,7 +334,7 @@ watch(() => [props.labels, props.series], () => {
                 </li>
             </ul>
 
-            <details class="oc__table">
+            <details v-if="! nu" class="oc__table">
                 <summary>Voir les chiffres</summary>
                 <div class="oc__table-in">
                     <table>
@@ -353,6 +359,7 @@ watch(() => [props.labels, props.series], () => {
 
 <style scoped>
 .oc { display: grid; gap: .6rem; margin: 0; padding: 1rem 1.15rem 1rem; min-width: 0; }
+.oc--nu { padding: 0; }
 
 .oc__tete { display: grid; gap: .15rem; }
 .oc__titre { margin: 0; font-size: .98rem; font-weight: 800; letter-spacing: -.02em; color: var(--ink); }

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Contracts\Photos\PhotoProcessor;
 use App\Enums\AdminActionKind;
 use App\Models\Admin;
 use App\Models\AdminAction;
@@ -9,7 +10,6 @@ use App\Models\Destination;
 use App\Models\Photo;
 use App\Services\Images\ImageSource;
 use App\Services\PhotoService;
-use App\Services\PhotoUploadService;
 use Database\Seeders\PhotoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -248,7 +248,7 @@ class OfficePhotoLibraryTest extends TestCase
     /** Trois paliers, chacun à sa taille, recadrés en 4/3 — jamais agrandis. */
     public function test_les_paliers_sont_recadres_en_quatre_tiers_sans_agrandissement(): void
     {
-        $service = app(PhotoUploadService::class);
+        $service = app(PhotoProcessor::class);
 
         $grande = $service->produire(UploadedFile::fake()->image('g.jpg', 3400, 2600), 'destinations', 'test-grande');
         $haute = $service->produire(UploadedFile::fake()->image('h.jpg', 1500, 2400), 'destinations', 'test-haute');
@@ -299,7 +299,7 @@ class OfficePhotoLibraryTest extends TestCase
         foreach ([800, 1600, 3200] as $w) {
             $this->aRetirer[] = public_path("images/destinations/{$cle}-{$w}.webp");
         }
-        app(PhotoUploadService::class)->produire(new UploadedFile($chemin, 'couchee.jpg', 'image/jpeg', null, true), 'destinations', $cle);
+        app(PhotoProcessor::class)->produire(new UploadedFile($chemin, 'couchee.jpg', 'image/jpeg', null, true), 'destinations', $cle);
 
         $sortie = imagecreatefromwebp(public_path("images/destinations/{$cle}-800.webp"));
         $haut = imagecolorsforindex($sortie, imagecolorat($sortie, 400, 60));
@@ -320,7 +320,7 @@ class OfficePhotoLibraryTest extends TestCase
         $this->aRetirer[] = $chemin;
 
         try {
-            app(PhotoUploadService::class)->produire(new UploadedFile($chemin, 'enorme.png', 'image/png', null, true), 'destinations', 'test-enorme');
+            app(PhotoProcessor::class)->produire(new UploadedFile($chemin, 'enorme.png', 'image/png', null, true), 'destinations', 'test-enorme');
             $this->fail('Une photo de 90 mégapixels aurait dû être refusée.');
         } catch (RuntimeException $e) {
             $this->assertStringContainsString('90 mégapixels', $e->getMessage());

@@ -42,7 +42,7 @@ const puce = (statut) => ({
     archived: 'of-chip--clos',
 }[statut] ?? '')
 
-const params = props.filtre.statut !== 'toutes' ? { statut: props.filtre.statut } : {}
+const params = props.filtre.onglet !== 'toutes' ? { statut: props.filtre.onglet } : {}
 </script>
 
 <template>
@@ -52,7 +52,7 @@ const params = props.filtre.statut !== 'toutes' ? { statut: props.filtre.statut 
         <OfficeHead kicker="Catalogue" titre="Annonces" lede="Le propriétaire remplit, Vayla vérifie et publie. Une annonce ne passe en ligne qu'au niveau 2 au moins, après l'appel." />
 
         <div class="li__outils">
-            <OfficeTabs :onglets="onglets" :actif="filtre.statut" base="/annonces" param="statut" defaut="toutes" :q="filtre.q" />
+            <OfficeTabs :onglets="onglets" :actif="filtre.onglet" base="/annonces" param="statut" defaut="toutes" :q="filtre.q" />
             <OfficeSearch base="/annonces" :q="filtre.q" :params="params" placeholder="Titre, propriétaire, destination…" label="Rechercher une annonce" />
         </div>
 

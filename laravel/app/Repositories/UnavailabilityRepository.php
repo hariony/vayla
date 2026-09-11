@@ -2,11 +2,11 @@
 
 namespace App\Repositories;
 
+use App\Contracts\Repositories\UnavailabilityRepositoryInterface;
 use App\Data\SejourData;
 use App\Enums\BlockReason;
 use App\Models\Listing;
 use App\Models\Unavailability;
-use App\Repositories\Contracts\UnavailabilityRepositoryInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 

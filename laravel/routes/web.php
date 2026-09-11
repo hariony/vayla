@@ -348,7 +348,7 @@ Route::middleware('sans-index')->group(function () {
  * « Comment ça marche », les tarifs, les mentions légales : l'équipe les écrit
  * depuis le back-office. Cette route attrape un seul segment en minuscules et
  * tirets ; placée ici, elle ne peut jamais passer devant un écran du site, et
- * `PageService` refuse à une page l'adresse d'un écran. Une page en brouillon
+ * `PageAddresses` refuse à une page l'adresse d'un écran. Une page en brouillon
  * ou inconnue répond 404.
  */
 //

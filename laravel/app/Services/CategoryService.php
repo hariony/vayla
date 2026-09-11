@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Data\CategoryData;
-use App\Repositories\Contracts\CategoryRepositoryInterface;
+use App\Contracts\Repositories\CategoryRepositoryInterface;
 
 class CategoryService
 {

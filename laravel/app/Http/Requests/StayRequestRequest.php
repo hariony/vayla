@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\DTOs\StayRequests\SubmitStayRequestDto;
 use App\Rules\TelephoneValide;
 use App\Support\Telephone;
 use Illuminate\Foundation\Http\FormRequest;
@@ -69,5 +70,24 @@ class StayRequestRequest extends FormRequest
             'budget.min' => 'Un budget par nuit, en ariary : 10 000 Ar au moins.',
             'destination.exists' => 'Choisissez une destination de la liste, ou décrivez le lieu dans le champ d’à côté.',
         ];
+    }
+
+    public function toDto(): SubmitStayRequestDto
+    {
+        $texte = fn (string $champ) => $this->filled($champ) ? trim($this->string($champ)->toString()) : null;
+
+        return new SubmitStayRequestDto(
+            name: trim($this->string('name')->toString()),
+            guests: $this->integer('guests'),
+            phone: $texte('phone'),
+            email: $texte('email'),
+            destinationSlug: $texte('destination'),
+            place: $texte('place'),
+            arrival: $texte('arrival'),
+            departure: $texte('departure'),
+            budget: $this->filled('budget') ? $this->integer('budget') : null,
+            message: $texte('message'),
+            userId: $this->user('web')?->getKey(),
+        );
     }
 }

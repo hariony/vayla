@@ -2,13 +2,13 @@
 
 namespace App\Http\Requests;
 
-use App\Services\PhotoUploadService;
+use App\Contracts\Photos\PhotoProcessor;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
  * Le téléversement d'une photo.
  *
- * **Quarante mégaoctets** (`PhotoUploadService::POIDS_MAX_KO`) : un téléphone
+ * **Quarante mégaoctets** (`PhotoProcessor::POIDS_MAX_KO`) : un téléphone
  * récent produit des fichiers de huit à quinze, un appareil de 48 Mpx vingt
  * et plus. Refuser trop bas obligerait le propriétaire à passer par une
  * conversation WhatsApp pour réduire l'image, et une photo compressée par
@@ -24,7 +24,7 @@ class OwnerPhotoRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'photo' => ['required', 'image', 'mimes:jpeg,jpg,png,webp', 'max:'.PhotoUploadService::POIDS_MAX_KO],
+            'photo' => ['required', 'image', 'mimes:jpeg,jpg,png,webp', 'max:'.PhotoProcessor::POIDS_MAX_KO],
             'caption' => ['nullable', 'string', 'max:160'],
         ];
     }

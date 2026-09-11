@@ -64,8 +64,8 @@ const clore = (d) => cloture.post(`/demandes/${d.id}/clore`, {
             </template>
         </OfficeHead>
 
-        <OfficeTabs :onglets="onglets" :actif="filtre.onglet" base="/demandes" param="onglet" defaut="nouvelles" :q="filtre.q" />
-        <OfficeSearch base="/demandes" :q="filtre.q" :params="filtre.onglet !== 'nouvelles' ? { onglet: filtre.onglet } : {}" placeholder="Nom, e-mail, numéro, lieu…" label="Rechercher une demande" />
+        <OfficeTabs :onglets="onglets" :actif="filtre.onglet" base="/demandes" param="onglet" defaut="nouvelle" :q="filtre.q" />
+        <OfficeSearch base="/demandes" :q="filtre.q" :params="filtre.onglet !== 'nouvelle' ? { onglet: filtre.onglet } : {}" placeholder="Nom, e-mail, numéro, lieu…" label="Rechercher une demande" />
 
         <ul v-if="demandes.length" class="dq" data-reveal>
             <li v-for="d in demandes" :key="d.id" class="of-card dq__carte" :class="`dq__carte--${d.statut}`">
@@ -142,7 +142,7 @@ const clore = (d) => cloture.post(`/demandes/${d.id}/clore`, {
 
         <div v-else class="of-vide" data-reveal>
             <strong>{{ filtre.q ? 'Aucune demande ne correspond.' : 'Rien dans cet onglet.' }}</strong>
-            <template v-if="filtre.onglet === 'nouvelles' && !filtre.q">Les demandes déposées sur /demande arrivent ici.</template>
+            <template v-if="filtre.onglet === 'nouvelle' && !filtre.q">Les demandes déposées sur /demande arrivent ici.</template>
         </div>
 
         <OfficePager :meta="meta" unite="demande" />

@@ -16,4 +16,9 @@ class OfficeMessageRequest extends FormRequest
     {
         return ['body.required' => 'Le message est vide.'];
     }
+
+    public function body(): string
+    {
+        return trim($this->string('body')->toString());
+    }
 }

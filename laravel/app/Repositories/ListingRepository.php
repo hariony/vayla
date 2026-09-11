@@ -2,6 +2,7 @@
 
 namespace App\Repositories;
 
+use App\Contracts\Repositories\ListingRepositoryInterface;
 use App\Data\ListingFiltreData;
 use App\Data\SejourData;
 use App\Enums\BookingStatus;
@@ -9,7 +10,6 @@ use App\Enums\ListingSort;
 use App\Enums\ListingStatus;
 use App\Enums\TrustLevel;
 use App\Models\Listing;
-use App\Repositories\Contracts\ListingRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;

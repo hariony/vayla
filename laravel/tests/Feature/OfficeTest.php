@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Contracts\Office\AdminPasswords;
 use App\Enums\AdminActionKind;
 use App\Enums\BookingStatus;
 use App\Enums\ListingStatus;
@@ -16,7 +17,6 @@ use App\Models\Listing;
 use App\Models\OutboundMessage;
 use App\Models\Owner;
 use App\Models\StayConfirmation;
-use App\Services\Office\OfficeAuthService;
 use App\Services\OwnerListingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -211,7 +211,7 @@ class OfficeTest extends TestCase
     public function test_un_mot_de_passe_provisoire_n_ouvre_que_mon_compte(): void
     {
         $membre = Admin::create(['name' => 'Nouveau', 'email' => 'nouveau@vayla.test']);
-        $provisoire = app(OfficeAuthService::class)->provisoire($membre);
+        $provisoire = app(AdminPasswords::class)->provisoire($membre);
 
         $this->post($this->office('/connexion'), ['email' => 'nouveau@vayla.test', 'password' => $provisoire])
             ->assertRedirect(route('office.home'));

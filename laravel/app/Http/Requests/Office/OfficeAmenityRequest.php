@@ -2,8 +2,9 @@
 
 namespace App\Http\Requests\Office;
 
+use App\Contracts\Repositories\OfficeAmenityRepositoryInterface;
+use App\DTOs\Content\AmenityDto;
 use App\Enums\AmenityGroup;
-use App\Models\Amenity;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -14,9 +15,10 @@ use Illuminate\Validation\Rule;
  */
 class OfficeAmenityRequest extends FormRequest
 {
-    public function rules(): array
+    /** `rules()` est appelée par le conteneur : le repository s'y injecte. */
+    public function rules(OfficeAmenityRepositoryInterface $equipements): array
     {
-        $icones = Amenity::query()->distinct()->pluck('icon')->push('dot')->unique()->all();
+        $icones = $equipements->icones();
 
         return [
             'label' => ['required', 'string', 'min:2', 'max:60'],
@@ -29,5 +31,15 @@ class OfficeAmenityRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->merge(['filterable' => $this->boolean('filterable')]);
+    }
+
+    public function toDto(): AmenityDto
+    {
+        return new AmenityDto(
+            label: trim($this->string('label')->toString()),
+            group: $this->enum('group', AmenityGroup::class),
+            icon: $this->string('icon')->toString(),
+            filterable: $this->boolean('filterable'),
+        );
     }
 }

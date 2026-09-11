@@ -2,10 +2,10 @@
 
 namespace App\Repositories;
 
+use App\Contracts\Repositories\DestinationRepositoryInterface;
 use App\Enums\ListingStatus;
 use App\Models\Destination;
 use App\Models\Listing;
-use App\Repositories\Contracts\DestinationRepositoryInterface;
 use Illuminate\Support\Collection;
 
 class DestinationRepository implements DestinationRepositoryInterface
@@ -13,6 +13,11 @@ class DestinationRepository implements DestinationRepositoryInterface
     public function all(): Collection
     {
         return Destination::query()->with('photo')->orderBy('id')->get();
+    }
+
+    public function findById(int $id): ?Destination
+    {
+        return Destination::query()->find($id);
     }
 
     public function findBySlug(string $slug): ?Destination

@@ -28,7 +28,7 @@ useOfficeMotion(racine)
 
 const initiales = (nom = '') => nom.trim().split(/\s+/).slice(0, 2).map((m) => m[0] ?? '').join('').toUpperCase()
 
-const params = props.filtre.filtre !== 'tous' ? { filtre: props.filtre.filtre } : {}
+const params = props.filtre.onglet !== 'tous' ? { filtre: props.filtre.onglet } : {}
 </script>
 
 <template>
@@ -38,7 +38,7 @@ const params = props.filtre.filtre !== 'tous' ? { filtre: props.filtre.filtre } 
         <OfficeHead kicker="Catalogue" titre="Propriétaires" lede="Le numéro WhatsApp est ce par quoi Vayla appelle. Il n'est tenu pour vérifié qu'après l'appel." />
 
         <div class="pi__outils">
-            <OfficeTabs :onglets="onglets" :actif="filtre.filtre" base="/proprietaires" param="filtre" defaut="tous" :q="filtre.q" />
+            <OfficeTabs :onglets="onglets" :actif="filtre.onglet" base="/proprietaires" param="filtre" defaut="tous" :q="filtre.q" />
             <OfficeSearch base="/proprietaires" :q="filtre.q" :params="params" placeholder="Nom, e-mail, ville, numéro…" label="Rechercher un propriétaire" />
         </div>
 

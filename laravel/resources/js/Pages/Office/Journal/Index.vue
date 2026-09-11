@@ -67,7 +67,7 @@ const lien = (s) => {
     <div ref="racine">
         <OfficeHead kicker="Équipe" titre="Journal" lede="Chaque geste qui engage quelqu'un laisse une ligne, écrite une fois. Consulter ne s'écrit pas : seulement ce qui change quelque chose." />
 
-        <OfficeTabs :onglets="onglets" :actif="filtre.famille" base="/journal" param="famille" defaut="tout" />
+        <OfficeTabs :onglets="onglets" :actif="filtre.onglet" base="/journal" param="famille" defaut="tout" />
 
         <template v-if="jours.length">
             <section v-for="j in jours" :key="j.cle" class="jo__jour" data-reveal>

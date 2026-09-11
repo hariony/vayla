@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Models\Owner;
-use App\Repositories\Contracts\OwnerRepositoryInterface;
+use App\Contracts\Repositories\OwnerRepositoryInterface;
 
 /**
  * La rotation des clés d'accès des propriétaires.

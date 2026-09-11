@@ -2,7 +2,8 @@
 
 namespace App\Http\Requests\Office;
 
-use App\Services\Office\OfficeContentReadService;
+use App\DTOs\Content\CategoryDto;
+use App\Enums\CategoryIcon;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -17,7 +18,7 @@ class OfficeCategoryRequest extends FormRequest
     {
         return [
             'label' => ['required', 'string', 'min:2', 'max:40'],
-            'icon' => ['required', Rule::in(array_keys(OfficeContentReadService::ICONES_CATEGORIES))],
+            'icon' => ['required', Rule::enum(CategoryIcon::class)],
             'sponsored' => ['boolean'],
         ];
     }
@@ -25,5 +26,14 @@ class OfficeCategoryRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->merge(['sponsored' => $this->boolean('sponsored')]);
+    }
+
+    public function toDto(): CategoryDto
+    {
+        return new CategoryDto(
+            label: trim($this->string('label')->toString()),
+            icon: $this->enum('icon', CategoryIcon::class),
+            sponsored: $this->boolean('sponsored'),
+        );
     }
 }

@@ -2,87 +2,83 @@
 
 namespace App\Http\Controllers\Office;
 
+use App\Http\Requests\Office\AttachPhotoRequest;
 use App\Http\Requests\Office\OfficeDestinationPhotoRequest;
 use App\Http\Requests\Office\OfficeDestinationRequest;
+use App\Http\Requests\Office\PhotoOrderRequest;
 use App\Models\Destination;
-use App\Services\Office\OfficeContentReadService;
-use App\Services\Office\OfficeContentService;
+use App\Services\Office\Content\DestinationEditor;
+use App\Services\Office\Content\DestinationGalleryEditor;
+use App\Services\Office\Content\DestinationQuery;
+use App\Services\Photos\TeamPhotoUploader;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
+/** Les destinations : leur fiche, leur galerie. */
 class DestinationController extends OfficeController
 {
-    public function __construct(
-        private OfficeContentService $contenu,
-        private OfficeContentReadService $lecture,
-    ) {}
-
-    public function index(): Response
+    public function index(DestinationQuery $lecture): Response
     {
-        return Inertia::render('Office/Destinations/Index', $this->lecture->destinations());
+        return Inertia::render('Office/Destinations/Index', $lecture->liste());
     }
 
-    public function create(): Response
+    public function create(DestinationQuery $lecture): Response
     {
-        return Inertia::render('Office/Destinations/Edit', $this->lecture->destination(null));
+        return Inertia::render('Office/Destinations/Edit', $lecture->fiche(null));
     }
 
-    public function edit(Destination $destination): Response
+    public function edit(Destination $destination, DestinationQuery $lecture): Response
     {
-        return Inertia::render('Office/Destinations/Edit', $this->lecture->destination($destination));
+        return Inertia::render('Office/Destinations/Edit', $lecture->fiche($destination));
     }
 
-    public function store(OfficeDestinationRequest $request): RedirectResponse
+    public function store(OfficeDestinationRequest $request, DestinationEditor $destinations): RedirectResponse
     {
-        $destination = $this->contenu->enregistrerDestination($this->admin($request), null, $request->validated());
+        $destination = $destinations->creer($this->admin($request), $request->toDto());
 
         return redirect()->route('office.destinations.edit', $destination)->with('succes', "« {$destination->name} » créée.");
     }
 
-    public function update(OfficeDestinationRequest $request, Destination $destination): RedirectResponse
+    public function update(OfficeDestinationRequest $request, Destination $destination, DestinationEditor $destinations): RedirectResponse
     {
-        $this->contenu->enregistrerDestination($this->admin($request), $destination, $request->validated());
+        $destinations->modifier($this->admin($request), $destination, $request->toDto());
 
         return back()->with('succes', "« {$destination->name} » enregistrée.");
     }
 
-    public function uploadPhoto(OfficeDestinationPhotoRequest $request, Destination $destination): RedirectResponse
+    public function uploadPhoto(OfficeDestinationPhotoRequest $request, Destination $destination, TeamPhotoUploader $televersement): RedirectResponse
     {
-        $this->contenu->ajouterPhotoDestination($this->admin($request), $destination, $request->file('photo'), $request->validated());
+        $televersement->televerser($this->admin($request), $request->toDto($destination->id));
 
         return back()->with('succes', 'Photo ajoutée au bout de la galerie. Glissez-la en tête pour en faire la couverture.');
     }
 
-    public function attachPhoto(Request $request, Destination $destination): RedirectResponse
+    public function attachPhoto(AttachPhotoRequest $request, Destination $destination, DestinationGalleryEditor $galerie): RedirectResponse
     {
-        $id = (int) $request->validate(['photo_id' => ['required', 'integer']])['photo_id'];
-
-        $this->contenu->ajouterDeLaPhototheque($this->admin($request), $destination, $id);
+        $galerie->ajouterDeLaPhototheque($this->admin($request), $destination, $request->photoId());
 
         return back()->with('succes', 'Photo ajoutée à la galerie.');
     }
 
-    public function reorderPhotos(Request $request, Destination $destination): RedirectResponse
+    public function reorderPhotos(PhotoOrderRequest $request, Destination $destination, DestinationGalleryEditor $galerie): RedirectResponse
     {
-        $ids = $request->validate(['ids' => ['required', 'array', 'max:60'], 'ids.*' => ['integer']])['ids'];
-
-        $this->contenu->ordonnerPhotosDestination($this->admin($request), $destination, $ids);
+        $galerie->ordonner($this->admin($request), $destination, $request->ids());
 
         return back()->with('succes', 'Galerie rangée. La première photo est la couverture.');
     }
 
-    public function detachPhoto(Request $request, Destination $destination, int $photo): RedirectResponse
+    public function detachPhoto(Request $request, Destination $destination, int $photo, DestinationGalleryEditor $galerie): RedirectResponse
     {
-        $this->contenu->retirerDeLaGalerie($this->admin($request), $destination, $photo);
+        $galerie->retirer($this->admin($request), $destination, $photo);
 
         return back()->with('succes', 'Photo retirée de la galerie.');
     }
 
-    public function destroy(Request $request, Destination $destination): RedirectResponse
+    public function destroy(Request $request, Destination $destination, DestinationEditor $destinations): RedirectResponse
     {
-        $this->contenu->supprimerDestination($this->admin($request), $destination);
+        $destinations->supprimer($this->admin($request), $destination);
 
         return redirect()->route('office.destinations')->with('succes', "« {$destination->name} » supprimée.");
     }

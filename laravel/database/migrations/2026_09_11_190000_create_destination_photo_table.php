@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Schema;
  * La position 0 est la couverture : la photo de l'atlas et de l'en-tête de la
  * page. `destinations.photo_id` reste, parce que l'atlas, l'accueil et l'API
  * la lisent partout ; mais **elle n'a plus qu'un seul écrivain**,
- * `OfficeContentService::synchroniserCouverture()`, qui la recopie depuis la
+ * `DestinationGallery::synchroniserCouverture()`, qui la recopie depuis la
  * position 0 à chaque geste sur la galerie. Un test vérifie qu'elles ne
  * divergent jamais.
  *

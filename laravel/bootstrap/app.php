@@ -2,11 +2,11 @@
 
 use App\Exceptions\DestinationNotFoundException;
 use App\Exceptions\ListingNotFoundException;
+use App\Exceptions\OfficeRefusal;
 use App\Http\Middleware\EnsureAdminPasswordIsSet;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\OfficeContext;
 use App\Http\Middleware\PreventIndexing;
-use App\Services\Office\OfficeRefusal;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;

@@ -26,6 +26,7 @@ import OfficeChart from '@/Components/Office/OfficeChart.vue'
 import OfficeHBars from '@/Components/Office/OfficeHBars.vue'
 import OfficeHead from '@/Components/Office/OfficeHead.vue'
 import { useOfficeMotion } from '@/Composables/useOfficeMotion.js'
+import CommissionPanel from './Partials/CommissionPanel.vue'
 import { ariary, nombre } from '@/Support/format.js'
 
 defineOptions({ layout: OfficeShell })
@@ -39,7 +40,7 @@ const props = defineProps({
     reponse: { type: Array, required: true },
     delai: { type: Array, required: true },
     sejours: { type: Array, required: true },
-    argent: { type: Array, required: true },
+    commission: { type: Object, required: true },
     inscriptions: { type: Array, required: true },
     destinations: { type: Array, required: true },
     statuts: { type: Array, required: true },
@@ -142,13 +143,11 @@ const heures = (v) => (v === null ? '—' : `${String(v).replace('.', ',')} h`)
                 :series="sejours"
             />
 
-            <OfficeChart
-                titre="Commission"
-                definition="Facturée : au mois du départ, sur les séjours confirmés. Reçue : les règlements consignés, au mois qu'ils soldent."
+            <CommissionPanel
+                class="st__large"
+                :commission="commission"
                 :labels="mois.courts"
                 :labels-longs="mois.longs"
-                :series="argent"
-                format="ariary"
             />
 
             <OfficeChart
@@ -231,8 +230,10 @@ const heures = (v) => (v === null ? '—' : `${String(v).replace('.', ',')} h`)
 
 /* Deux colonnes sur un écran large, les graphiques qui racontent le plus en
    pleine largeur. Le contenu du back-office va jusqu'aux bords : les courbes
-   en profitent. */
-.st__grille { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+   en profitent. `dense` : un bloc pleine largeur ne laisse pas de case vide
+   derrière lui — le suivant qui tient vient la combler, à deux colonnes
+   comme à trois. */
+.st__grille { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-flow: row dense; gap: 1rem; }
 .st__large { grid-column: 1 / -1; }
 
 @media (min-width: 1600px) {

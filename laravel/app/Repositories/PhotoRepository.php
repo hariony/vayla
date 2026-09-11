@@ -2,8 +2,8 @@
 
 namespace App\Repositories;
 
+use App\Contracts\Repositories\PhotoRepositoryInterface;
 use App\Models\Photo;
-use App\Repositories\Contracts\PhotoRepositoryInterface;
 use Illuminate\Support\Collection;
 
 class PhotoRepository implements PhotoRepositoryInterface

@@ -131,7 +131,7 @@ const VOYAGEURS = Array.from({ length: 16 }, (_, i) => i + 1)
                                     <span class="dm__label">Destination</span>
                                     <select v-model="destination">
                                         <option value="">Je ne sais pas encore, ou ailleurs</option>
-                                        <option v-for="d in destinations" :key="d.value" :value="d.value">{{ d.label }} — {{ d.region }}</option>
+                                        <option v-for="d in destinations" :key="d.value" :value="d.value">{{ d.label }} — {{ d.detail }}</option>
                                     </select>
                                     <span v-if="form.errors.destination" class="dm__err">{{ form.errors.destination }}</span>
                                 </label>

@@ -2,54 +2,34 @@
 
 namespace App\Http\Controllers;
 
+use App\Data\StayRequests\SentStayRequestData;
+use App\Http\Requests\StayRequestPrefillRequest;
 use App\Http\Requests\StayRequestRequest;
-use App\Models\Destination;
-use App\Services\StayRequestService;
+use App\Services\StayRequests\StayRequestFormQuery;
+use App\Services\StayRequests\StayRequestSubmitter;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
-/**
- * `/demande` : décrire le séjour qu'on cherche, pour que l'équipe le trouve.
- *
- * Le formulaire **reprend la recherche en cours** — destination, dates,
- * voyageurs arrivent dans l'adresse depuis l'accueil — et, pour un voyageur
- * connecté, son nom et ses coordonnées : on ne redemande pas ce qu'on sait.
- */
+/** `/demande` : décrire le séjour qu'on cherche, pour que l'équipe le trouve. */
 class StayRequestController extends Controller
 {
-    public function __construct(private StayRequestService $demandes) {}
-
-    public function create(Request $request): Response
+    public function create(StayRequestPrefillRequest $request, StayRequestFormQuery $formulaire): Response
     {
-        $voyageur = $request->user('web');
-
-        return Inertia::render('Demande/Create', [
-            'destinations' => Destination::query()->orderBy('name')->get(['slug', 'name', 'region'])
-                ->map(fn (Destination $d) => ['value' => $d->slug, 'label' => $d->name, 'region' => $d->region])->all(),
-            'initial' => [
-                'destination' => (string) $request->query('destination', ''),
-                'arrival' => (string) $request->query('arrival', ''),
-                'departure' => (string) $request->query('departure', ''),
-                'guests' => max(1, min(30, (int) $request->query('guests', 2))),
-                'name' => $voyageur?->name ?? '',
-                'email' => $voyageur?->email ?? '',
-                'phone' => $voyageur?->phone ?? '',
-            ],
-            // Après l'envoi : le récapitulatif, et plus de formulaire.
-            'envoyee' => $request->session()->get('demandeEnvoyee'),
-        ]);
+        return Inertia::render('Demande/Create', $formulaire->page(
+            $request->toDto(),
+            $request->user('web'),
+            $request->envoyee(),
+        ));
     }
 
-    public function store(StayRequestRequest $request): RedirectResponse
+    public function store(StayRequestRequest $request, StayRequestSubmitter $demandes): RedirectResponse
     {
-        $demande = $this->demandes->deposer($request->validated(), $request->user('web'));
+        $demande = $demandes->deposer($request->toDto());
 
-        return redirect()->route('stay-requests.create')->with('demandeEnvoyee', [
-            'nom' => $demande->name,
-            'canal' => $demande->phone ? 'whatsapp' : 'email',
-            'contact' => $demande->phone ?? $demande->email,
-        ]);
+        // Un tableau, pas l'objet : la session est sérialisée en JSON
+        // (`session.serialization`), un objet y reviendrait en tableau.
+        return redirect()->route('stay-requests.create')
+            ->with(StayRequestPrefillRequest::FLASH_ENVOYEE, SentStayRequestData::fromModel($demande)->toArray());
     }
 }

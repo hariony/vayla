@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\Content\PageService;
+use App\Services\Content\Pages\SitePages;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -16,10 +16,8 @@ use Inertia\Response;
  */
 class PageController extends Controller
 {
-    public function show(string $page, PageService $pages): Response
+    public function show(string $page, SitePages $pages): Response
     {
-        $trouvee = $pages->publiee($page) ?? abort(404);
-
-        return Inertia::render('Content/Show', ['page' => $pages->pourLeSite($trouvee)]);
+        return Inertia::render('Content/Show', $pages->publiee($page) ?? abort(404));
     }
 }

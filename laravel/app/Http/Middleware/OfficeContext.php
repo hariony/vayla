@@ -2,13 +2,8 @@
 
 namespace App\Http\Middleware;
 
-use App\Enums\BookingStatus;
-use App\Enums\ListingStatus;
-use App\Enums\StayRequestStatus;
-use App\Models\Booking;
-use App\Models\Listing;
-use App\Models\OutboundMessage;
-use App\Models\StayRequest;
+use App\Data\Office\Shell\OfficeAdminData;
+use App\Services\Office\OfficeCountersQuery;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
@@ -25,33 +20,23 @@ use Symfony\Component\HttpFoundation\Response;
  * à un propriétaire. La racine des URL est donc ramenée à `APP_URL` : les
  * routes du back-office, elles, portent leur domaine et n'en dépendent pas.
  *
- * **Le partagé : l'équipier connecté et les trois compteurs de la colonne.**
- * Ce sont les trois files qui attendent quelqu'un — annonces à vérifier,
- * demandes en attente, messages WhatsApp à envoyer. Les afficher sur chaque
- * écran évite d'avoir à revenir au tableau de bord pour savoir s'il reste du
- * travail.
+ * **Le partagé : l'équipier connecté et les compteurs de la colonne**
+ * (`OfficeCountersQuery`) — les files qui attendent quelqu'un.
  */
 class OfficeContext
 {
+    public function __construct(private OfficeCountersQuery $compteurs) {}
+
     public function handle(Request $request, Closure $next): Response
     {
         URL::forceRootUrl(config('app.url'));
 
         Inertia::share([
-            'admin' => fn () => ($a = $request->user('admin')) ? [
-                'name' => $a->name,
-                'email' => $a->email,
-                'initiales' => $a->initiales(),
-            ] : null,
+            'admin' => fn () => ($a = $request->user('admin')) ? OfficeAdminData::fromModel($a) : null,
             // Le mot de passe provisoire d'un collègue, **une seule fois** : il
             // vit dans la session flash et disparaît au rechargement suivant.
             'provisoire' => fn () => $request->user('admin') ? $request->session()->get('provisoire') : null,
-            'officeCompteurs' => fn () => $request->user('admin') ? [
-                'annonces' => Listing::query()->where('status', ListingStatus::Submitted->value)->count(),
-                'reservations' => Booking::query()->where('status', BookingStatus::Pending->value)->count(),
-                'whatsapp' => OutboundMessage::query()->whereNull('sent_at')->count(),
-                'demandes' => StayRequest::query()->where('status', StayRequestStatus::New->value)->count(),
-            ] : null,
+            'officeCompteurs' => fn () => $request->user('admin') ? $this->compteurs->compter() : null,
         ]);
 
         return $next($request);

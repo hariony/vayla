@@ -96,7 +96,7 @@ const remplir = (p) => {
     credit.defaults({
         caption: p?.caption ?? '',
         author: p?.author ?? '',
-        source_url: p?.source_url ?? '',
+        source_url: p?.sourceUrl ?? '',
         licence: p?.licenceCle ?? '',
     })
     credit.reset()
@@ -320,7 +320,7 @@ const change = computed(() => credit.isDirty)
                                     </select>
                                 </div>
                                 <p v-else class="of-help">
-                                    Licence : <a v-if="choisie.licence_url" :href="choisie.licence_url" target="_blank" rel="noopener" class="of-card__lien">{{ choisie.licence }}</a><template v-else>{{ choisie.licence }}</template>
+                                    Licence : <a v-if="choisie.licenceUrl" :href="choisie.licenceUrl" target="_blank" rel="noopener" class="of-card__lien">{{ choisie.licence }}</a><template v-else>{{ choisie.licence }}</template>
                                     — celle que l'auteur a choisie sur Commons ; elle ne se change pas. Ne corrigez l'auteur que d'après la page d'origine.
                                 </p>
                             </template>

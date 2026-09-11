@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Office;
 
+use App\DTOs\Content\EurRateDto;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -31,5 +32,16 @@ class OfficeSettingsRequest extends FormRequest
             'eur_rate_date.before_or_equal' => 'Le taux porte la date où il a été relevé : pas une date future.',
             'commission.max' => 'Trente pour cent au plus.',
         ];
+    }
+
+    public function tauxEuro(): EurRateDto
+    {
+        return new EurRateDto((float) $this->validated('eur_rate'), (string) $this->validated('eur_rate_date'));
+    }
+
+    /** La commission des nouvelles demandes, en pour cent. */
+    public function commission(): float
+    {
+        return (float) $this->validated('commission');
     }
 }

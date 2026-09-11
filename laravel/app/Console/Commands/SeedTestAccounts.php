@@ -2,12 +2,12 @@
 
 namespace App\Console\Commands;
 
+use App\Contracts\Office\AdminPasswords;
 use App\Enums\BookingStatus;
 use App\Models\Admin;
 use App\Models\Booking;
 use App\Models\Owner;
 use App\Models\User;
-use App\Services\Office\OfficeAuthService;
 use App\Services\OwnerKeyService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
@@ -69,7 +69,7 @@ class SeedTestAccounts extends Command
         $equipe = Admin::query()->updateOrCreate(['email' => 'equipe@demo.vayla.test'], ['name' => 'Équipe Test']);
         // Un mot de passe **choisi**, pas provisoire : c'est un compte de test,
         // il doit ouvrir le back-office en entier dès la première connexion.
-        app(OfficeAuthService::class)->choisir($equipe, $motDePasse);
+        app(AdminPasswords::class)->choisir($equipe, $motDePasse);
 
         $this->newLine();
         $this->line('## Back-office');

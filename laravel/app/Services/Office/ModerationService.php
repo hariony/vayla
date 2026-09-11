@@ -2,9 +2,12 @@
 
 namespace App\Services\Office;
 
+use App\Contracts\Office\ActionJournal;
+use App\Contracts\Repositories\OfficeListingRepositoryInterface;
 use App\Enums\AdminActionKind;
 use App\Enums\ListingStatus;
 use App\Enums\TrustLevel;
+use App\Exceptions\OfficeRefusal;
 use App\Models\Admin;
 use App\Models\Listing;
 
@@ -33,7 +36,8 @@ use App\Models\Listing;
 class ModerationService
 {
     public function __construct(
-        private AdminJournal $journal,
+        private OfficeListingRepositoryInterface $annonces,
+        private ActionJournal $journal,
     ) {}
 
     public function publier(Admin $admin, Listing $listing): void
@@ -42,7 +46,7 @@ class ModerationService
             throw new OfficeRefusal($raison);
         }
 
-        $listing->update(['status' => ListingStatus::Published, 'review_note' => null]);
+        $this->annonces->publier($listing);
 
         $this->journal->consigner($admin, AdminActionKind::ListingPublished, $listing,
             "« {$listing->title} » mise en ligne au niveau {$listing->trust_level->value} — {$listing->trust_level->label()}.");
@@ -54,7 +58,7 @@ class ModerationService
             throw new OfficeRefusal('Seule une fiche en attente de vérification se renvoie au propriétaire.');
         }
 
-        $listing->update(['status' => ListingStatus::Draft, 'review_note' => trim($motif)]);
+        $this->annonces->renvoyer($listing, trim($motif));
 
         $this->journal->consigner($admin, AdminActionKind::ListingReturned, $listing,
             "« {$listing->title} » renvoyée à {$listing->owner?->name}.", trim($motif));
@@ -66,7 +70,7 @@ class ModerationService
             throw new OfficeRefusal('Cette annonce est déjà archivée.');
         }
 
-        $listing->update(['status' => ListingStatus::Archived]);
+        $this->annonces->archiver($listing);
 
         $this->journal->consigner($admin, AdminActionKind::ListingArchived, $listing,
             "« {$listing->title} » archivée — elle n'est plus proposée aux voyageurs.", $motif ? trim($motif) : null);
@@ -80,7 +84,7 @@ class ModerationService
             throw new OfficeRefusal($raison);
         }
 
-        $listing->update(['trust_level' => $niveau]);
+        $this->annonces->changerNiveau($listing, $niveau);
 
         $this->journal->consigner($admin, AdminActionKind::TrustLevelChanged, $listing,
             "« {$listing->title} » : niveau {$avant->value} → {$niveau->value} ({$niveau->label()}).", $note ? trim($note) : null);
@@ -100,7 +104,7 @@ class ModerationService
             return "L'annonce est déjà au niveau {$niveau->value}.";
         }
 
-        $confirmations = $listing->confirmations_count ?? $listing->confirmations()->count();
+        $confirmations = $this->annonces->nombreConfirmations($listing);
 
         if ($confirmations > 0 && $niveau !== TrustLevel::Proven) {
             return "Des voyageurs ont confirmé leur séjour ici : l'annonce reste au niveau 4, qu'elle a atteint par eux.";

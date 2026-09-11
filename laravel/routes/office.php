@@ -44,7 +44,7 @@ Route::domain(config('vayla.office.domaine'))
     ->name('office.')
     ->group(function () {
         // La limite de débit de la route est large (dix par minute et par
-        // machine) : la vraie borne, par adresse, est dans `OfficeAuthService`.
+        // machine) : la vraie borne, par adresse, est dans `OfficeLogin`.
         Route::middleware('guest:admin')->group(function () {
             Route::get('/connexion', [AuthController::class, 'form'])->name('login');
             Route::post('/connexion', [AuthController::class, 'login'])

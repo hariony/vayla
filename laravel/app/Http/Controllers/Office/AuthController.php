@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Office;
 
+use App\Exceptions\OfficeThrottled;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Office\OfficeLoginRequest;
-use App\Services\Office\OfficeAuthService;
-use App\Services\Office\OfficeThrottled;
+use App\Services\Office\Auth\OfficeLogin;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,28 +17,20 @@ use Inertia\Response;
  *
  * **L'échec ne dit jamais laquelle des deux valeurs est fausse**, et l'erreur
  * est posée sur l'adresse *et* rend le mot de passe vide : on ressaisit les
- * deux, sans indice. Voir `OfficeAuthService` pour la limite d'essais et
+ * deux, sans indice. Voir `OfficeLogin` pour la limite d'essais et
  * l'égalisation des temps de réponse.
  */
 class AuthController extends Controller
 {
-    public function __construct(
-        private OfficeAuthService $auth,
-    ) {}
-
     public function form(): Response
     {
         return Inertia::render('Office/Login');
     }
 
-    public function login(OfficeLoginRequest $request): RedirectResponse
+    public function login(OfficeLoginRequest $request, OfficeLogin $porte): RedirectResponse
     {
         try {
-            $admin = $this->auth->connecter(
-                $request->validated('email'),
-                $request->validated('password'),
-                (string) $request->ip(),
-            );
+            $admin = $porte->connecter($request->toDto());
         } catch (OfficeThrottled $e) {
             return back()->withInput($request->only('email'))->withErrors(['email' => $e->getMessage()]);
         }

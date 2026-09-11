@@ -2,8 +2,8 @@
 
 namespace App\Repositories;
 
+use App\Contracts\Repositories\AmenityRepositoryInterface;
 use App\Models\Amenity;
-use App\Repositories\Contracts\AmenityRepositoryInterface;
 use Illuminate\Support\Collection;
 
 class AmenityRepository implements AmenityRepositoryInterface

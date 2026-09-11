@@ -2,44 +2,39 @@
 
 namespace App\Http\Controllers\Office;
 
+use App\Http\Requests\Office\OwnerQueueRequest;
 use App\Models\Owner;
-use App\Services\Office\OfficeActions;
-use App\Services\Office\OfficeReadService;
+use App\Services\Office\Owners\OwnerDetailQuery;
+use App\Services\Office\Owners\OwnerQueueQuery;
+use App\Services\Office\Owners\OwnerSupport;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
+/** Les propriétaires : la liste, la fiche, et les deux gestes de l'appel de vérification. */
 class OwnerController extends OfficeController
 {
-    public function __construct(
-        private OfficeReadService $lecture,
-        private OfficeActions $actions,
-    ) {}
-
-    public function index(Request $request): Response
+    public function index(OwnerQueueRequest $request, OwnerQueueQuery $file): Response
     {
-        $filtre = $request->query('filtre') === 'a-verifier' ? 'a-verifier' : null;
-        $q = trim((string) $request->query('q'));
-
-        return Inertia::render('Office/Owners/Index', $this->lecture->proprietaires($filtre, $q === '' ? null : mb_substr($q, 0, 80)));
+        return Inertia::render('Office/Owners/Index', $file->page($request->toDto()));
     }
 
-    public function show(Owner $owner): Response
+    public function show(Owner $owner, OwnerDetailQuery $fiche): Response
     {
-        return Inertia::render('Office/Owners/Show', $this->lecture->proprietaire($owner));
+        return Inertia::render('Office/Owners/Show', $fiche->page($owner));
     }
 
-    public function verify(Request $request, Owner $owner): RedirectResponse
+    public function verify(Request $request, Owner $owner, OwnerSupport $support): RedirectResponse
     {
-        $this->actions->verifierTelephone($this->admin($request), $owner);
+        $support->verifierTelephone($this->admin($request), $owner);
 
         return back()->with('succes', 'Numéro vérifié : les niveaux 2 et 3 sont ouverts pour ses annonces.');
     }
 
-    public function link(Request $request, Owner $owner): RedirectResponse
+    public function link(Request $request, Owner $owner, OwnerSupport $support): RedirectResponse
     {
-        $this->actions->renvoyerLien($this->admin($request), $owner);
+        $support->renvoyerLien($this->admin($request), $owner);
 
         return back()->with('succes', 'Lien d’accès dans la file WhatsApp : il reste à l’envoyer.');
     }

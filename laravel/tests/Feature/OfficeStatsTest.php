@@ -2,11 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\DTOs\Office\StatsFilterDto;
 use App\Enums\BookingStatus;
+use App\Enums\StatsPeriod;
 use App\Models\Admin;
 use App\Models\Booking;
+use App\Models\InvoiceSettlement;
 use App\Models\Listing;
-use App\Services\Office\OfficeStatsService;
+use App\Services\Office\Stats\StatsQuery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
@@ -73,7 +76,7 @@ class OfficeStatsTest extends TestCase
 
     private function rapport(bool $avecDemo = true): array
     {
-        return app(OfficeStatsService::class)->rapport(12, $avecDemo);
+        return app(StatsQuery::class)->page(new StatsFilterDto(StatsPeriod::Douze, $avecDemo))->toArray();
     }
 
     public function test_une_demande_se_range_au_mois_ou_elle_a_ete_faite(): void
@@ -122,12 +125,58 @@ class OfficeStatsTest extends TestCase
 
         $r = $this->rapport();
         $sejours = collect($r['sejours'])->firstWhere('cle', 'sejours')['valeurs'];
-        $commission = collect($r['argent'])->firstWhere('cle', 'facturee')['valeurs'];
+        $commission = collect($r['commission']['series'])->firstWhere('cle', 'facturee')['valeurs'];
 
         $this->assertSame(1, $sejours[9]);
         $this->assertSame(0, $sejours[8]);
         $this->assertSame(15000, $commission[9]);
         $this->assertSame(15000, $r['chiffres']['commission']);
+    }
+
+    /**
+     * **Ce qui manque se lit sur les mois clos, et chez qui.** Un séjour parti
+     * le mois dernier sans règlement est dû ; le même mois réglé ne l'est plus.
+     */
+    public function test_le_reste_a_recevoir_nomme_qui_doit_encore(): void
+    {
+        $depart = Carbon::today()->startOfMonth()->subMonthsNoOverflow(1)->addDays(4);
+        $sejour = $this->demande($depart->copy()->subDays(10), BookingStatus::Completed, 2, depart: $depart);
+
+        $c = $this->rapport()['commission'];
+        $this->assertSame(15000, $c['chiffres']['reste']);
+        $this->assertSame(0.0, (float) $c['chiffres']['recouvrement']);
+        $this->assertSame(5.0, (float) $c['chiffres']['taux']);
+        $this->assertSame($sejour->listing->owner_id, $c['debiteurs'][0]['ownerId']);
+        $this->assertSame(15000, $c['debiteurs'][0]['reste']);
+
+        InvoiceSettlement::create([
+            'owner_id' => $sejour->listing->owner_id,
+            'month' => $depart->copy()->startOfMonth()->toDateString(),
+            'amount' => 15000,
+            'settled_at' => now(),
+        ]);
+
+        $c = $this->rapport()['commission'];
+        $this->assertSame(0, $c['chiffres']['reste']);
+        $this->assertSame(100.0, (float) $c['chiffres']['recouvrement']);
+        $this->assertSame([], $c['debiteurs']);
+    }
+
+    /** Le mois en cours n'est pas une facture : il s'accumule, rien n'y est dû. */
+    public function test_le_mois_en_cours_n_est_pas_du(): void
+    {
+        $depart = Carbon::today()->startOfMonth()->addDays(1);
+        $this->demande($depart->copy()->subDays(10), BookingStatus::Completed, 2, depart: $depart);
+
+        $c = $this->rapport()['commission'];
+        $courant = $c['mois'][0];
+
+        $this->assertTrue($courant['enCours']);
+        $this->assertNull($courant['reste']);
+        $this->assertSame(15000, $c['chiffres']['enCours']);
+        $this->assertSame(0, $c['chiffres']['reste']);
+        $this->assertNull($c['chiffres']['recouvrement']);
+        $this->assertSame([], $c['debiteurs']);
     }
 
     /** La démonstration se retire : ses réservations ne passent pas pour l'activité réelle. */

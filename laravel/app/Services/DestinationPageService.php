@@ -9,7 +9,7 @@ use App\Enums\TrustLevel;
 use App\Exceptions\DestinationNotFoundException;
 use App\Models\Destination;
 use App\Models\Listing;
-use App\Repositories\Contracts\ListingRepositoryInterface;
+use App\Contracts\Repositories\ListingRepositoryInterface;
 use Illuminate\Support\Collection;
 
 /**

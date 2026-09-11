@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Data\DestinationData;
 use App\Exceptions\DestinationNotFoundException;
-use App\Repositories\Contracts\DestinationRepositoryInterface;
+use App\Contracts\Repositories\DestinationRepositoryInterface;
 
 class DestinationService
 {

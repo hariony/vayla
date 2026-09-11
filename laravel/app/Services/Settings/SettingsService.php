@@ -2,7 +2,9 @@
 
 namespace App\Services\Settings;
 
-use App\Models\Setting;
+use App\Contracts\Repositories\SettingRepositoryInterface;
+use App\Contracts\Settings\SettingsStore;
+use App\DTOs\Settings\SettingTraceDto;
 use Throwable;
 
 /**
@@ -15,16 +17,12 @@ use Throwable;
  *
  * Lu une fois par requête : le taux est demandé par chaque carte d'une grille.
  */
-class SettingsService
+class SettingsService implements SettingsStore
 {
-    public const TAUX_EURO = 'eur_rate';
-
-    public const TAUX_EURO_DATE = 'eur_rate_date';
-
-    public const COMMISSION = 'commission_rate';
-
     /** @var array<string, string>|null */
     private ?array $valeurs = null;
+
+    public function __construct(private SettingRepositoryInterface $reglages) {}
 
     public function tauxEuro(): float
     {
@@ -36,7 +34,6 @@ class SettingsService
         return (string) ($this->lire(self::TAUX_EURO_DATE) ?? config('vayla.currency.eur_rate_date'));
     }
 
-    /** Le taux de commission **des nouvelles demandes** ; chaque réservation fige le sien. */
     public function commission(): float
     {
         return (float) ($this->lire(self::COMMISSION) ?? config('vayla.commission.rate'));
@@ -44,27 +41,26 @@ class SettingsService
 
     public function ecrire(string $cle, string $valeur, ?int $adminId = null): void
     {
-        Setting::query()->updateOrCreate(['key' => $cle], ['value' => $valeur, 'admin_id' => $adminId]);
+        $this->reglages->ecrire($cle, $valeur, $adminId);
         $this->valeurs = null;
     }
 
-    /** @return array{at: ?string, admin_id: ?int}|null */
-    public function trace(string $cle): ?array
+    public function trace(string $cle): ?SettingTraceDto
     {
         try {
-            $ligne = Setting::query()->find($cle);
+            $ligne = $this->reglages->trouver($cle);
         } catch (Throwable) {
             return null;
         }
 
-        return $ligne ? ['at' => $ligne->updated_at?->toIso8601String(), 'admin_id' => $ligne->admin_id] : null;
+        return $ligne ? new SettingTraceDto($ligne->updated_at?->toIso8601String(), $ligne->admin_id) : null;
     }
 
     private function lire(string $cle): ?string
     {
         if ($this->valeurs === null) {
             try {
-                $this->valeurs = Setting::query()->pluck('value', 'key')->all();
+                $this->valeurs = $this->reglages->valeurs();
             } catch (Throwable) {
                 $this->valeurs = [];
             }

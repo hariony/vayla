@@ -33,4 +33,10 @@ class OfficeReasonRequest extends FormRequest
             'reason.min' => 'Dix caractères au moins : le motif doit expliquer, pas seulement trancher.',
         ];
     }
+
+    /** Le motif, sans espaces autour ; `null` quand il est facultatif et vide. */
+    public function reason(): ?string
+    {
+        return $this->filled('reason') ? trim($this->string('reason')->toString()) : null;
+    }
 }

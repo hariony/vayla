@@ -5,8 +5,8 @@ namespace App\Http\Middleware;
 use App\Data\DeviseData;
 use App\Enums\SocialProvider;
 use App\Models\Owner;
-use App\Services\Content\PageService;
-use App\Services\Content\SiteTextService;
+use App\Services\Content\Pages\SitePages;
+use App\Services\Content\Texts\SiteTexts;
 use App\Services\ConversationService;
 use App\Services\Currency\ExchangeRateProvider;
 use Illuminate\Http\Request;
@@ -73,8 +73,8 @@ class HandleInertiaRequests extends Middleware
             // Les textes du site et les liens du pied de page, tenus depuis le
             // back-office. En cache jusqu'à la prochaine modification : ils
             // sont lus sur chaque page et changent une fois par mois.
-            'textes' => fn () => app(SiteTextService::class)->tous(),
-            'pied' => fn () => app(PageService::class)->pied(),
+            'textes' => fn () => app(SiteTexts::class)->tous(),
+            'pied' => fn () => app(SitePages::class)->pied(),
             // Sans ça, accepter une demande renvoie sur la même page sans
             // rien dire : l'utilisateur reclique, et se demande si ça a marché.
             'flash' => [

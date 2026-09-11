@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Enums\AdminActionKind;
 use App\Enums\BookingStatus;
+use App\Enums\CategoryIcon;
+use App\Enums\DestinationScene;
 use App\Enums\ListingStatus;
 use App\Enums\TrustLevel;
 use App\Models\Admin;
@@ -16,7 +18,6 @@ use App\Models\Listing;
 use App\Models\Owner;
 use App\Models\Photo;
 use App\Services\BookingService;
-use App\Services\Office\OfficeContentReadService;
 use Database\Seeders\CategorySeeder;
 use Database\Seeders\DestinationSeeder;
 use Database\Seeders\PhotoSeeder;
@@ -500,10 +501,10 @@ class OfficeContentTest extends TestCase
         $source = file_get_contents(resource_path('js/Support/categoryIcons.js'));
         preg_match_all('/^\s{4}(\w+):/m', $source, $cles);
 
-        $this->assertEqualsCanonicalizing($cles[1], array_keys(OfficeContentReadService::ICONES_CATEGORIES));
+        $this->assertEqualsCanonicalizing($cles[1], array_column(CategoryIcon::cases(), 'value'));
 
         $scene = file_get_contents(resource_path('js/Components/SceneArt.vue'));
-        foreach (array_keys(OfficeContentReadService::SCENES) as $variante) {
+        foreach (array_column(DestinationScene::cases(), 'value') as $variante) {
             $this->assertStringContainsString("{$variante}:", $scene, "SceneArt ne dessine pas « {$variante} ».");
         }
     }

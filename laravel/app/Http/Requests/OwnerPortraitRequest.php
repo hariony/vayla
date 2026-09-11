@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests;
 
-use App\Services\PhotoUploadService;
+use App\Contracts\Photos\PhotoProcessor;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -20,7 +20,7 @@ class OwnerPortraitRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'portrait' => ['required', 'image', 'mimes:jpeg,jpg,png,webp', 'max:'.PhotoUploadService::POIDS_MAX_KO],
+            'portrait' => ['required', 'image', 'mimes:jpeg,jpg,png,webp', 'max:'.PhotoProcessor::POIDS_MAX_KO],
         ];
     }
 

@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use App\Enums\NotificationKind;
 use App\Models\OutboundMessage;
-use App\Repositories\Contracts\OutboundMessageRepositoryInterface;
+use App\Contracts\Repositories\OutboundMessageRepositoryInterface;
 use App\Support\Telephone;
 use Illuminate\Console\Command;
 

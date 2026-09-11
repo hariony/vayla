@@ -54,7 +54,7 @@ const liste = computed(() => props.onglets)
             preserve-scroll
         >
             {{ o.label }}
-            <span v-if="o.nombre !== undefined" class="ot__n of-num">{{ nombre(o.nombre) }}</span>
+            <span v-if="o.nombre != null" class="ot__n of-num">{{ nombre(o.nombre) }}</span>
         </Link>
     </nav>
 </template>

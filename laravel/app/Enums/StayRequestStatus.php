@@ -21,4 +21,14 @@ enum StayRequestStatus: string
             self::Closed => 'Close',
         };
     }
+
+    /** Le titre de l'onglet de la file, au pluriel. */
+    public function onglet(): string
+    {
+        return match ($this) {
+            self::New => 'Nouvelles',
+            self::Taken => 'En cours',
+            self::Closed => 'Closes',
+        };
+    }
 }

@@ -2,8 +2,8 @@
 
 namespace App\Repositories;
 
+use App\Contracts\Repositories\OwnerRepositoryInterface;
 use App\Models\Owner;
-use App\Repositories\Contracts\OwnerRepositoryInterface;
 use App\Support\Telephone;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;

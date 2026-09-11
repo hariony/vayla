@@ -10,7 +10,7 @@
  *
  * **Le contenu arrive en HTML déjà sûr** : écrit en Markdown depuis le
  * back-office, rendu côté serveur, HTML brut et liens `javascript:` retirés
- * (`PageService::rendre`). C'est ce qui permet le `v-html` ici.
+ * (`PageRenderer::rendre`). C'est ce qui permet le `v-html` ici.
  *
  * La date de mise à jour est écrite : sur une page de conditions ou de tarifs,
  * « depuis quand ce texte vaut » fait partie du texte.

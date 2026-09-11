@@ -6,7 +6,7 @@ use App\Data\ListingData;
 use App\Data\ListingDetailData;
 use App\Data\ListingFiltreData;
 use App\Exceptions\ListingNotFoundException;
-use App\Repositories\Contracts\ListingRepositoryInterface;
+use App\Contracts\Repositories\ListingRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class ListingService

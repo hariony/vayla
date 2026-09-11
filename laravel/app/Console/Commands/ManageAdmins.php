@@ -2,8 +2,8 @@
 
 namespace App\Console\Commands;
 
+use App\Contracts\Office\AdminPasswords;
 use App\Models\Admin;
-use App\Services\Office\OfficeAuthService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Validator;
 
@@ -68,7 +68,7 @@ class ManageAdmins extends Command
             return self::FAILURE;
         }
 
-        $this->montrer($admin, app(OfficeAuthService::class)->provisoire($admin));
+        $this->montrer($admin, app(AdminPasswords::class)->provisoire($admin));
 
         return self::SUCCESS;
     }
@@ -104,7 +104,7 @@ class ManageAdmins extends Command
         $admin = Admin::create(['name' => $nom, 'email' => $email]);
 
         $this->info("{$nom} fait partie de l’équipe.");
-        $this->montrer($admin, app(OfficeAuthService::class)->provisoire($admin));
+        $this->montrer($admin, app(AdminPasswords::class)->provisoire($admin));
 
         return self::SUCCESS;
     }

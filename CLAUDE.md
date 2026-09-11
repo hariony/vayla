@@ -577,14 +577,59 @@ projet de référence sont dans **`docs/architecture/`** — les lire avant d'aj
 
 En une phrase par couche :
 
-- **`Http/Controllers`** reçoit, délègue, retourne. Aucune donnée métier, aucune requête.
-- **`Http/Requests`** valide et borne (`per_page` non borné = déni de service).
-- **`Data`** (spatie/laravel-data) est le **contrat public** : c'est là qu'on absorbe l'écart
-  entre le schéma et ce qu'attendent le front et l'API. `ListingData` sert les deux.
-- **`Services`** portent les règles : tri de l'atlas, compteurs, échelle de confiance.
-- **`Repositories`** sont le seul endroit qui parle Eloquent. Les services ne connaissent que
-  les interfaces de `Repositories/Contracts`, liées dans `AppServiceProvider`.
-- **`Models`** : relations et casts, pas de logique.
+- **`Http/Controllers`** reçoit la Request, appelle un service, retourne la réponse. Ni requête
+  Eloquent, ni règle métier, ni `$request->validate()` en ligne. Les services s'injectent dans la
+  méthode quand un seul geste s'en sert.
+- **`Http/Requests`** valide et borne (`per_page` non borné = déni de service), puis **fabrique le
+  DTO** (`toDto()`) : le service ne voit jamais la Request. Une page en GET qui lit des critères
+  d'adresse (`/demande`, `/phototheque`) **nettoie dans `prepareForValidation()`** plutôt que
+  d'échouer — un lien partagé au critère périmé doit ouvrir la page.
+- **`DTOs`** (classes `final readonly`, sans magie) : **ce qui entre** dans un cas d'usage —
+  `UploadTeamPhotoDto`, `SubmitStayRequestDto`… Plus de tableaux associatifs entre couches.
+- **`Data`** (spatie/laravel-data) : **ce qui sort** vers le front et l'API — le contrat public,
+  là qu'on absorbe l'écart entre le schéma et l'écran. Une page Inertia peut être un `Data` entier
+  (`PhotoLibraryPageData`) : `Inertia::render()` accepte un `Arrayable`.
+- **`Services`** portent les règles, **une classe par cas d'usage** (`TeamPhotoUploader`,
+  `PhotoCreditEditor`, `StayRequestWorkflow`…) plutôt qu'un service fourre-tout ; les lectures à
+  part (`…Query`). Transactions et journal ici.
+- **`Contracts`** : toute dépendance métier s'injecte par son interface — `Contracts/Repositories`
+  pour les données, `Contracts/Photos` (traitement d'image, stockage), `Contracts/Destinations`,
+  `Contracts/Office` (journal, mots de passe), `Contracts/Settings`, `Contracts/Ai`. Liaisons dans
+  `AppServiceProvider::register()`. Des interfaces
+  **étroites** : la photothèque a son `PhotoLibraryRepositoryInterface` plutôt que d'alourdir celui
+  de la lecture publique.
+- **`Repositories`** sont le seul endroit qui parle Eloquent — lecture **et écriture** : un
+  service n'appelle ni `->save()` ni `->forceFill()`. `DB::transaction` reste au service : c'est
+  lui qui sait ce qui forme un tout.
+- **`Models`** : relations, casts, scopes simples. **Les règles qui dépendent d'une valeur vivent
+  sur l'enum** (`PhotoProvenance`, `PhotoLicence`, `BookingOutcome`, `StatsPeriod`, comme
+  `TrustLevel`) : testables sans base.
+- **`Exceptions`** : les refus métier (`OfficeRefusal`, `OfficeThrottled`…), jamais rangés avec
+  les services qui les lèvent.
+- **`Middleware`** : ce qui traverse tous les écrans (compteurs de la colonne, racine des URL),
+  sous les mêmes règles qu'un contrôleur — `OfficeContext` passe par `OfficeCountersQuery`.
+
+Deux pièges rencontrés en appliquant ces règles :
+
+- **Un `Data` rendu tel quel répond `201 Created` à un POST.** C'est le comportement de
+  spatie/laravel-data ; pour une lecture en POST (l'aperçu d'une page), `response()->json($data)`.
+- **Le cache ne garde que des valeurs simples** : `cache.serializable_classes` est à `false`, un
+  objet `Data` y reviendrait en `__PHP_Incomplete_Class`. `SitePages` met en cache des tableaux et
+  construit les `Data` à la lecture. Même règle que la session, sérialisée en JSON.
+
+**La mise en conformité avance par lots, et `ArchitectureTest` la tient.** Lot 1 (fait) : la
+photothèque, les demandes de séjour, la galerie des destinations, le traitement des photos. Lot 2
+(fait) : **tout le back-office** — contenu, modération, réservations, propriétaires, factures,
+journal, équipe, porte et compte, statistiques, pages et textes du site, compteurs de la colonne —
+et `/ai/chat`. Le test liste les contrôleurs, middlewares et services conformes et y interdit
+Eloquent (lecture comme écriture), le SQL, la validation en ligne et la Request dans un service ;
+chaque lot suivant y ajoute ses fichiers.
+
+**Ce qui n'y est pas encore** — le site public, l'espace propriétaire, l'espace client, les
+réservations, l'inscription (lot 3) — suit l'ancienne manière : ne pas le copier comme modèle. Le
+back-office les atteint par des **contrats de frontière** (`ListingDrafting`, `ListingGallery`,
+`InvoiceCalculator`, `BookingCancellation`, `BookingThread`, `OwnerAccess`) qui prennent encore des
+tableaux : c'est au lot 3 de les resserrer en DTO, sans toucher aux appelants du back-office.
 
 ### Domaine
 
@@ -1506,7 +1551,7 @@ maillon :
    doute l'original part : le serveur sait le traiter. Les quatre écrans d'envoi l'utilisent, et
    montrent l'envoi avancer (`Components/Office/PhotoDepot.vue` au back-office).
 
-Le plafond est de **40 Mo** (`PhotoUploadService::POIDS_MAX_KO`, lu par les trois `FormRequest`),
+Le plafond est de **40 Mo** (`PhotoProcessor::POIDS_MAX_KO`, lu par les trois `FormRequest`),
 sous les 50 de PHP et les 100 de nginx.
 
 **La compression : une qualité par palier, chaque palier réduit depuis le précédent.** 82 en 800,
@@ -1595,7 +1640,7 @@ rechargement : la mise en page d'un chat promettrait une instantanéité qui n'e
 
 #### La demande dans l'autre sens
 
-`/demande` (`StayRequestController`, `StayRequestService`, `Pages/Demande/Create`) — **le voyageur
+`/demande` (`StayRequestController`, `StayRequestSubmitter`, `Pages/Demande/Create`) — **le voyageur
 décrit le séjour qu'il cherche, l'équipe va le chercher.** C'est la promesse de la section « Vous ne
 trouvez pas ? » de l'accueil et de « Comment ça marche », et **rien ne la tenait** : ses quatre
 boutons « Déposer une demande » (la section elle-même, l'état vide de la grille, l'atlas, le pied
@@ -1710,7 +1755,8 @@ dernier membre.
 **La porte : une adresse et un mot de passe — la seule du produit qui en ait un.** Elle a d'abord
 été un code par e-mail, comme partout ailleurs ; ça tient pour des voyageurs et des propriétaires
 qui reviennent quelques fois par mois, pas pour une équipe qui ouvre l'outil vingt fois par jour.
-Ce qui la tient (`OfficeAuthService`) :
+Ce qui la tient (`Services/Office/Auth` : `OfficeLogin` pour la porte, `AdminPasswordService` pour
+les mots de passe) :
 
 - **l'échec ne dit jamais laquelle des deux valeurs est fausse** (« Adresse ou mot de passe
   incorrect. », même message pour une adresse inconnue), **et le temps de réponse non plus** :
@@ -1800,7 +1846,7 @@ comptes qui montent (`data-count`), les barres (`data-bar`) et les lignes qui so
 (`replier`). Le lagon n'y apparaît que sur ce qui est une vérification : l'échelle, « numéro
 vérifié ». Tout ce qui attend quelqu'un prend la terre.
 
-**`OfficeReadService` met tout à plat** : aucun modèle n'arrive au front. Le back-office voit
+**Chaque écran sort en `Data`** (`app/Data/Office/…`) : aucun modèle n'arrive au front. Le back-office voit
 plus que le site — adresses exactes, courriels, numéros — et c'est précisément pourquoi chaque
 champ est nommé ; la clé d'accès, elle, n'en sort jamais (un test la cherche dans la réponse).
 
@@ -1808,7 +1854,7 @@ champ est nommé ; la clé d'accès, elle, n'en sort jamais (un test la cherche 
 
 **Deux natures de texte, deux outils** — groupe « Contenu », « Textes du site » et « Pages ».
 
-**Les pages éditoriales** (`pages`, `PageService`, écran public `Content/Show`) : « Comment ça
+**Les pages éditoriales** (`pages`, `Services/Content/Pages`, écran public `Content/Show`) : « Comment ça
 marche », « Tarifs », « Guide du propriétaire », « À propos », « Nous contacter », et les trois
 pages légales. Écrites en **Markdown** — ce qu'on tape sans apprendre un éditeur —, avec une
 barre d'outils qui pose les marques autour de la sélection, et un **aperçu rendu par le serveur**
@@ -1820,7 +1866,7 @@ barre d'outils qui pose les marques autour de la sélection, et un **aperçu ren
 - **`{commission}` s'écrit depuis le réglage** au moment de l'affichage : recopié à la main, le
   taux de la page « Tarifs » mentirait le jour où il change.
 - **Adresse courte, à la racine** (`/comment-ca-marche`) : la route `/{page}` est **la dernière
-  de `web.php`**, un écran du site passe toujours devant, et `PageService` refuse à une page
+  de `web.php`**, un écran du site passe toujours devant, et `PageAddresses` refuse à une page
   l'adresse d'un écran — la liste est lue **sur le routeur**, pas recopiée. `deconnexion` est
   exclue du motif : POST seulement, un GET doit y répondre 405. **L'adresse se fige à la première
   publication** : elle a pu être partagée.
@@ -1837,7 +1883,7 @@ contact, conditions). Il liste désormais les écrans du site, écrits dans `Sit
 pages publiées** de chaque colonne (prop partagée `pied`) ; les pages légales ont leur ligne en
 bas. Une page en brouillon n'y apparaît pas. Un test vérifie qu'aucun `'#'` ne revient.
 
-**Les textes de l'accueil et du pied de page** (`site_texts`, `SiteTextService`,
+**Les textes de l'accueil et du pied de page** (`site_texts`, `Services/Content/Texts`,
 `App\Support\SiteTextCatalog`, écran « Textes du site ») : titres, accroches, étapes, arguments.
 
 - **L'original vit dans le code, la modification en base.** « Rétablir l'original » supprime la
@@ -1860,7 +1906,7 @@ Pour ajouter un texte modifiable : une entrée au catalogue (clé, libellé, bor
 
 #### Les statistiques
 
-`/statistiques` (`OfficeStatsService`, `Office/Stats/Index`) — des courbes, **et rien que des
+`/statistiques` (`Services/Office/Stats`, `Office/Stats/Index`) — des courbes, **et rien que des
 comptes définis**. Chaque graphique écrit sous son titre ce qu'il compte et à quelle date il le
 range, parce que deux écrans qui ne tombent pas sur le même chiffre font douter des deux :
 
@@ -1874,6 +1920,22 @@ demandes tranchées** — une demande encore en attente n'a pas encore échoué 
 donnée n'est pas un zéro** (la courbe s'interrompt au lieu de plonger). **Pas de flèche de
 tendance** : sur les volumes d'une plateforme qui démarre, « +200 % » veut dire « deux de plus ».
 Des tests tiennent ces quatre règles.
+
+**La commission a son bloc, en pleine largeur** (`CommissionStats`, `Stats/Partials/CommissionPanel.vue`) :
+une courbe à deux traits disait « on facture plus qu'on ne reçoit » sans dire combien ni à qui
+téléphoner. Le bloc répond dans l'ordre où on se le demande — les chiffres (volume des séjours,
+taux appliqué, facturée, reçue, **reste à recevoir**, recouvrement, mois en cours), le graphique,
+**qui doit encore** (par propriétaire, avec ses mois), puis le détail mois par mois, chaque mois
+menant à sa facturation. Mêmes règles que la facture, pour que les deux écrans tombent sur les
+mêmes montants : une facture est celle d'un propriétaire pour un mois de départ, un règlement
+solde ce mois-là. **Le mois en cours n'est pas une facture** : il n'entre ni dans le reste ni
+dans le recouvrement, et sa ligne dit « pas encore dû » — un reste affiché là ferait relancer un
+propriétaire pour une somme qu'il ne doit pas encore. Un séjour confirmé **après** le règlement
+de son mois rouvre un reste sur ce mois. Les mois sans séjour ni règlement sortent du tableau,
+et l'écran dit combien. Le reste prend la terre ; le lagon n'y entre pas.
+
+**La grille est en `grid-auto-flow: dense`** : un bloc pleine largeur ne laisse pas de case vide
+derrière lui, à deux colonnes comme à trois.
 
 **La démonstration est incluse tant qu'elle existe, et l'écran le dit** dans un bandeau, avec un
 bouton pour la retirer (`?demo=0`) : des courbes nourries de réservations fictives ne doivent
@@ -1890,7 +1952,7 @@ change — rien sous `prefers-reduced-motion`. Le lagon n'y apparaît que sur l'
 
 Le regroupement par mois se fait **en PHP**, pas en SQL : les fonctions de date diffèrent entre
 PostgreSQL et SQLite, et les volumes tiennent en mémoire. Le jour où ils ne tiendront plus, ce
-sera une vue matérialisée — et `OfficeStatsService` sera le seul fichier à changer.
+sera une vue matérialisée — et `OfficeStatsRepository` sera le seul fichier à changer.
 
 **`php artisan vayla:historique-demo`** (local uniquement) écrit des mois de demandes **passées**,
 toutes `is_demo`, pour voir les courbes vivre sur une base fraîche. Rien dans le futur : aucune
@@ -1905,7 +1967,7 @@ formulaire de mot de passe — porte sa propre mesure.
 
 #### La photothèque
 
-`/phototheque` (`OfficePhotoLibraryService`, `Office/Photos/Index`) — toutes les photographies du
+`/phototheque` (`PhotoLibraryQuery`, `TeamPhotoUploader`, `PhotoCreditEditor`, `PhotoRemover` ; `Office/Photos/Index`) — toutes les photographies du
 site, **leurs crédits, et où chacune apparaît**. Une grille à gauche, la photo choisie en grand à
 droite (la même lecture que la galerie d'une destination), avec ses usages en liens, son poids
 sur le disque et ses trois tailles. La photo choisie vit dans l'adresse (`?photo=`) : le journal
@@ -1928,8 +1990,9 @@ phrase :
 - **`PhotoSeeder` ne réécrit plus la légende, l'auteur ni la page d'origine** d'une photo
   existante — la règle des autres référentiels : un `make seed` effaçait sinon les corrections de
   l'équipe. Un test corrige puis rejoue le seeder.
-- **Téléverser pour une destination passe par la galerie** (`OfficeContentService::ajouterPhotoDestination`,
-  qui appelle `televerser`) : un seul endroit produit, crédite et range une photo.
+- **Un seul chemin de téléversement** (`TeamPhotoUploader`), depuis la photothèque comme depuis la
+  page d'une destination : il produit, crédite, et range dans la galerie quand une destination est
+  donnée (`DestinationGallery`).
 
 **Un formulaire ne s'imbrique pas dans un autre.** L'ajout de photo de la page destination était
 un `<form>` dans le `<form>` de la destination : son `submit` remontait, l'enregistrement de la
@@ -1941,7 +2004,7 @@ groupe maintenant ; un balayage des templates n'en a pas trouvé d'autre.
 **Le back-office ne fait pas que modérer : il corrige.** Contenu des annonces, destinations,
 catégories du rail, équipements, réglages — tout ce qui portait le site sans qu'on puisse le
 toucher ailleurs que dans le code ou les seeders. Groupe « Contenu » de la colonne ;
-`OfficeContentService` pour les gestes, `OfficeContentReadService` pour les écrans.
+`Services/Office/Content` : un `…Editor` pour les gestes, un `…Query` pour les écrans.
 
 - **Le contenu d'une annonce, tout le contenu** (`/annonces/{id}/modifier`) — y compris ce que le
   propriétaire ne peut plus toucher après vérification : c'est le rôle de Vayla de corriger une
@@ -1963,7 +2026,7 @@ toucher ailleurs que dans le code ou les seeders. Groupe « Contenu » de la col
   une destination qui a des logements. L'écran ne propose même pas le bouton, et le service
   refuse avec la raison.
 - **« Tout » et « Séjour confirmé » sont des filtres, pas des étiquettes**
-  (`CATEGORIES_STRUCTURELLES`) : ils se renomment et se déplacent, mais ne se posent sur aucune
+  (`StructuralCategory`) : ils se renomment et se déplacent, mais ne se posent sur aucune
   annonce et ne se suppriment pas. « Séjour confirmé » se déduit du niveau 4 — et **ne se vend
   pas**.
 - **Une place achetée se dit** : `categories.sponsored` affiche « Sponsorisé » sous le libellé,
@@ -1973,7 +2036,7 @@ toucher ailleurs que dans le code ou les seeders. Groupe « Contenu » de la col
   est la couverture — l'atlas et l'en-tête de sa page —, et la page publique montre les autres en
   pellicule (un bouton par vignette, jamais de diaporama automatique). **`destinations.photo_id`
   reste**, parce que l'atlas, l'accueil et l'API la lisent, mais **elle n'a qu'un écrivain**,
-  `OfficeContentService::synchroniserCouverture()`, qui la recopie depuis la position 0 à chaque
+  `DestinationGallery::synchroniserCouverture()` (`DestinationGalleryService`), qui la recopie depuis la position 0 à chaque
   geste ; un test vérifie qu'elles ne divergent jamais, et le formulaire de la destination ne
   l'écrit plus. On range (glisser-déposer et flèches), on voit chaque photo en grand, on ajoute depuis la photothèque (Commons,
   jamais une image générée, jamais une `an-` qui disparaîtra avec les annonces de démonstration),
@@ -1982,13 +2045,13 @@ toucher ailleurs que dans le code ou les seeders. Groupe « Contenu » de la col
   aussi — la photothèque ne contenait que les onze photos déjà posées, une par destination. Une photo téléversée va dans
   `images/destinations/` — **jamais dans `lieux/`**, que `PhotoSeeder` possède et que
   `PhotoFilesTest` compare au disque —, passe par le même traitement que les photos d'annonce
-  (`PhotoUploadService::produire` : 4/3, 800 à 3200 px, refus sous 1 200 px), et exige son
-  **crédit** (légende, auteur, licence parmi `OfficeContentService::LICENCES`) et une **case
+  (`PhotoProcessor::produire`, implémenté par `GdPhotoProcessor` : 4/3, 800 à 3200 px, refus sous 1 200 px), et exige son
+  **crédit** (légende, auteur, licence parmi l'enum `PhotoLicence`) et une **case
   cochée** : une vraie photographie de ce lieu, que Vayla a le droit de publier — la règle photo,
   déclarée à chaque fois. Elle arrive au bout de la galerie, et est créditée au pied de page.
 - **Les pictogrammes se choisissent parmi ceux qui sont dessinés.** Ceux du rail vivent dans
   `Support/categoryIcons.js`, lu par le rail **et** par le back-office ; un test compare ses clés
-  à `ICONES_CATEGORIES` côté serveur, et celles de `SCENES` à `SceneArt`. Ceux des équipements
+  à l'enum `CategoryIcon` côté serveur, et celles de `DestinationScene` à `SceneArt`. Ceux des équipements
   sont ceux déjà en base — un nom inventé n'aurait pas de tracé.
 - **Les réglages** (`settings`, `SettingsService`) : le taux de change **et sa date, saisie avec
   lui** — `SettingExchangeRate` remplace `ConfigExchangeRate` derrière `ExchangeRateProvider`, la
@@ -2467,5 +2530,9 @@ Groq, OpenRouter, Ollama). Exposé via `POST /ai/chat`, limité à `throttle:20,
   le même centrage et retombe à zéro quand la place manque. Et `overflow-x: clip` plutôt que
   `overflow: hidden` quand seul le décor doit être coupé : `hidden` fait du bloc un conteneur de
   défilement et enferme aussi le débord vertical.
+- **La session est sérialisée en JSON** (`session.serialization`, le réglage sûr contre les
+  attaques par désérialisation). **Un objet flashé revient en tableau** : `->with('x', $data)` avec
+  un objet `Data` passait les tests d'envoi et faisait échouer la page suivante sur une erreur de
+  type. Flasher `->toArray()`, et retyper à la lecture (`StayRequestPrefillRequest::envoyee()`).
 - `specs/` (étude business, PDF/DOCX) est ignoré par git : contexte produit non versionné.
 - `make clean` supprime le volume de la base.

@@ -2,17 +2,17 @@
 
 namespace App\Services\Ai;
 
+use App\Contracts\Ai\AiChat;
+use App\DTOs\Ai\AiMessageDto;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
-class AiService
+/** `/chat/completions` d'une API compatible OpenAI (OpenAI, Mistral, Groq, OpenRouter, Ollama). */
+class AiService implements AiChat
 {
-    /**
-     * @param  array<int, array{role: string, content: string}>  $messages
-     */
-    public function chat(array $messages, array $options = []): string
+    public function chat(array $messages, ?string $modele = null): string
     {
         $apiKey = config('ai.api_key');
 
@@ -25,8 +25,8 @@ class AiService
                 ->timeout((int) config('ai.timeout', 30))
                 ->baseUrl(config('ai.base_url'))
                 ->post('/chat/completions', [
-                    'model' => $options['model'] ?? config('ai.model'),
-                    'messages' => $messages,
+                    'model' => $modele ?? config('ai.model'),
+                    'messages' => array_map(fn (AiMessageDto $m) => ['role' => $m->role, 'content' => $m->content], $messages),
                 ])
                 ->throw();
         } catch (ConnectionException|RequestException $e) {

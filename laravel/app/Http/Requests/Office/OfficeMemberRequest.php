@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Office;
 
+use App\DTOs\Office\NewMemberDto;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Un nouveau membre de l'équipe : un nom, une adresse où recevoir ses codes. */
@@ -26,5 +27,10 @@ class OfficeMemberRequest extends FormRequest
             'email.unique' => 'Cette adresse fait déjà partie de l’équipe.',
             'name.required' => 'Le nom, pour que le journal dise qui a fait quoi.',
         ];
+    }
+
+    public function toDto(): NewMemberDto
+    {
+        return new NewMemberDto(trim($this->string('name')->toString()), $this->string('email')->toString());
     }
 }

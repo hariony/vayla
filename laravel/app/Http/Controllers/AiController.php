@@ -2,21 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\Ai\AiService;
-use Illuminate\Http\Request;
+use App\Contracts\Ai\AiChat;
+use App\Http\Requests\AiChatRequest;
+use Illuminate\Http\JsonResponse;
 
 class AiController extends Controller
 {
-    public function chat(Request $request, AiService $ai)
+    public function chat(AiChatRequest $request, AiChat $ai): JsonResponse
     {
-        $data = $request->validate([
-            'message' => ['required', 'string', 'max:4000'],
-        ]);
-
-        $reply = $ai->chat([
-            ['role' => 'user', 'content' => $data['message']],
-        ]);
-
-        return response()->json(['reply' => $reply]);
+        return response()->json(['reply' => $ai->chat([$request->toDto()])]);
     }
 }

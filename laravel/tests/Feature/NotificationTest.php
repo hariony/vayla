@@ -8,7 +8,7 @@ use App\Models\Booking;
 use App\Models\Listing;
 use App\Models\OutboundMessage;
 use App\Models\Owner;
-use App\Repositories\Contracts\OutboundMessageRepositoryInterface;
+use App\Contracts\Repositories\OutboundMessageRepositoryInterface;
 use App\Services\Notifications\OwnerNotifier;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;

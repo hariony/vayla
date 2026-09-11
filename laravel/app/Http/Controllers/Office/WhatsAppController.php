@@ -2,29 +2,26 @@
 
 namespace App\Http\Controllers\Office;
 
+use App\Http\Requests\Office\WhatsAppQueueRequest;
 use App\Models\OutboundMessage;
-use App\Services\Office\OfficeActions;
-use App\Services\Office\OfficeReadService;
+use App\Services\Office\WhatsApp\WhatsAppDispatch;
+use App\Services\Office\WhatsApp\WhatsAppQueueQuery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
-/**
- * La file WhatsApp, à l'écran — ce que `php artisan vayla:whatsapp` faisait en
- * terminal. La commande reste : c'est le même dépôt, et le jour où l'API de
- * Meta arrive, les deux s'effacent derrière un envoi automatique.
- */
+/** La file WhatsApp, envoyée à la main. */
 class WhatsAppController extends OfficeController
 {
-    public function index(Request $request, OfficeReadService $lecture): Response
+    public function index(WhatsAppQueueRequest $request, WhatsAppQueueQuery $file): Response
     {
-        return Inertia::render('Office/WhatsApp/Index', $lecture->whatsapp($request->query('onglet') === 'envoyes'));
+        return Inertia::render('Office/WhatsApp/Index', $file->page($request->envoyes()));
     }
 
-    public function sent(Request $request, OutboundMessage $message, OfficeActions $actions): RedirectResponse
+    public function sent(Request $request, OutboundMessage $message, WhatsAppDispatch $envoi): RedirectResponse
     {
-        $actions->marquerEnvoye($this->admin($request), $message);
+        $envoi->marquerEnvoye($this->admin($request), $message);
 
         return back()->with('succes', 'Marqué comme envoyé.');
     }

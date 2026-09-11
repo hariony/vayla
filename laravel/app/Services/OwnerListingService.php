@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Contracts\Listings\ListingDrafting;
 use App\Enums\AmenityGroup;
 use App\Enums\ListingStatus;
 use App\Enums\PropertyType;
@@ -31,7 +32,7 @@ use Illuminate\Support\Str;
  * niveau porterait sur un logement qui n'existe plus. Tarif, description et
  * calendrier bougent librement ; le reste passe par une demande à Vayla.
  */
-class OwnerListingService
+class OwnerListingService implements ListingDrafting
 {
     /**
      * Ce qu'un propriétaire peut changer sur une annonce **déjà vérifiée**.

@@ -9,7 +9,7 @@ use App\Exceptions\ListingNotFoundException;
 use App\Models\Booking;
 use App\Models\Listing;
 use App\Models\User;
-use App\Repositories\Contracts\ListingRepositoryInterface;
+use App\Contracts\Repositories\ListingRepositoryInterface;
 
 /**
  * Orchestrateur des écrans de réservation.

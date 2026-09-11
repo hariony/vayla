@@ -55,4 +55,20 @@ enum ListingStatus: string
     {
         return $this === self::Draft || $this === self::Submitted;
     }
+
+    /**
+     * Le mot court de l'équipe, pour un onglet (au pluriel) ou une ligne. Celui
+     * de `label()` — « En attente de vérification » — est écrit pour le
+     * propriétaire ; au back-office on trie une file, et « À vérifier » dit le
+     * travail.
+     */
+    public function libelleFile(bool $pluriel = true): string
+    {
+        return match ($this) {
+            self::Submitted => 'À vérifier',
+            self::Published => 'En ligne',
+            self::Draft => $pluriel ? 'Brouillons' : 'Brouillon',
+            self::Archived => $pluriel ? 'Archivées' : 'Archivée',
+        };
+    }
 }

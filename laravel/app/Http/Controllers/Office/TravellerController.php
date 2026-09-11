@@ -2,17 +2,16 @@
 
 namespace App\Http\Controllers\Office;
 
-use App\Services\Office\OfficeReadService;
-use Illuminate\Http\Request;
+use App\Http\Requests\Office\OfficeSearchRequest;
+use App\Services\Office\Travellers\TravellerQuery;
 use Inertia\Inertia;
 use Inertia\Response;
 
+/** Les comptes voyageurs. */
 class TravellerController extends OfficeController
 {
-    public function __invoke(Request $request, OfficeReadService $lecture): Response
+    public function __invoke(OfficeSearchRequest $request, TravellerQuery $voyageurs): Response
     {
-        $q = trim((string) $request->query('q'));
-
-        return Inertia::render('Office/Travellers/Index', $lecture->voyageurs($q === '' ? null : mb_substr($q, 0, 80)));
+        return Inertia::render('Office/Travellers/Index', $voyageurs->page($request->recherche()));
     }
 }

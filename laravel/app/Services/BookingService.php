@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Contracts\Bookings\BookingCancellation;
 use App\Data\SejourData;
 use App\Enums\BookingStatus;
 use App\Enums\MessageAuthor;
@@ -41,7 +42,7 @@ use Illuminate\Support\Str;
  * jamais la réservation**. `complete()` ne s'appelle qu'avec une
  * confirmation de voyageur.
  */
-class BookingService
+class BookingService implements BookingCancellation
 {
     public function __construct(
         private AvailabilityService $availability,

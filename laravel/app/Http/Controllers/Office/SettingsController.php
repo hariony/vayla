@@ -3,33 +3,30 @@
 namespace App\Http\Controllers\Office;
 
 use App\Http\Requests\Office\OfficeSettingsRequest;
-use App\Services\Office\OfficeContentReadService;
-use App\Services\Office\OfficeContentService;
+use App\Services\Office\Content\SettingsEditor;
+use App\Services\Office\Content\SettingsQuery;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
 
+/** Les réglages : le taux de change et sa date, la commission des nouvelles demandes. */
 class SettingsController extends OfficeController
 {
-    public function __construct(
-        private OfficeContentService $contenu,
-    ) {}
-
-    public function index(OfficeContentReadService $lecture): Response
+    public function index(SettingsQuery $lecture): Response
     {
-        return Inertia::render('Office/Settings/Index', $lecture->reglages());
+        return Inertia::render('Office/Settings/Index', $lecture->page());
     }
 
-    public function rate(OfficeSettingsRequest $request): RedirectResponse
+    public function rate(OfficeSettingsRequest $request, SettingsEditor $reglages): RedirectResponse
     {
-        $this->contenu->changerTauxEuro($this->admin($request), (float) $request->validated('eur_rate'), $request->validated('eur_rate_date'));
+        $reglages->changerTauxEuro($this->admin($request), $request->tauxEuro());
 
         return back()->with('succes', 'Taux de change enregistré. Il s’affiche sur les fiches dès maintenant.');
     }
 
-    public function commission(OfficeSettingsRequest $request): RedirectResponse
+    public function commission(OfficeSettingsRequest $request, SettingsEditor $reglages): RedirectResponse
     {
-        $this->contenu->changerCommission($this->admin($request), (float) $request->validated('commission'));
+        $reglages->changerCommission($this->admin($request), $request->commission());
 
         return back()->with('succes', 'Commission enregistrée. Elle vaut pour les nouvelles demandes ; les réservations existantes gardent la leur.');
     }

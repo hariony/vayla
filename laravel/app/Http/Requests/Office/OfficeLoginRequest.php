@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Office;
 
+use App\DTOs\Office\LoginDto;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -33,5 +34,14 @@ class OfficeLoginRequest extends FormRequest
             'email.email' => 'Cette adresse ne semble pas complète. Exemple : prenom@vayla.mg',
             'password.required' => 'Saisissez votre mot de passe.',
         ];
+    }
+
+    public function toDto(): LoginDto
+    {
+        return new LoginDto(
+            email: $this->string('email')->toString(),
+            motDePasse: $this->string('password')->toString(),
+            ip: (string) $this->ip(),
+        );
     }
 }

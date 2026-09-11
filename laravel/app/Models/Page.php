@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-/** Une page éditoriale du site. Voir `PageService`. */
+/** Une page éditoriale du site. Voir `Services/Content/Pages`. */
 class Page extends Model
 {
     protected $fillable = [

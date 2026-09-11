@@ -2,50 +2,48 @@
 
 namespace App\Http\Controllers\Office;
 
+use App\Http\Requests\Office\MoveRequest;
 use App\Http\Requests\Office\OfficeAmenityRequest;
 use App\Models\Amenity;
-use App\Services\Office\OfficeContentReadService;
-use App\Services\Office\OfficeContentService;
+use App\Services\Office\Content\AmenityEditor;
+use App\Services\Office\Content\AmenityQuery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
+/** Le vocabulaire des équipements. */
 class AmenityController extends OfficeController
 {
-    public function __construct(
-        private OfficeContentService $contenu,
-    ) {}
-
-    public function index(OfficeContentReadService $lecture): Response
+    public function index(AmenityQuery $lecture): Response
     {
-        return Inertia::render('Office/Amenities/Index', $lecture->equipements());
+        return Inertia::render('Office/Amenities/Index', $lecture->page());
     }
 
-    public function store(OfficeAmenityRequest $request): RedirectResponse
+    public function store(OfficeAmenityRequest $request, AmenityEditor $equipements): RedirectResponse
     {
-        $equipement = $this->contenu->enregistrerEquipement($this->admin($request), null, $request->validated());
+        $equipement = $equipements->creer($this->admin($request), $request->toDto());
 
         return back()->with('succes', "« {$equipement->label} » ajouté. Les propriétaires peuvent le cocher dès maintenant.");
     }
 
-    public function update(OfficeAmenityRequest $request, Amenity $equipement): RedirectResponse
+    public function update(OfficeAmenityRequest $request, Amenity $equipement, AmenityEditor $equipements): RedirectResponse
     {
-        $this->contenu->enregistrerEquipement($this->admin($request), $equipement, $request->validated());
+        $equipements->modifier($this->admin($request), $equipement, $request->toDto());
 
         return back()->with('succes', "« {$equipement->label} » enregistré.");
     }
 
-    public function move(Request $request, Amenity $equipement): RedirectResponse
+    public function move(MoveRequest $request, Amenity $equipement, AmenityEditor $equipements): RedirectResponse
     {
-        $this->contenu->deplacerEquipement($this->admin($request), $equipement, $request->input('sens') === 'haut' ? 'haut' : 'bas');
+        $equipements->deplacer($this->admin($request), $equipement, $request->sens());
 
         return back();
     }
 
-    public function destroy(Request $request, Amenity $equipement): RedirectResponse
+    public function destroy(Request $request, Amenity $equipement, AmenityEditor $equipements): RedirectResponse
     {
-        $this->contenu->supprimerEquipement($this->admin($request), $equipement);
+        $equipements->supprimer($this->admin($request), $equipement);
 
         return back()->with('succes', "« {$equipement->label} » supprimé.");
     }

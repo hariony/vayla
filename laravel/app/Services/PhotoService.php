@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Data\PhotoData;
-use App\Repositories\Contracts\PhotoRepositoryInterface;
+use App\Contracts\Repositories\PhotoRepositoryInterface;
 
 /**
  * Les crédits photo ne sont pas décoratifs : CC BY et CC BY-SA les exigent.

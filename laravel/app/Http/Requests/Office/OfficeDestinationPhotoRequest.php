@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests\Office;
 
-use App\Services\Office\OfficeContentService;
-use App\Services\PhotoUploadService;
+use App\Contracts\Photos\PhotoProcessor;
+use App\DTOs\Photos\PhotoCreditDto;
+use App\DTOs\Photos\UploadTeamPhotoDto;
+use App\Enums\PhotoLicence;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -20,10 +22,10 @@ class OfficeDestinationPhotoRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'photo' => ['required', 'image', 'mimes:jpeg,jpg,png,webp', 'max:'.PhotoUploadService::POIDS_MAX_KO],
+            'photo' => ['required', 'image', 'mimes:jpeg,jpg,png,webp', 'max:'.PhotoProcessor::POIDS_MAX_KO],
             'caption' => ['required', 'string', 'min:4', 'max:160'],
             'author' => ['required', 'string', 'min:2', 'max:120'],
-            'licence' => ['required', Rule::in(array_keys(OfficeContentService::LICENCES))],
+            'licence' => ['required', Rule::enum(PhotoLicence::class)],
             'source_url' => ['nullable', 'url:https,http', 'max:255'],
             'declaration' => ['accepted'],
         ];
@@ -42,5 +44,21 @@ class OfficeDestinationPhotoRequest extends FormRequest
             'licence.required' => 'Choisissez la licence de la photo.',
             'declaration.accepted' => 'Confirmez que c’est une vraie photographie de ce lieu, que Vayla a le droit de publier.',
         ];
+    }
+
+    /** La photo et son crédit, pour la galerie de `destinationId` — ou aucune. */
+    public function toDto(?int $destinationId = null): UploadTeamPhotoDto
+    {
+        return new UploadTeamPhotoDto($this->file('photo'), $this->credit(), $destinationId);
+    }
+
+    protected function credit(): PhotoCreditDto
+    {
+        return new PhotoCreditDto(
+            caption: trim($this->string('caption')->toString()),
+            author: trim($this->string('author')->toString()),
+            licence: $this->enum('licence', PhotoLicence::class),
+            sourceUrl: $this->filled('source_url') ? $this->string('source_url')->toString() : null,
+        );
     }
 }

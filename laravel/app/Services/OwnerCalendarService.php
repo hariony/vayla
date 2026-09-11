@@ -9,7 +9,7 @@ use App\Exceptions\CalendarRefusedException;
 use App\Models\Booking;
 use App\Models\Listing;
 use App\Models\Unavailability;
-use App\Repositories\Contracts\UnavailabilityRepositoryInterface;
+use App\Contracts\Repositories\UnavailabilityRepositoryInterface;
 
 /**
  * Le calendrier vu du côté du propriétaire.

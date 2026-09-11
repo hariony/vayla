@@ -16,4 +16,14 @@ class OfficeTrustRequest extends FormRequest
             'note' => ['nullable', 'string', 'max:500'],
         ];
     }
+
+    public function niveau(): TrustLevel
+    {
+        return TrustLevel::from($this->integer('level'));
+    }
+
+    public function note(): ?string
+    {
+        return $this->filled('note') ? trim($this->string('note')->toString()) : null;
+    }
 }

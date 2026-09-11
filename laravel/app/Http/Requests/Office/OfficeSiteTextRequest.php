@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Office;
 
+use App\DTOs\Content\SiteTextsDto;
 use App\Support\SiteTextCatalog;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -39,6 +40,23 @@ class OfficeSiteTextRequest extends FormRequest
         }
 
         return $messages;
+    }
+
+    /**
+     * Les espaces en trop et les fins de ligne Windows ne sont pas du texte ;
+     * un champ vidé vaut « rétablir l'original ».
+     */
+    public function toDto(): SiteTextsDto
+    {
+        // Seules les clés du groupe : ce sont les seules que les règles ont bornées.
+        $saisis = array_intersect_key((array) $this->validated('textes'), $this->definitions());
+
+        $textes = array_map(
+            fn (?string $v) => trim(preg_replace("/[ \t]+\n/", "\n", str_replace("\r\n", "\n", (string) $v))),
+            $saisis,
+        );
+
+        return new SiteTextsDto((string) $this->validated('groupe'), $textes);
     }
 
     /** @return array<string, array<string, mixed>> */

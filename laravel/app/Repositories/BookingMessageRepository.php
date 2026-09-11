@@ -2,11 +2,11 @@
 
 namespace App\Repositories;
 
+use App\Contracts\Repositories\BookingMessageRepositoryInterface;
 use App\Enums\MessageAuthor;
 use App\Models\Booking;
 use App\Models\BookingMessage;
 use App\Models\Owner;
-use App\Repositories\Contracts\BookingMessageRepositoryInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
