@@ -50,7 +50,7 @@
 
     --text:    #1A1512;
     --text-2:  #5A514B;
-    --text-3:  #857B74;
+    --text-3:  #72685F;   /* 5,4:1 sur blanc, 4,8:1 sur --off-2 : les légendes restent lisibles */
 
     /* Filets — fins, chauds, discrets */
     --line:      #EDE9E5;
@@ -81,6 +81,16 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; }
+
+/* **Un anneau de focus pour tout ce qui se clique**, à la terre, au clavier
+   seulement. Sans lui, un lien de pied de page ou une ligne de liste gardait
+   l'anneau du navigateur — bleu sur Chrome, absent sur certains Safari — là où
+   `.btn` et les champs portaient le nôtre. `:where()` ne pèse rien : tout
+   composant qui dessine son propre focus garde la main. */
+:where(a[href], button, summary, [role="button"], [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline: 2px solid var(--terre-500);
+    outline-offset: 2px;
+}
 
 html {
     scroll-behavior: smooth;
@@ -139,8 +149,8 @@ body::before {
    ces bornes la réduit dans le même rapport, sans réglage séparé. */
 .display--xl { font-size: clamp(2.1rem, 5.8vw, 5rem); }
 .display--lg { font-size: clamp(2.1rem, 4.8vw, 3.9rem); line-height: 1.04; letter-spacing: -.04em; }
-.display--md { font-size: clamp(1.5rem, 2.6vw, 2.2rem); line-height: 1.14; letter-spacing: -.032em; }
-.display--sm { font-size: clamp(1.15rem, 1.7vw, 1.4rem); line-height: 1.22; letter-spacing: -.024em; font-weight: 700; }
+.display--md { font-size: clamp(1.5rem, 2.6vw, 2.2rem); line-height: 1.14; letter-spacing: -.032em; text-wrap: balance; }
+.display--sm { font-size: clamp(1.15rem, 1.7vw, 1.4rem); line-height: 1.22; letter-spacing: -.024em; font-weight: 700; text-wrap: balance; }
 
 /* L'italique maigre : le contrepoint du gras, la seule autre voix */
 .display em {
@@ -318,6 +328,13 @@ body::before {
 .btn--white { background: #fff; color: var(--ink); }
 .btn--white:hover { background: var(--terre-050); color: var(--terre-600); transform: translateY(-2px); }
 
+/* Au doigt, le « survol » reste collé après le toucher : le bouton restait
+   soulevé de deux pixels une fois l'action faite. La couleur suit encore le
+   geste, le mouvement non. */
+@media (hover: none) {
+    .btn--terre:hover, .btn--ink:hover, .btn--white:hover { transform: none; }
+}
+
 .btn--outline { border-color: var(--line-2); color: var(--ink); background: #fff; }
 .btn--outline:hover { border-color: var(--ink); background: var(--ink); color: #fff; }
 
@@ -328,6 +345,13 @@ body::before {
 .btn--ghost:hover { background: var(--off-2); }
 
 .btn--sm { padding: .68rem 1.1rem; font-size: .84rem; }
+
+/* Au doigt, un petit bouton reprend la cible tactile de tous les contrôles
+   (2,75 rem). À la souris, il garde sa densité : les listes du back-office et
+   des espaces en portent un par ligne. */
+@media (pointer: coarse) {
+    .btn--sm { min-height: 2.75rem; }
+}
 .btn--lg { padding: 1.15rem 2rem; font-size: 1rem; }
 
 /* ---------- Pastilles ---------- */
@@ -565,6 +589,7 @@ body::before {
     letter-spacing: -.03em;
     line-height: 1.15;
     color: var(--ink);
+    text-wrap: balance;
 }
 
 /* **Le titre d'une section, sous le titre de l'écran.** Sept composants
@@ -580,6 +605,7 @@ body::before {
     letter-spacing: -.02em;
     line-height: 1.3;
     color: var(--ink);
+    text-wrap: balance;
 }
 
 .espace__lede {

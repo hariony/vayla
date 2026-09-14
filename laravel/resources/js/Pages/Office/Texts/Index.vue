@@ -101,7 +101,7 @@ const presque = (t, v) => (v?.length ?? 0) > t.max * 0.9
                         <button type="button" class="tx__retablir" @click="retablir(g, t)">Rétablir l'original</button>
                     </p>
 
-                    <p v-if="erreurs[`textes.${t.cle}`]" class="of-err">{{ erreurs[`textes.${t.cle}`] }}</p>
+                    <p v-if="erreurs[`textes.${t.cle}`]" class="of-err" role="alert">{{ erreurs[`textes.${t.cle}`] }}</p>
                 </div>
             </div>
 

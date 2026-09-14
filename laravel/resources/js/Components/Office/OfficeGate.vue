@@ -153,7 +153,7 @@ onUnmounted(() => ctx?.revert())
     font-weight: 600;
     letter-spacing: .1em;
     text-transform: uppercase;
-    color: rgba(255, 255, 255, .42);
+    color: rgba(255, 255, 255, .56);
 }
 
 /* Le V, tracé en grand : un trait, pas une image. */

@@ -81,7 +81,7 @@ defineEmits(['select'])
 
 .rail__sponso {
     margin-top: -.2rem;
-    font-size: .6rem;
+    font-size: .66rem;
     font-weight: 700;
     letter-spacing: .06em;
     text-transform: uppercase;

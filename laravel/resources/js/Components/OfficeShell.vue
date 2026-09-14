@@ -227,7 +227,7 @@ const MARQUE = 'M2.18,4.81 L19.79,45.70 Q38.12,20.37 45.82,2.30 L38.58,4.12 '
     font-weight: 700;
     letter-spacing: .12em;
     text-transform: uppercase;
-    color: rgba(255, 255, 255, .42);
+    color: rgba(255, 255, 255, .56);
 }
 
 /* 2,75 rem : la cible tactile minimale, même ici — un outil interne n'a pas le

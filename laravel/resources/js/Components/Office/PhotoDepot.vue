@@ -114,7 +114,7 @@ const deposer = (e) => {
             <p class="pd__etat" role="status">{{ (progression ?? 0) < 100 ? `Envoi : ${progression ?? 0} %` : 'Recadrage et compression en trois tailles…' }}</p>
         </template>
 
-        <p v-if="refus" class="of-err">{{ refus }}</p>
+        <p v-if="refus" class="of-err" role="alert">{{ refus }}</p>
     </div>
 </template>
 

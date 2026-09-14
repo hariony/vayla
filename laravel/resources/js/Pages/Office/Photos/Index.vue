@@ -209,18 +209,18 @@ const change = computed(() => credit.isDirty)
                     </header>
                     <div class="of-card__b ph__champs">
                         <PhotoDepot id="ph-fichier" v-model="ajout.photo" :envoi="ajout.processing" :progression="ajout.progress?.percentage ?? null" />
-                        <p v-if="ajout.errors.photo" class="of-err">{{ ajout.errors.photo }}</p>
+                        <p v-if="ajout.errors.photo" class="of-err" role="alert">{{ ajout.errors.photo }}</p>
 
                         <div class="of-field">
                             <label class="of-label" for="ph-cap">Ce que montre la photo, et où</label>
                             <input id="ph-cap" v-model="ajout.caption" class="of-input" maxlength="160" placeholder="Plage d’Ambondrona au coucher du soleil, Nosy Be">
-                            <p v-if="ajout.errors.caption" class="of-err">{{ ajout.errors.caption }}</p>
+                            <p v-if="ajout.errors.caption" class="of-err" role="alert">{{ ajout.errors.caption }}</p>
                         </div>
                         <div class="ph__deux">
                             <div class="of-field">
                                 <label class="of-label" for="ph-aut">Auteur</label>
                                 <input id="ph-aut" v-model="ajout.author" class="of-input" maxlength="120" placeholder="Prénom Nom">
-                                <p v-if="ajout.errors.author" class="of-err">{{ ajout.errors.author }}</p>
+                                <p v-if="ajout.errors.author" class="of-err" role="alert">{{ ajout.errors.author }}</p>
                             </div>
                             <div class="of-field">
                                 <label class="of-label" for="ph-lic">Licence</label>
@@ -232,7 +232,7 @@ const change = computed(() => credit.isDirty)
                         <div class="of-field">
                             <label class="of-label" for="ph-src">Page d'origine <span class="ph__opt">— facultatif</span></label>
                             <input id="ph-src" v-model="ajout.source_url" class="of-input" type="url" maxlength="255" placeholder="https://commons.wikimedia.org/wiki/File:…">
-                            <p v-if="ajout.errors.source_url" class="of-err">{{ ajout.errors.source_url }}</p>
+                            <p v-if="ajout.errors.source_url" class="of-err" role="alert">{{ ajout.errors.source_url }}</p>
                         </div>
                         <div class="of-field">
                             <label class="of-label" for="ph-dest">L'ajouter à une destination <span class="ph__opt">— facultatif</span></label>
@@ -248,8 +248,8 @@ const change = computed(() => credit.isDirty)
                             <input v-model="ajout.declaration" type="checkbox">
                             <span>C'est une <strong>vraie photographie de Madagascar</strong> — ni image générée, ni photo prise ailleurs — et Vayla a le droit de la publier.</span>
                         </label>
-                        <p v-if="ajout.errors.declaration" class="of-err">{{ ajout.errors.declaration }}</p>
-                        <p v-if="ajout.errors.destination_id" class="of-err">{{ ajout.errors.destination_id }}</p>
+                        <p v-if="ajout.errors.declaration" class="of-err" role="alert">{{ ajout.errors.declaration }}</p>
+                        <p v-if="ajout.errors.destination_id" class="of-err" role="alert">{{ ajout.errors.destination_id }}</p>
 
                         <div class="ph__boutons">
                             <button type="submit" class="btn btn--sm btn--terre" :disabled="!pret || ajout.processing">
@@ -300,18 +300,18 @@ const change = computed(() => credit.isDirty)
                                 <label class="of-label ph__sous" for="ph-e-cap">Ce que montre la photo, et où</label>
                                 <textarea id="ph-e-cap" v-model="credit.caption" class="of-input" rows="2" maxlength="160" />
                                 <p class="of-help">{{ choisie.provenance === 'proprietaire' ? 'C’est le texte lu aux malvoyants sur la fiche de l’annonce.' : 'C’est aussi le texte lu aux malvoyants.' }}</p>
-                                <p v-if="credit.errors.caption" class="of-err">{{ credit.errors.caption }}</p>
+                                <p v-if="credit.errors.caption" class="of-err" role="alert">{{ credit.errors.caption }}</p>
                             </div>
                             <template v-if="choisie.peut.credit">
                                 <div class="of-field">
                                     <label class="of-label ph__sous" for="ph-e-aut">Auteur</label>
                                     <input id="ph-e-aut" v-model="credit.author" class="of-input" maxlength="120">
-                                    <p v-if="credit.errors.author" class="of-err">{{ credit.errors.author }}</p>
+                                    <p v-if="credit.errors.author" class="of-err" role="alert">{{ credit.errors.author }}</p>
                                 </div>
                                 <div class="of-field">
                                     <label class="of-label ph__sous" for="ph-e-src">Page d'origine</label>
                                     <input id="ph-e-src" v-model="credit.source_url" class="of-input" type="url" maxlength="255">
-                                    <p v-if="credit.errors.source_url" class="of-err">{{ credit.errors.source_url }}</p>
+                                    <p v-if="credit.errors.source_url" class="of-err" role="alert">{{ credit.errors.source_url }}</p>
                                 </div>
                                 <div v-if="choisie.peut.licence" class="of-field">
                                     <label class="of-label ph__sous" for="ph-e-lic">Licence</label>

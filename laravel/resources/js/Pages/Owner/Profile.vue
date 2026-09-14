@@ -51,7 +51,7 @@ const envoyer = () => form.post('/proprietaire/inscription/fiche')
                     <input id="name" v-model="form.name" type="text" class="acces__input"
                            autocomplete="name" maxlength="80" autofocus required>
                     <p class="acces__help">Celui que verront les voyageurs.</p>
-                    <p v-if="form.errors.name" class="acces__err">{{ form.errors.name }}</p>
+                    <p v-if="form.errors.name" class="acces__err" role="alert">{{ form.errors.name }}</p>
                 </div>
 
                 <div class="acces__field">
@@ -59,7 +59,7 @@ const envoyer = () => form.post('/proprietaire/inscription/fiche')
                     <input id="phone" v-model="form.phone" type="tel" class="acces__input"
                            inputmode="tel" placeholder="034 00 000 00" maxlength="40" required>
                     <p class="acces__help">C'est par là que Vayla vous appelle, et votre identifiant de connexion.</p>
-                    <p v-if="form.errors.phone" class="acces__err">{{ form.errors.phone }}</p>
+                    <p v-if="form.errors.phone" class="acces__err" role="alert">{{ form.errors.phone }}</p>
                 </div>
 
                 <button type="submit" class="btn btn--terre btn--lg acces__go"

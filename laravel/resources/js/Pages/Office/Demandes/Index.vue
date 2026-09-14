@@ -128,7 +128,7 @@ const clore = (d) => cloture.post(`/demandes/${d.id}/clore`, {
                     <form v-if="aClore === d.id" class="dq__clore" novalidate @submit.prevent="clore(d)">
                         <label class="of-label" :for="`note-${d.id}`">Note pour l'équipe</label>
                         <textarea :id="`note-${d.id}`" v-model="cloture.note" class="of-input" rows="2" maxlength="1000" placeholder="Trois logements proposés à Ambatoloaka, elle a réservé le deuxième." />
-                        <p v-if="cloture.errors.note" class="of-err">{{ cloture.errors.note }}</p>
+                        <p v-if="cloture.errors.note" class="of-err" role="alert">{{ cloture.errors.note }}</p>
                         <div class="dq__boutons">
                             <button type="submit" class="btn btn--sm btn--ink" :disabled="cloture.processing">Clore</button>
                             <button type="button" class="btn btn--sm btn--ghost" @click="aClore = null">Annuler</button>

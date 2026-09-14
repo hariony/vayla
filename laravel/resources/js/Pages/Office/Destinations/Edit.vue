@@ -160,18 +160,18 @@ const ajouterDeLaPhototheque = (p) => router.post(`/destinations/${d.id}/photos/
                         <div class="of-field">
                             <label class="of-label" for="name">Nom</label>
                             <input id="name" v-model="form.name" class="of-input" maxlength="60" required>
-                            <p v-if="form.errors.name" class="of-err">{{ form.errors.name }}</p>
+                            <p v-if="form.errors.name" class="of-err" role="alert">{{ form.errors.name }}</p>
                         </div>
                         <div class="of-field">
                             <label class="of-label" for="region">Région</label>
                             <input id="region" v-model="form.region" class="of-input" maxlength="60" placeholder="Diana, Analamanga…" required>
-                            <p v-if="form.errors.region" class="of-err">{{ form.errors.region }}</p>
+                            <p v-if="form.errors.region" class="of-err" role="alert">{{ form.errors.region }}</p>
                         </div>
                         <div class="of-field de__large">
                             <label class="of-label" for="tagline">Accroche</label>
                             <input id="tagline" v-model="form.tagline" class="of-input" maxlength="120" required>
                             <p class="of-help">Une ligne qui dit le lieu, pas un slogan : « L'île aux baleines, au large de la côte est ».</p>
-                            <p v-if="form.errors.tagline" class="of-err">{{ form.errors.tagline }}</p>
+                            <p v-if="form.errors.tagline" class="of-err" role="alert">{{ form.errors.tagline }}</p>
                         </div>
                         <div class="of-field">
                             <label class="of-label" for="zone">Façade climatique</label>
@@ -200,7 +200,7 @@ const ajouterDeLaPhototheque = (p) => router.post(`/destinations/${d.id}/photos/
                         <div class="of-field">
                             <label class="of-label" for="ac">Code aéroport</label>
                             <input id="ac" v-model="form.airport_code" class="of-input of-num de__code" maxlength="3" placeholder="NOS">
-                            <p v-if="form.errors.airport_code" class="of-err">{{ form.errors.airport_code }}</p>
+                            <p v-if="form.errors.airport_code" class="of-err" role="alert">{{ form.errors.airport_code }}</p>
                         </div>
                         <div class="of-field">
                             <label class="of-label" for="an">Aéroport</label>
@@ -217,7 +217,7 @@ const ajouterDeLaPhototheque = (p) => router.post(`/destinations/${d.id}/photos/
                         <div class="of-field">
                             <label class="of-label" for="rk">Kilomètres</label>
                             <input id="rk" v-model.number="form.road_km" class="of-input of-num" type="number" min="1" max="3000">
-                            <p v-if="form.errors.road_km" class="of-err">{{ form.errors.road_km }}</p>
+                            <p v-if="form.errors.road_km" class="of-err" role="alert">{{ form.errors.road_km }}</p>
                         </div>
                         <div class="of-field">
                             <label class="of-label" for="rh">Durée par la route</label>
@@ -336,18 +336,18 @@ const ajouterDeLaPhototheque = (p) => router.post(`/destinations/${d.id}/photos/
                                 <p class="of-kicker">Nouvelle photo de {{ d.name }}</p>
 
                                 <PhotoDepot id="de-fichier" v-model="ajout.photo" :envoi="ajout.processing" :progression="ajout.progress?.percentage ?? null" />
-                                <p v-if="ajout.errors.photo" class="of-err">{{ ajout.errors.photo }}</p>
+                                <p v-if="ajout.errors.photo" class="of-err" role="alert">{{ ajout.errors.photo }}</p>
 
                                 <div class="of-field">
                                     <label class="of-label" for="cap">Ce que montre la photo, et où</label>
                                     <input id="cap" v-model="ajout.caption" class="of-input" maxlength="160" placeholder="Plage d’Ambondrona au coucher du soleil, Nosy Be">
-                                    <p v-if="ajout.errors.caption" class="of-err">{{ ajout.errors.caption }}</p>
+                                    <p v-if="ajout.errors.caption" class="of-err" role="alert">{{ ajout.errors.caption }}</p>
                                 </div>
                                 <div class="de__deux">
                                     <div class="of-field">
                                         <label class="of-label" for="aut">Auteur</label>
                                         <input id="aut" v-model="ajout.author" class="of-input" maxlength="120" placeholder="Prénom Nom">
-                                        <p v-if="ajout.errors.author" class="of-err">{{ ajout.errors.author }}</p>
+                                        <p v-if="ajout.errors.author" class="of-err" role="alert">{{ ajout.errors.author }}</p>
                                     </div>
                                     <div class="of-field">
                                         <label class="of-label" for="lic">Licence</label>
@@ -359,7 +359,7 @@ const ajouterDeLaPhototheque = (p) => router.post(`/destinations/${d.id}/photos/
                                 <div class="of-field">
                                     <label class="of-label" for="src">Page d'origine <span class="de__opt">— facultatif</span></label>
                                     <input id="src" v-model="ajout.source_url" class="of-input" type="url" maxlength="255" placeholder="https://commons.wikimedia.org/wiki/File:…">
-                                    <p v-if="ajout.errors.source_url" class="of-err">{{ ajout.errors.source_url }}</p>
+                                    <p v-if="ajout.errors.source_url" class="of-err" role="alert">{{ ajout.errors.source_url }}</p>
                                 </div>
 
                                 <!-- La règle photo, déclarée à chaque fois : une plage des
@@ -369,7 +369,7 @@ const ajouterDeLaPhototheque = (p) => router.post(`/destinations/${d.id}/photos/
                                     <input v-model="ajout.declaration" type="checkbox">
                                     <span>C'est une <strong>vraie photographie de ce lieu</strong> — ni image générée, ni photo prise ailleurs — et Vayla a le droit de la publier.</span>
                                 </label>
-                                <p v-if="ajout.errors.declaration" class="of-err">{{ ajout.errors.declaration }}</p>
+                                <p v-if="ajout.errors.declaration" class="of-err" role="alert">{{ ajout.errors.declaration }}</p>
 
                                 <p class="of-help">Elle arrive au bout de la galerie. L'auteur et la licence sont crédités au pied de chaque page du site.</p>
 

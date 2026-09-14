@@ -178,7 +178,7 @@ const aCompleter = computed(() => /\[à compléter[^\]]*\]/i.test(`${form.body} 
                         <div class="of-field">
                             <label class="of-label" for="title">Titre</label>
                             <input id="title" v-model="form.title" class="of-input pe__titre" maxlength="120" required>
-                            <p v-if="form.errors.title" class="of-err">{{ form.errors.title }}</p>
+                            <p v-if="form.errors.title" class="of-err" role="alert">{{ form.errors.title }}</p>
                         </div>
                         <div class="of-field">
                             <label class="of-label" for="slug">Adresse</label>
@@ -205,7 +205,7 @@ const aCompleter = computed(() => /\[à compléter[^\]]*\]/i.test(`${form.body} 
                         <strong>{commission}</strong> s'écrit « {{ commission }} » sur la page : le taux du réglage, jamais recopié.
                         Le HTML tapé à la main est retiré à l'affichage.
                     </p>
-                    <p v-if="form.errors.body" class="of-err pe__err">{{ form.errors.body }}</p>
+                    <p v-if="form.errors.body" class="of-err pe__err" role="alert">{{ form.errors.body }}</p>
                 </section>
 
                 <section class="of-card" data-reveal>
@@ -223,7 +223,7 @@ const aCompleter = computed(() => /\[à compléter[^\]]*\]/i.test(`${form.body} 
                             <label class="of-label" for="seo">Description pour les moteurs de recherche</label>
                             <textarea id="seo" v-model="form.seo_description" class="of-input" rows="2" maxlength="160" />
                             <p class="of-help of-num">{{ form.seo_description.length }} / 160 — au-delà, les moteurs coupent au milieu d'un mot. Vide : le chapeau sert.</p>
-                            <p v-if="form.errors.seo_description" class="of-err">{{ form.errors.seo_description }}</p>
+                            <p v-if="form.errors.seo_description" class="of-err" role="alert">{{ form.errors.seo_description }}</p>
                         </div>
                         <div class="of-field">
                             <label class="of-label" for="note">Note pour l'équipe <span class="pe__opt">— jamais affichée</span></label>

@@ -153,7 +153,7 @@ const enregistrer = () => form.post('/proprietaire/compte', { preserveScroll: tr
                             </button>
                         </div>
 
-                        <p v-if="erreurPhoto" class="acces__err">{{ erreurPhoto }}</p>
+                        <p v-if="erreurPhoto" class="acces__err" role="alert">{{ erreurPhoto }}</p>
                     </div>
                 </div>
 
@@ -162,7 +162,7 @@ const enregistrer = () => form.post('/proprietaire/compte', { preserveScroll: tr
                     <input id="name" v-model="form.name" type="text" class="acces__input"
                            autocomplete="name" maxlength="80" required>
                     <p class="acces__help">C'est ce nom que voient les voyageurs sur leur réservation.</p>
-                    <p v-if="form.errors.name" class="acces__err">{{ form.errors.name }}</p>
+                    <p v-if="form.errors.name" class="acces__err" role="alert">{{ form.errors.name }}</p>
                 </div>
 
                 <div class="acces__field">
@@ -174,7 +174,7 @@ const enregistrer = () => form.post('/proprietaire/compte', { preserveScroll: tr
                         Facultatif. Elle nous sert à savoir d'où vous gérez vos logements —
                         elle n'apparaît sur aucune annonce.
                     </p>
-                    <p v-if="form.errors.city" class="acces__err">{{ form.errors.city }}</p>
+                    <p v-if="form.errors.city" class="acces__err" role="alert">{{ form.errors.city }}</p>
                 </div>
 
                 <div class="acces__field">
@@ -188,7 +188,7 @@ const enregistrer = () => form.post('/proprietaire/compte', { preserveScroll: tr
                         payable, et la vérification — celui qui passe voir un logement doit
                         savoir où aller.
                     </p>
-                    <p v-if="form.errors.address" class="acces__err">{{ form.errors.address }}</p>
+                    <p v-if="form.errors.address" class="acces__err" role="alert">{{ form.errors.address }}</p>
                 </div>
             </section>
 
@@ -215,7 +215,7 @@ const enregistrer = () => form.post('/proprietaire/compte', { preserveScroll: tr
                         la nouvelle.
                     </p>
 
-                    <p v-if="form.errors.phone" class="acces__err">{{ form.errors.phone }}</p>
+                    <p v-if="form.errors.phone" class="acces__err" role="alert">{{ form.errors.phone }}</p>
                 </div>
 
                 <!-- Pas de champ : l'adresse ouvre le compte. -->
@@ -243,7 +243,7 @@ const enregistrer = () => form.post('/proprietaire/compte', { preserveScroll: tr
                         <label class="acces__label" for="mm">Numéro mobile money</label>
                         <input id="mm" v-model="form.mobile_money" type="tel" class="acces__input"
                                inputmode="tel" maxlength="40" placeholder="+261 34 00 000 00">
-                        <p v-if="form.errors.mobile_money" class="acces__err">{{ form.errors.mobile_money }}</p>
+                        <p v-if="form.errors.mobile_money" class="acces__err" role="alert">{{ form.errors.mobile_money }}</p>
                     </div>
 
                     <div class="acces__field">
@@ -252,7 +252,7 @@ const enregistrer = () => form.post('/proprietaire/compte', { preserveScroll: tr
                             <option value="">Je ne sais pas encore</option>
                             <option v-for="o in operateurs" :key="o" :value="o">{{ o }}</option>
                         </select>
-                        <p v-if="form.errors.mobile_money_operator" class="acces__err">
+                        <p v-if="form.errors.mobile_money_operator" class="acces__err" role="alert">
                             {{ form.errors.mobile_money_operator }}
                         </p>
                     </div>

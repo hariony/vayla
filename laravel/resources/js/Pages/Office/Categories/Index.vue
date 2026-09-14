@@ -100,7 +100,7 @@ const supprimer = (c) => router.post(`/categories/${c.id}/supprimer`, {}, { pres
                         <div class="of-field">
                             <label class="of-label" :for="`l-${c.id}`">Libellé</label>
                             <input :id="`l-${c.id}`" v-model="form.label" class="of-input" maxlength="40" required>
-                            <p v-if="form.errors.label" class="of-err">{{ form.errors.label }}</p>
+                            <p v-if="form.errors.label" class="of-err" role="alert">{{ form.errors.label }}</p>
                         </div>
                         <fieldset class="ca__icones">
                             <legend class="of-label">Pictogramme</legend>
@@ -113,7 +113,7 @@ const supprimer = (c) => router.post(`/categories/${c.id}/supprimer`, {}, { pres
                             <input v-model="form.sponsored" type="checkbox">
                             Place achetée — « Sponsorisé » s'affichera sous le libellé
                         </label>
-                        <p v-if="form.errors.sponsored" class="of-err">{{ form.errors.sponsored }}</p>
+                        <p v-if="form.errors.sponsored" class="of-err" role="alert">{{ form.errors.sponsored }}</p>
                         <div class="ca__boutons">
                             <button type="submit" class="btn btn--sm btn--ink" :disabled="form.processing">Enregistrer</button>
                             <button type="button" class="btn btn--sm btn--ghost" @click="edition = null">Annuler</button>
@@ -130,7 +130,7 @@ const supprimer = (c) => router.post(`/categories/${c.id}/supprimer`, {}, { pres
                     <label class="of-label" for="nl">Libellé</label>
                     <input id="nl" v-model="ajout.label" class="of-input" maxlength="40" placeholder="Pieds dans l'eau" required>
                     <p class="of-help">Sa clé d'adresse naîtra du libellé, puis ne changera plus. Elle arrive au bout du rail.</p>
-                    <p v-if="ajout.errors.label" class="of-err">{{ ajout.errors.label }}</p>
+                    <p v-if="ajout.errors.label" class="of-err" role="alert">{{ ajout.errors.label }}</p>
                 </div>
                 <fieldset class="ca__icones">
                     <legend class="of-label">Pictogramme</legend>

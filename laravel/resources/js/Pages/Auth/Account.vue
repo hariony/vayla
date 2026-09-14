@@ -75,14 +75,14 @@ const enregistrer = () => form.post('/mon-compte', { preserveScroll: true })
                     <label class="acces__label" for="last_name">Nom</label>
                     <input id="last_name" v-model="form.last_name" type="text" class="acces__input"
                            autocomplete="family-name" maxlength="60" placeholder="Rakotobe">
-                    <p v-if="form.errors.last_name" class="acces__err">{{ form.errors.last_name }}</p>
+                    <p v-if="form.errors.last_name" class="acces__err" role="alert">{{ form.errors.last_name }}</p>
                 </div>
 
                 <div class="acces__field">
                     <label class="acces__label" for="first_name">Prénom</label>
                     <input id="first_name" v-model="form.first_name" type="text" class="acces__input"
                            autocomplete="given-name" maxlength="60" placeholder="Jean">
-                    <p v-if="form.errors.first_name" class="acces__err">{{ form.errors.first_name }}</p>
+                    <p v-if="form.errors.first_name" class="acces__err" role="alert">{{ form.errors.first_name }}</p>
                 </div>
             </div>
 
@@ -102,7 +102,7 @@ const enregistrer = () => form.post('/mon-compte', { preserveScroll: true })
                     C'est par là que le propriétaire vous répond. Vayla ne le publie
                     nulle part et ne s'en sert pas pour vous écrire.
                 </p>
-                <p v-if="form.errors.phone" class="acces__err">{{ form.errors.phone }}</p>
+                <p v-if="form.errors.phone" class="acces__err" role="alert">{{ form.errors.phone }}</p>
             </div>
 
             <!-- Pas de champ : l'adresse ouvre le compte et rattache les séjours. -->

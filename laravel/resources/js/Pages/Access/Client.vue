@@ -70,7 +70,7 @@ const envoyer = () => form.post('/inscription')
                         autofocus
                         required
                     >
-                    <p v-if="form.errors.email" class="acces__err">{{ form.errors.email }}</p>
+                    <p v-if="form.errors.email" class="acces__err" role="alert">{{ form.errors.email }}</p>
                 </div>
 
                 <button type="submit" class="btn btn--terre btn--lg acces__go"

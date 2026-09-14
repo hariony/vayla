@@ -66,12 +66,12 @@ const enregistrerCommission = () => com.post('/reglages/commission', { preserveS
                         <div class="of-field">
                             <label class="of-label" for="rate">Ariary pour un euro</label>
                             <input id="rate" v-model.number="change.eur_rate" class="of-input of-num" type="number" min="1000" max="20000" step="1">
-                            <p v-if="change.errors.eur_rate" class="of-err">{{ change.errors.eur_rate }}</p>
+                            <p v-if="change.errors.eur_rate" class="of-err" role="alert">{{ change.errors.eur_rate }}</p>
                         </div>
                         <div class="of-field">
                             <label class="of-label" for="date">Relevé le</label>
                             <input id="date" v-model="change.eur_rate_date" class="of-input of-num" type="date" :max="aujourdhui">
-                            <p v-if="change.errors.eur_rate_date" class="of-err">{{ change.errors.eur_rate_date }}</p>
+                            <p v-if="change.errors.eur_rate_date" class="of-err" role="alert">{{ change.errors.eur_rate_date }}</p>
                         </div>
                     </div>
                     <p v-if="exemple" class="of-help">Sur une fiche : <span class="of-num">185 000 Ar</span> s'affichera <span class="of-num">≈ {{ exemple }} €</span>, sans centimes. L'ariary reste le prix.</p>
@@ -92,7 +92,7 @@ const enregistrerCommission = () => com.post('/reglages/commission', { preserveS
                             <input id="com" v-model.number="com.commission" class="of-input of-num" type="number" min="0" max="30" step="0.5" @input="confirmer = false">
                             <span>%</span>
                         </div>
-                        <p v-if="com.errors.commission" class="of-err">{{ com.errors.commission }}</p>
+                        <p v-if="com.errors.commission" class="of-err" role="alert">{{ com.errors.commission }}</p>
                     </div>
                     <p class="rg__avert">
                         Il ne s'applique qu'aux <strong>demandes faites à partir de maintenant</strong>. Chaque réservation garde le taux du jour où elle a été faite — les factures déjà engagées ne bougent pas.

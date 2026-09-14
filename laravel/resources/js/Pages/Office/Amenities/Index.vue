@@ -106,7 +106,7 @@ const supprimer = (x) => router.post(`/equipements/${x.id}/supprimer`, {}, { pre
                             <div class="of-field">
                                 <label class="of-label" :for="`l-${x.id}`">Libellé</label>
                                 <input :id="`l-${x.id}`" v-model="form.label" class="of-input" maxlength="60" required>
-                                <p v-if="form.errors.label" class="of-err">{{ form.errors.label }}</p>
+                                <p v-if="form.errors.label" class="of-err" role="alert">{{ form.errors.label }}</p>
                             </div>
                             <div class="of-field">
                                 <label class="of-label" :for="`g-${x.id}`">Rubrique</label>
@@ -136,7 +136,7 @@ const supprimer = (x) => router.post(`/equipements/${x.id}/supprimer`, {}, { pre
                     <label class="of-label" :for="`n-${g.value}`">Libellé</label>
                     <input :id="`n-${g.value}`" v-model="ajout.label" class="of-input" maxlength="60" required>
                     <p class="of-help">Sa clé naîtra du libellé, puis ne changera plus. Il arrive en bas de la rubrique.</p>
-                    <p v-if="ajout.errors.label" class="of-err">{{ ajout.errors.label }}</p>
+                    <p v-if="ajout.errors.label" class="of-err" role="alert">{{ ajout.errors.label }}</p>
                 </div>
                 <fieldset class="am__icones">
                     <legend class="of-label">Pictogramme</legend>

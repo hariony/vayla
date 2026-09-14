@@ -227,7 +227,7 @@ const changements = computed(() => (form.isDirty ? 'Des modifications ne sont pa
                             <label class="of-label" for="title">Nom du logement</label>
                             <input id="title" v-model="form.title" class="of-input" maxlength="120" required>
                             <p class="of-help">Le type et le lieu : « Villa vue lagon, Ambatoloaka ».</p>
-                            <p v-if="form.errors.title" class="of-err">{{ form.errors.title }}</p>
+                            <p v-if="form.errors.title" class="of-err" role="alert">{{ form.errors.title }}</p>
                         </div>
                         <div class="of-field">
                             <label class="of-label" for="destination">Destination</label>
@@ -235,7 +235,7 @@ const changements = computed(() => (form.isDirty ? 'Des modifications ne sont pa
                                 <option value="" disabled>Choisir…</option>
                                 <option v-for="d in vocabulaire.destinations" :key="d.id" :value="d.id">{{ d.label }}</option>
                             </select>
-                            <p v-if="form.errors.destination_id" class="of-err">{{ form.errors.destination_id }}</p>
+                            <p v-if="form.errors.destination_id" class="of-err" role="alert">{{ form.errors.destination_id }}</p>
                         </div>
                         <div class="of-field">
                             <label class="of-label" for="kind">Type</label>
@@ -247,13 +247,13 @@ const changements = computed(() => (form.isDirty ? 'Des modifications ne sont pa
                             <label class="of-label" for="summary">Accroche <span class="ed__opt">— une phrase, sous le titre</span></label>
                             <input id="summary" v-model="form.summary" class="of-input" maxlength="200">
                             <p class="ed__compte of-num">{{ form.summary.length }} / 200</p>
-                            <p v-if="form.errors.summary" class="of-err">{{ form.errors.summary }}</p>
+                            <p v-if="form.errors.summary" class="of-err" role="alert">{{ form.errors.summary }}</p>
                         </div>
                         <div class="of-field ed__large">
                             <label class="of-label" for="description">Description</label>
                             <textarea id="description" v-model="form.description" class="of-input ed__texte" rows="9" maxlength="4000" />
                             <p class="ed__compte of-num">{{ form.description.length }} / 4000 <span v-if="form.description.length < 120"> — cent vingt au moins pour envoyer la fiche</span></p>
-                            <p v-if="form.errors.description" class="of-err">{{ form.errors.description }}</p>
+                            <p v-if="form.errors.description" class="of-err" role="alert">{{ form.errors.description }}</p>
                         </div>
                     </div>
                 </section>
@@ -270,12 +270,12 @@ const changements = computed(() => (form.isDirty ? 'Des modifications ne sont pa
                         ]" :key="c[0]" class="of-field">
                             <label class="of-label" :for="c[0]">{{ c[1] }}</label>
                             <input :id="c[0]" v-model.number="form[c[0]]" class="of-input of-num" type="number" inputmode="numeric" :min="c[2]" :max="c[3]">
-                            <p v-if="form.errors[c[0]]" class="of-err">{{ form.errors[c[0]] }}</p>
+                            <p v-if="form.errors[c[0]]" class="of-err" role="alert">{{ form.errors[c[0]] }}</p>
                         </div>
                         <div class="of-field">
                             <label class="of-label" for="surface">Surface <span class="ed__opt">— m², facultatif</span></label>
                             <input id="surface" v-model.number="form.surface" class="of-input of-num" type="number" inputmode="numeric" min="8" max="2000">
-                            <p v-if="form.errors.surface" class="of-err">{{ form.errors.surface }}</p>
+                            <p v-if="form.errors.surface" class="of-err" role="alert">{{ form.errors.surface }}</p>
                         </div>
                     </div>
                 </section>
@@ -291,17 +291,17 @@ const changements = computed(() => (form.isDirty ? 'Des modifications ne sont pa
                                 <span>Ar</span>
                             </div>
                             <p class="of-help">Les réservations déjà faites gardent leur prix : il est figé à la demande.</p>
-                            <p v-if="form.errors.price" class="of-err">{{ form.errors.price }}</p>
+                            <p v-if="form.errors.price" class="of-err" role="alert">{{ form.errors.price }}</p>
                         </div>
                         <div class="of-field">
                             <label class="of-label" for="min_nights">Nuits minimum</label>
                             <input id="min_nights" v-model.number="form.min_nights" class="of-input of-num" type="number" min="1" max="90">
-                            <p v-if="form.errors.min_nights" class="of-err">{{ form.errors.min_nights }}</p>
+                            <p v-if="form.errors.min_nights" class="of-err" role="alert">{{ form.errors.min_nights }}</p>
                         </div>
                         <div class="of-field">
                             <label class="of-label" for="max_nights">Nuits maximum <span class="ed__opt">— facultatif</span></label>
                             <input id="max_nights" v-model.number="form.max_nights" class="of-input of-num" type="number" min="1" max="365">
-                            <p v-if="form.errors.max_nights" class="of-err">{{ form.errors.max_nights }}</p>
+                            <p v-if="form.errors.max_nights" class="of-err" role="alert">{{ form.errors.max_nights }}</p>
                         </div>
                         <div class="of-field">
                             <label class="of-label" for="in">Arrivée à partir de</label>

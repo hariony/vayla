@@ -70,7 +70,7 @@ const envoyer = () => form.post('/proprietaire/inscription')
                             required
                         >
                         <p class="acces__help">C'est là qu'arrive votre code de vérification.</p>
-                        <p v-if="form.errors.email" class="acces__err">{{ form.errors.email }}</p>
+                        <p v-if="form.errors.email" class="acces__err" role="alert">{{ form.errors.email }}</p>
                     </div>
 
                     <button type="submit" class="btn btn--terre btn--lg acces__go"

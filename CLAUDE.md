@@ -170,6 +170,24 @@ ici :
   une liste déroulante suffit (`voyageurs` était un `type="number"` vide portant « Peu
   importe »).
 
+**Cinq garde-fous d'accessibilité, posés une fois dans `app.scss` et tenus partout** (audit du
+14 septembre, mesures WCAG à l'appui) :
+
+- **`--text-3` est à `#72685F`**, 5,4:1 sur blanc et 4,8:1 sur `--off-2`. Il était à `#857B74` —
+  4,1:1 sur blanc, 3,7:1 sur `--off-2`, sous le seuil AA de 4,5:1 — alors qu'il porte 270
+  légendes, sur-titres et libellés, souvent en petites capitales. Ne pas le réclaircir : c'est la
+  taille de ces textes qui rend le contraste indispensable.
+- **Un anneau de focus à la terre pour tout ce qui se clique** (`:where(a[href], button, …)
+  :focus-visible`). `:where()` ne pèse rien : un composant qui dessine son propre focus garde la
+  main. Sans lui, les liens de pied de page et les lignes de liste gardaient l'anneau du
+  navigateur, différent d'un moteur à l'autre.
+- **`.btn--sm` reprend 2,75 rem au doigt** (`@media (pointer: coarse)`), et garde sa densité à la
+  souris : les listes des espaces et du back-office en portent un par ligne.
+- **Le bouton ne reste plus soulevé après un toucher** (`@media (hover: none)`) : sur un
+  téléphone, le « survol » colle au dernier élément touché.
+- **Toute erreur de champ affichée conditionnellement porte `role="alert"`** : un lecteur d'écran
+  l'annonce au lieu de laisser un cadre rouge muet. À respecter sur chaque nouveau formulaire.
+
 **La règle qui tient tout le système chromatique : deux couleurs, deux métiers.**
 
 - **La terre de latérite** (`--terre-500: #C9452A`) porte la marque, l'envie, l'action —
