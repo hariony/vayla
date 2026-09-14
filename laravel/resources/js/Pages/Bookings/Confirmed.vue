@@ -158,15 +158,19 @@ const b = computed(() => props.booking)
     padding-bottom: clamp(4rem, 8vw, 7rem);
 }
 
+/* Une demande envoyée n'est pas une vérification : la marque reste neutre,
+   pas lagon. Blanche et bordée plutôt qu'un disque d'encre, qui se lirait
+   comme une alerte au-dessus d'une bonne nouvelle. */
 .cf__seal {
     display: grid;
     place-items: center;
     width: 3rem;
     height: 3rem;
     border-radius: 50%;
-    color: var(--white);
-    background: var(--lagon-500);
-    box-shadow: 0 6px 20px -8px rgba(14, 144, 128, .8);
+    color: var(--ink);
+    background: var(--white);
+    border: 1.5px solid var(--line-2);
+    box-shadow: var(--sh-1);
 }
 .cf__seal svg { width: 1.4rem; height: 1.4rem; }
 

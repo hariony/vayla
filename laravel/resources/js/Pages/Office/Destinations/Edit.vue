@@ -523,7 +523,7 @@ const ajouterDeLaPhototheque = (p) => router.post(`/destinations/${d.id}/photos/
 .de__gerer { font-weight: 600; }
 
 .de__phototheque { display: grid; grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr)); gap: .45rem; max-height: 26rem; margin: .7rem 0 0; padding: 0; overflow-y: auto; list-style: none; }
-.de__marque { position: absolute; left: .25rem; top: .25rem; padding: .05rem .4rem; border-radius: var(--r-pill); background: rgba(26, 21, 18, .8); font-size: .6rem; font-weight: 700; color: var(--white); }
+.de__marque { position: absolute; left: .25rem; top: .25rem; padding: .05rem .4rem; border-radius: var(--r-pill); background: rgba(26, 21, 18, .8); font-size: .66rem; font-weight: 700; color: var(--white); }
 .de__vignette { position: relative; display: block; width: 100%; padding: 0; overflow: hidden; border: 2px solid transparent; border-radius: var(--r-xs); background: var(--off-2); cursor: zoom-in; }
 .de__vignette img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
 .de__vignette:hover { border-color: var(--line-2); }

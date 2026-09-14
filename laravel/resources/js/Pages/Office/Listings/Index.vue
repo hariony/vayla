@@ -109,7 +109,7 @@ const params = props.filtre.onglet !== 'toutes' ? { statut: props.filtre.onglet 
     object-fit: cover;
     background: var(--off-2);
 }
-.li__vignette--vide { font-size: .6rem; font-weight: 700; line-height: 1.2; text-align: center; color: var(--text-3); }
+.li__vignette--vide { font-size: .66rem; font-weight: 700; line-height: 1.2; text-align: center; color: var(--text-3); }
 
 .li__txt { min-width: 0; }
 

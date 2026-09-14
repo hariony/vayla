@@ -165,10 +165,10 @@ const total = computed(() => props.destinations.reduce((n, d) => n + d.listings,
     margin-top: .5rem;
     font-size: .78rem;
     font-weight: 700;
-    color: var(--lagon-700);
+    color: var(--ink);
 }
-/* Zéro se dit, il ne se cache pas — mais en gris : ce n'est pas une
-   vérification, c'est une absence. */
+/* Un nombre de logements n'est pas une vérification : encre, jamais lagon.
+   Zéro se dit, il ne se cache pas — mais en gris, c'est une absence. */
 .atl__count.is-zero { color: var(--text-3); font-weight: 500; }
 
 @media (min-width: 1000px) {

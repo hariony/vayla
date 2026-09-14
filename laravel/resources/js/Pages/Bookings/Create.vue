@@ -338,7 +338,6 @@ function envoyer() {
 }
 
 .bk__submit { width: 100%; justify-content: center; }
-.bk__submit:disabled { opacity: .45; cursor: not-allowed; }
 
 .bk__note { margin: .7rem 0 0; text-align: center; font-size: .8rem; color: var(--text-3); }
 

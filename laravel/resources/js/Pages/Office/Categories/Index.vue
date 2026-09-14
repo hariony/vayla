@@ -162,7 +162,7 @@ const supprimer = (c) => router.post(`/categories/${c.id}/supprimer`, {}, { pres
 }
 .ca__pastille { display: grid; justify-items: center; gap: .2rem; flex: none; padding: .4rem .7rem; font-size: .72rem; font-weight: 700; color: var(--text-3); white-space: nowrap; }
 .ca__pastille svg { width: 1.3rem; height: 1.3rem; }
-.ca__pastille small { font-size: .56rem; letter-spacing: .06em; text-transform: uppercase; }
+.ca__pastille small { font-size: .66rem; letter-spacing: .06em; text-transform: uppercase; }
 
 .ca__liste > li + li { border-top: 1px solid var(--line); }
 .ca__liste .of-row { border-top: 0; }

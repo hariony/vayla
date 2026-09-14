@@ -81,11 +81,14 @@ const window = computed(() => {
     cursor: pointer;
     transition: border-color .25s var(--ease), color .25s var(--ease);
 }
-.pg__step { padding: .5rem 1rem; }
-.pg__num { min-width: 2.25rem; padding: .5rem .55rem; }
+/* 2,75 rem : la cible tactile minimale de la maison — on pagine au doigt. */
+.pg__step { min-height: 2.75rem; padding: .5rem 1rem; }
+.pg__num { min-width: 2.75rem; min-height: 2.75rem; padding: .5rem .55rem; }
 
 .pg__step:hover:not(:disabled), .pg__num:hover { border-color: var(--ink); color: var(--ink); }
-.pg__step:disabled { opacity: .4; cursor: not-allowed; }
+/* Désactivé se lit, il ne s'efface pas : fond neutre, texte lisible —
+   la même règle que `.btn:disabled`. */
+.pg__step:disabled { background: var(--off-2); color: var(--ink-3); cursor: not-allowed; }
 
 .pg__num.is-on {
     border-color: var(--ink);
