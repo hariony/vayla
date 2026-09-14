@@ -2,6 +2,7 @@
 
 namespace App\Contracts\Repositories;
 
+use App\DTOs\Office\NewOwnerDto;
 use App\Models\Owner;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -28,4 +29,7 @@ interface OfficeOwnerRepositoryInterface
     public function trouver(int $id): ?Owner;
 
     public function marquerNumeroVerifie(Owner $owner): void;
+
+    /** Un compte saisi par l'équipe : clé d'accès posée, numéro encore à vérifier. */
+    public function creer(NewOwnerDto $fiche, string $source): Owner;
 }

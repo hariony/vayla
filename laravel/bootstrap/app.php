@@ -6,6 +6,7 @@ use App\Exceptions\ListingNotFoundException;
 use App\Exceptions\OfficeRefusal;
 use App\Http\Middleware\EnsureAdminPasswordIsSet;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\LaunchGate;
 use App\Http\Middleware\OfficeContext;
 use App\Http\Middleware\PreventIndexing;
 use Illuminate\Foundation\Application;
@@ -27,7 +28,11 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
             HandleInertiaRequests::class,
+            // Pendant la collecte des logements, seule la porte des
+            // propriétaires reste ouverte — voir `LaunchMode`.
+            LaunchGate::class,
         ]);
+        $middleware->api(append: [LaunchGate::class]);
 
         // Les écrans dont l'adresse **est** le droit d'accès : ni indexation,
         // ni fuite de l'URL par l'en-tête Referer.

@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Vayla — publicité propriétaires (30 s)</title>
+<!--
+    La publicité propriétaires, en six plans. Rendue image par image par
+    `rendu.mjs` : la chronologie GSAP est en pause, le script la positionne à
+    chaque trentième de seconde et prend une capture. Rien ne dépend de l'horloge,
+    donc deux rendus donnent la même vidéo.
+
+    **Rien n'y est inventé.** Pas de villa générée, pas de faux témoignage, pas
+    de promesse de clients : la jauge, le 0 Ar, les étapes et l'écran
+    d'inscription sont ceux du site. La seule photographie est dans le domaine
+    public (la crique de Sainte-Marie) : une image CC BY-SA intégrée à une vidéo
+    obligerait à publier la vidéo sous la même licence.
+
+    Ouvrir `composition.html?jouer` dans un navigateur la joue en temps réel.
+    `?format=4x5` donne la version du fil d'actualité.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300..800&display=block" rel="stylesheet">
+<style>
+:root {
+    --terre-700: #6E2213; --terre-600: #9E3520; --terre-500: #C9452A; --terre-300: #EE9576;
+    --terre-200: #F7C2AC; --terre-100: #FBE1D6; --terre-050: #FEF4EF;
+    --lagon-700: #06514A; --lagon-600: #08705F; --lagon-500: #0E9080; --lagon-300: #6BD3BF;
+    --unverified: #B8B0A8;
+    --ink: #1A1512; --text-2: #5A514B; --text-3: #72685F;
+    --white: #FFFFFF; --off: #FBFAF9; --off-2: #F4F1ED;
+    --line: #EDE9E5; --line-2: #DFD9D3;
+    /* L'unité : un pixel en 9:16, un peu moins en 4:5 où la hauteur manque. */
+    --u: 1px;
+    /* **Les zones que Facebook recouvre en 9:16** : le nom de la page en haut,
+       la légende et les boutons en bas. Rien d'essentiel n'y est posé. */
+    --haut: 270px;
+    --bas: 600px;
+    --zoom-tel: .74;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #111; }
+body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+
+.scene-cadre { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: var(--white); }
+.f45 .scene-cadre { height: 1350px; }
+.f45 { --u: .74px; --haut: 80px; --bas: 80px; --zoom-tel: .5; }
+
+.plan {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: var(--haut) 96px var(--bas);
+    gap: calc(var(--u) * 56);
+    visibility: hidden;
+}
+
+/* La lueur de latérite, comme les écrans d'accès et la page propriétaires. */
+.lueur {
+    background:
+        radial-gradient(900px 700px at 90% 8%, rgba(201, 69, 42, .16), transparent 62%),
+        radial-gradient(700px 600px at -10% 95%, rgba(201, 69, 42, .09), transparent 60%),
+        var(--white);
+}
+
+.brow {
+    font-size: calc(var(--u) * 30);
+    font-weight: 700;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--terre-500);
+}
+
+.grand {
+    margin: 0;
+    font-size: calc(var(--u) * 124);
+    font-weight: 800;
+    line-height: .98;
+    letter-spacing: -.045em;
+    color: var(--ink);
+}
+.ligne { display: block; overflow: hidden; padding-block: .03em .1em; }
+.ligne > span { display: block; }
+
+.moyen {
+    margin: 0;
+    font-size: calc(var(--u) * 64);
+    font-weight: 700;
+    line-height: 1.12;
+    letter-spacing: -.03em;
+    color: var(--ink);
+}
+
+/* ── 1. L'accroche ── */
+.meuble { position: relative; display: inline-block; padding-inline: .1em; }
+.meuble__fond {
+    position: absolute;
+    inset: .1em -.02em .04em;
+    border-radius: .2em;
+    background: var(--terre-050);
+    box-shadow: inset 0 0 0 .045em var(--terre-200);
+    transform-origin: left center;
+}
+.meuble__mot { position: relative; color: var(--terre-600); }
+
+/* ── 2. Le frein ── */
+.p2 { background: var(--off); }
+.photo {
+    position: relative;
+    align-self: center;
+    width: 900px;
+    height: calc(var(--u) * 620);
+    border-radius: 40px;
+    overflow: hidden;
+    box-shadow: 0 50px 100px -40px rgba(26, 21, 18, .5);
+}
+.photo img { width: 100%; height: 100%; object-fit: cover; display: block; transform-origin: 60% 50%; }
+.credit { font-size: calc(var(--u) * 22); color: var(--text-3); text-align: center; }
+
+/* ── 3. La vérification ── */
+.fiche {
+    align-self: center;
+    width: 820px;
+    border-radius: 44px;
+    background: var(--white);
+    box-shadow: 0 60px 120px -50px rgba(26, 21, 18, .55), 0 2px 10px rgba(26, 21, 18, .06);
+    overflow: hidden;
+}
+.fiche__visuel {
+    position: relative;
+    height: calc(var(--u) * 300);
+    display: grid;
+    place-items: center;
+    background: linear-gradient(160deg, var(--terre-050), var(--off-2));
+}
+.fiche__visuel svg { width: calc(var(--u) * 190); height: calc(var(--u) * 190); color: var(--terre-500); }
+.fiche__exemple {
+    position: absolute; top: 30px; left: 30px;
+    padding: 8px 20px; border-radius: 999px; background: var(--white);
+    font-size: 22px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink);
+}
+.fiche__corps { padding: 40px 48px 48px; }
+.fiche__titre { margin: 0; font-size: 50px; font-weight: 800; letter-spacing: -.03em; color: var(--ink); }
+.fiche__niveau { display: flex; align-items: center; gap: 28px; margin-top: 32px; height: 60px; }
+.jauge { display: inline-flex; gap: 8px; }
+.jauge i { width: 58px; height: 16px; border-radius: 999px; background: var(--line-2); }
+.jauge i.on:nth-child(1) { background: var(--unverified); }
+.jauge i.on:nth-child(2) { background: var(--lagon-300); }
+.jauge i.on:nth-child(3) { background: var(--lagon-500); }
+.niveau { position: relative; flex: 1; height: 60px; }
+.niveau span {
+    position: absolute; inset: 0;
+    display: flex; align-items: center;
+    font-size: 38px; font-weight: 700; color: var(--text-2);
+}
+/* Le lagon, à sa place : sur un niveau vérifié, et nulle part ailleurs. */
+.niveau span.verifie { color: var(--lagon-600); }
+
+/* ── 4. Ce que ça coûte : la seule dalle terre ── */
+.p4 { background: var(--terre-500); color: var(--white); }
+.p4 .brow { color: rgba(255, 255, 255, .85); }
+.prix {
+    margin: 0;
+    font-size: calc(var(--u) * 210);
+    font-weight: 800;
+    line-height: .9;
+    letter-spacing: -.06em;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.p4 .moyen { color: var(--white); }
+.p4 .petit { margin: 0; font-size: calc(var(--u) * 44); line-height: 1.3; font-weight: 500; color: rgba(255, 255, 255, .92); }
+
+/* ── 5. L'inscription, au téléphone ── */
+.p5 { background: var(--off); }
+.tel {
+    position: relative;
+    align-self: center;
+    width: 600px;
+    height: 1080px;
+    border-radius: 80px;
+    background: var(--ink);
+    padding: 22px;
+    box-shadow: 0 60px 120px -50px rgba(26, 21, 18, .6);
+    zoom: var(--zoom-tel);
+}
+.tel__ecran { position: relative; width: 100%; height: 100%; border-radius: 60px; background: var(--white); overflow: hidden; }
+.ecran { position: absolute; inset: 0; padding: 110px 48px 48px; visibility: hidden; }
+.ecran .brow { font-size: 20px; }
+.ecran h3 { margin: 14px 0 0; font-size: 46px; font-weight: 800; line-height: 1.05; letter-spacing: -.03em; color: var(--ink); }
+.champ { margin-top: 48px; font-size: 22px; font-weight: 700; color: var(--ink); }
+.champ__boite {
+    margin-top: 12px; height: 88px; border: 3px solid var(--line-2); border-radius: 20px;
+    display: flex; align-items: center; padding: 0 26px; font-size: 32px; font-weight: 500; color: var(--ink);
+}
+.champ__boite.actif { border-color: var(--terre-500); }
+.bouton {
+    margin-top: 32px; height: 96px; border-radius: 999px; background: var(--terre-500); color: var(--white);
+    display: grid; place-items: center; font-size: 32px; font-weight: 700;
+}
+.cases { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-top: 56px; }
+.cases b {
+    height: 100px; border: 3px solid var(--line-2); border-radius: 18px;
+    display: grid; place-items: center; font-size: 48px; font-weight: 800; color: var(--ink);
+}
+.cases b.plein { border-color: var(--ink); }
+.etapes { display: grid; gap: 16px; margin-top: 44px; }
+.etapes div { display: flex; align-items: center; gap: 18px; height: 88px; padding: 0 22px; border: 3px solid var(--line); border-radius: 20px; font-size: 28px; font-weight: 700; color: var(--ink); }
+.etapes em { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: var(--terre-500); color: var(--white); font-style: normal; font-size: 26px; font-weight: 800; }
+.etapes div.gris em { background: var(--off-2); color: var(--text-3); }
+
+/* ── 6. La signature ── */
+.p6 { align-items: center; text-align: center; }
+.marque { display: flex; align-items: center; gap: 28px; }
+.marque svg { width: calc(var(--u) * 170); height: calc(var(--u) * 170); color: var(--ink); }
+.marque span { font-size: calc(var(--u) * 150); font-weight: 800; letter-spacing: -.05em; color: var(--ink); }
+.cta {
+    padding: 0 80px; height: calc(var(--u) * 150); border-radius: 999px;
+    display: inline-flex; align-items: center; gap: 24px;
+    background: var(--terre-500); color: var(--white);
+    font-size: calc(var(--u) * 58); font-weight: 800; letter-spacing: -.02em;
+    box-shadow: 0 30px 60px -24px rgba(201, 69, 42, .8);
+}
+.cta svg { width: calc(var(--u) * 56); height: calc(var(--u) * 56); }
+.rassure { margin: 0; font-size: calc(var(--u) * 40); font-weight: 600; color: var(--text-2); }
+</style>
+</head>
+<body>
+<div class="scene-cadre" id="cadre">
+
+    <!-- 1 · 0–3 s — l'accroche, et le mot qui trie -->
+    <section class="plan lueur p1" data-plan="1">
+        <p class="brow" data-a>Vayla · Propriétaires</p>
+        <h1 class="grand">
+            <span class="ligne"><span>Vous louez</span></span>
+            <span class="ligne"><span>une villa ou un</span></span>
+            <span class="ligne"><span>appartement</span></span>
+            <span class="ligne"><span><span class="meuble"><i class="meuble__fond"></i><span class="meuble__mot">meublé</span></span>&nbsp;?</span></span>
+        </h1>
+    </section>
+
+    <!-- 2 · 3–8 s — le frein -->
+    <section class="plan p2" data-plan="2">
+        <div class="photo"><img src="images/sainte-marie-crique-1600.webp" alt=""></div>
+        <div>
+            <p class="moyen">
+                <span class="ligne"><span>Les voyageurs hésitent</span></span>
+                <span class="ligne"><span>à envoyer un acompte</span></span>
+                <span class="ligne"><span>à un inconnu.</span></span>
+            </p>
+            <p class="credit" style="margin-top: calc(var(--u) * 28)">Photo : la crique, île Sainte-Marie — M worm, domaine public</p>
+        </div>
+    </section>
+
+    <!-- 3 · 8–15 s — ce que fait Vayla -->
+    <section class="plan lueur p3" data-plan="3">
+        <p class="moyen"><span class="ligne"><span>Vayla vérifie</span></span><span class="ligne"><span>votre logement.</span></span></p>
+        <div class="fiche">
+            <div class="fiche__visuel">
+                <span class="fiche__exemple">Exemple</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.2 12 4l9 7.2" /><path d="M5.5 9.6V20h13V9.6" /><path d="M10 20v-5.2h4V20" /></svg>
+            </div>
+            <div class="fiche__corps">
+                <p class="fiche__titre">Votre villa meublée</p>
+                <div class="fiche__niveau">
+                    <span class="jauge"><i data-seg="1"></i><i data-seg="2"></i><i data-seg="3"></i><i></i></span>
+                    <span class="niveau">
+                        <span data-niv="1">Annonce déclarée</span>
+                        <span data-niv="2" class="verifie">Contact confirmé</span>
+                        <span data-niv="3" class="verifie">Logement visité</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+        <p class="moyen" style="color: var(--text-2); font-weight: 600"><span class="ligne"><span>Un appel vidéo,</span></span><span class="ligne"><span>depuis chez vous.</span></span></p>
+    </section>
+
+    <!-- 4 · 15–21 s — ce que ça coûte -->
+    <section class="plan p4" data-plan="4">
+        <p class="brow" data-a>Ce que ça vous coûte</p>
+        <p class="prix" id="prix">185&nbsp;000&nbsp;Ar</p>
+        <p class="moyen" data-a>pour inscrire et faire vérifier votre logement.</p>
+        <p class="petit" data-a>Une commission seulement sur un séjour effectué et confirmé par le voyageur.</p>
+    </section>
+
+    <!-- 5 · 21–27 s — l'inscription, telle qu'elle est sur le site -->
+    <section class="plan p5" data-plan="5">
+        <p class="brow">Gratuit · sans mot de passe</p>
+        <p class="moyen" style="margin-top: calc(var(--u) * -30)"><span class="ligne"><span>Inscrivez-le</span></span><span class="ligne"><span>avant l'ouverture.</span></span></p>
+        <div class="tel">
+            <div class="tel__ecran">
+                <div class="ecran" data-ecran="1">
+                    <p class="brow">Espace propriétaire</p>
+                    <h3>Inscrire mon logement</h3>
+                    <p class="champ">Adresse e-mail</p>
+                    <div class="champ__boite actif" id="saisie"></div>
+                    <div class="bouton">Recevoir mon code</div>
+                </div>
+                <div class="ecran" data-ecran="2">
+                    <p class="brow">Un code, pas de mot de passe</p>
+                    <h3>Entrez le code reçu</h3>
+                    <div class="cases"><b></b><b></b><b></b><b></b><b></b><b></b></div>
+                </div>
+                <div class="ecran" data-ecran="3">
+                    <p class="brow">Mes logements</p>
+                    <h3>Décrivez votre logement</h3>
+                    <div class="etapes">
+                        <div><em>1</em> L'essentiel</div>
+                        <div class="gris"><em>2</em> Capacité</div>
+                        <div class="gris"><em>3</em> Tarif et séjour</div>
+                        <div class="gris"><em>4</em> Équipements</div>
+                        <div class="gris"><em>5</em> Photos</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 6 · 27–30 s — la signature -->
+    <section class="plan lueur p6" data-plan="6">
+        <div class="marque" data-a>
+            <svg viewBox="0 0 48 48" aria-hidden="true">
+                <path d="M2.18,4.81 L19.79,45.70 Q38.12,20.37 45.82,2.30 L38.58,4.12 Q27.42,20.47 21.66,26.12 L9.01,7.47 Z" fill="currentColor" />
+                <path d="M38.91,15.91 Q41.29,11.40 45.82,2.30 L38.58,4.12 Q37.07,6.03 32.88,12.19 Z" fill="#C9452A" />
+            </svg>
+            <span>vayla</span>
+        </div>
+        <div class="cta" data-a>
+            Inscrire mon logement
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+        </div>
+        <p class="rassure" data-a>Gratuit jusqu'au premier séjour confirmé</p>
+    </section>
+</div>
+
+<script src="../../laravel/node_modules/gsap/dist/gsap.min.js"></script>
+<script>
+const params = new URLSearchParams(location.search)
+if (params.get('format') === '4x5') document.body.classList.add('f45')
+
+const $ = (s, r = document) => r.querySelector(s)
+const $$ = (s, r = document) => [...r.querySelectorAll(s)]
+const plan = (n) => $(`[data-plan="${n}"]`)
+
+const prix = $('#prix')
+const ariary = (n) => `${new Intl.NumberFormat('fr-FR').format(n).replace(/[\u202f\u00a0 ]/g, '\u00a0')}\u00a0Ar`
+
+const tl = gsap.timeline({ paused: true, defaults: { ease: 'power3.out' } })
+
+/** Un plan entre à `debut` et sort à `fin`, en fondu court. */
+const montrer = (n, debut, fin) => {
+    tl.set(plan(n), { autoAlpha: 1 }, debut)
+    if (fin !== undefined) tl.to(plan(n), { autoAlpha: 0, duration: .25, ease: 'power1.in' }, fin - .25)
+}
+const lignes = (el, t, pas = .09) => tl.from($$('.ligne > span', el), { yPercent: 110, duration: .7, stagger: pas, ease: 'power4.out' }, t)
+
+// 1 · 0–3 s
+montrer(1, 0, 3)
+tl.from($('[data-a]', plan(1)), { y: 20, opacity: 0, duration: .5 }, .05)
+lignes(plan(1), .1, .12)
+tl.from($('.meuble__fond', plan(1)), { scaleX: 0, duration: .5, ease: 'power3.inOut' }, .85)
+tl.from($('.meuble__mot', plan(1)), { color: '#1A1512', duration: .35 }, 1.05)
+tl.to($('.meuble', plan(1)), { scale: 1.06, duration: .25, yoyo: true, repeat: 1, ease: 'power2.inOut' }, 1.5)
+
+// 2 · 3–8 s
+montrer(2, 3, 8)
+tl.from($('.photo', plan(2)), { y: 80, rotation: -4, opacity: 0, duration: .9 }, 3)
+tl.fromTo($('.photo img', plan(2)), { scale: 1.02 }, { scale: 1.16, duration: 5, ease: 'none' }, 3)
+lignes(plan(2), 3.45, .14)
+tl.from($('.credit', plan(2)), { opacity: 0, duration: .5 }, 4.2)
+
+// 3 · 8–15 s — la jauge monte : déclarée → contact confirmé → visité
+montrer(3, 8, 15)
+lignes($('.moyen', plan(3)), 8.05)
+tl.from($('.fiche', plan(3)), { y: 120, rotation: 5, opacity: 0, duration: .9, ease: 'back.out(1.3)' }, 8.25)
+lignes($$('.moyen', plan(3))[1], 8.9)
+$$('[data-niv]').forEach((el) => tl.set(el, { autoAlpha: 0 }, 0))
+const niveau = (n, t) => {
+    tl.set(`[data-seg="${n}"]`, { className: 'on' }, t)
+    tl.fromTo(`[data-seg="${n}"]`, { scaleX: .2 }, { scaleX: 1, duration: .35, ease: 'back.out(2)', immediateRender: false }, t)
+    if (n > 1) tl.to(`[data-niv="${n - 1}"]`, { autoAlpha: 0, y: -20, duration: .2 }, t)
+    tl.fromTo(`[data-niv="${n}"]`, { autoAlpha: 0, y: 20 }, { autoAlpha: 1, y: 0, duration: .3, immediateRender: false }, t + .05)
+}
+niveau(1, 9.4)
+niveau(2, 11)
+niveau(3, 12.6)
+tl.to($('.fiche', plan(3)), { scale: 1.04, duration: .3, yoyo: true, repeat: 1, ease: 'power2.inOut' }, 12.7)
+
+// 4 · 15–21 s — 185 000 Ar fondent à 0 Ar
+montrer(4, 15, 21)
+tl.from($('[data-a]', plan(4)), { y: 20, opacity: 0, duration: .5 }, 15.05)
+tl.from(prix, { scale: .85, opacity: 0, duration: .5, transformOrigin: 'left center' }, 15.1)
+const compteur = { v: 185000 }
+tl.to(compteur, {
+    v: 0, duration: 1.8, ease: 'power3.inOut',
+    onUpdate: () => { prix.textContent = ariary(Math.round(compteur.v / 1000) * 1000) },
+}, 15.7)
+tl.fromTo(prix, { scale: 1 }, { scale: 1.08, duration: .2, yoyo: true, repeat: 1, transformOrigin: 'left center', immediateRender: false }, 17.5)
+tl.from($$('[data-a]', plan(4)).slice(1), { y: 30, opacity: 0, duration: .6, stagger: .35 }, 17.8)
+
+// 5 · 21–27 s — l'inscription, écran par écran
+montrer(5, 21, 27)
+lignes($('.moyen', plan(5)), 21.05)
+tl.from($('.tel', plan(5)), { y: 160, opacity: 0, duration: .9 }, 21.2)
+tl.from($('.brow', plan(5)), { y: 16, opacity: 0, duration: .5 }, 21.05)
+tl.set('[data-ecran="1"]', { autoAlpha: 1 }, 21.2)
+// Un domaine réservé aux exemples (RFC 2606) : jamais la boîte d'une vraie personne.
+const adresse = 'hanta.rasoa@example.com'
+const saisie = { n: 0 }
+tl.to(saisie, { n: adresse.length, duration: 1.4, ease: 'none', onUpdate: () => { $('#saisie').textContent = adresse.slice(0, Math.round(saisie.n)) } }, 21.8)
+tl.to('[data-ecran="1"] .bouton', { scale: .95, duration: .12, yoyo: true, repeat: 1 }, 23.3)
+tl.set('[data-ecran="1"]', { autoAlpha: 0 }, 23.6)
+tl.set('[data-ecran="2"]', { autoAlpha: 1 }, 23.6)
+'482916'.split('').forEach((c, i) => {
+    tl.set($$('[data-ecran="2"] .cases b')[i], { textContent: c, className: 'plein' }, 23.9 + i * .18)
+    tl.fromTo($$('[data-ecran="2"] .cases b')[i], { y: -24 }, { y: 0, duration: .25, ease: 'back.out(2)', immediateRender: false }, 23.9 + i * .18)
+})
+tl.set('[data-ecran="2"]', { autoAlpha: 0 }, 25.3)
+tl.set('[data-ecran="3"]', { autoAlpha: 1 }, 25.3)
+tl.from($$('[data-ecran="3"] .etapes div'), { x: 40, opacity: 0, duration: .4, stagger: .08 }, 25.35)
+
+// 6 · 27–30 s — la signature
+montrer(6, 27)
+tl.from($$('[data-a]', plan(6)), { y: 30, opacity: 0, duration: .6, stagger: .2 }, 27.05)
+tl.from($('.marque svg', plan(6)), { rotation: -30, scale: .6, duration: .8, ease: 'back.out(2)' }, 27.05)
+tl.to($('.cta', plan(6)), { scale: 1.05, duration: .35, yoyo: true, repeat: 1, ease: 'power2.inOut' }, 28.4)
+tl.to({}, { duration: .01 }, 30)
+
+window.DUREE = 30
+window.aller = (t) => { tl.seek(t, false); return true }
+window.pret = document.fonts.ready.then(() => Promise.all($$('img').map((i) => i.decode().catch(() => null))))
+
+if (params.has('jouer')) window.pret.then(() => tl.play())
+else tl.seek(0)
+</script>
+</body>
+</html>

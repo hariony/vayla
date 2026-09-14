@@ -16,6 +16,7 @@ use App\Http\Controllers\Owner\AccountController as OwnerAccountController;
 use App\Http\Controllers\Owner\AuthController as OwnerAuthController;
 use App\Http\Controllers\Owner\BookingController as OwnerBookingController;
 use App\Http\Controllers\Owner\InvoiceController as OwnerInvoiceController;
+use App\Http\Controllers\Owner\LandingController as OwnerLandingController;
 use App\Http\Controllers\Owner\ListingController as OwnerListingController;
 use App\Http\Controllers\Owner\MessageController as OwnerMessageController;
 use App\Http\Controllers\Owner\RegisterController as OwnerRegisterController;
@@ -206,6 +207,16 @@ Route::middleware(['auth:web', 'sans-index'])->group(function () {
  * Tout est hors index : ces pages n'ont rien à faire dans un moteur de
  * recherche, et le lien d'accès ne doit fuiter par aucun en-tête Referer.
  */
+/*
+ * **La page où mène la publicité.** Elle parle aux propriétaires seuls, et
+ * pendant la collecte des logements c'est la seule page publique ouverte —
+ * voir `LaunchMode`. Accessible connecté ou non : un propriétaire inscrit qui
+ * revient par la publicité y trouve le chemin de son espace.
+ */
+Route::get('/louer-mon-logement', [OwnerLandingController::class, 'show'])->name('owners.landing');
+// L'ancienne adresse, déjà partagée : redirection permanente, source comprise.
+Route::get('/proprietaires', [OwnerLandingController::class, 'ancienne'])->name('owners.landing.ancienne');
+
 Route::middleware('sans-index')->group(function () {
     Route::middleware('guest:proprietaire')->group(function () {
         // **Même porte que l'inscription, autre titre.** Le formulaire poste sur

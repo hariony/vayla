@@ -30,7 +30,7 @@ interface OwnerRepositoryInterface
      * prouvée), la clé d'accès posée dès maintenant — c'est le lien WhatsApp
      * qui ouvre l'espace en un geste.
      */
-    public function creerDepuisInscription(OwnerProfileDto $fiche, string $email): Owner;
+    public function creerDepuisInscription(OwnerProfileDto $fiche, string $email, ?string $source = null): Owner;
 
     public function marquerConnexion(Owner $owner): void;
 

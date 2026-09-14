@@ -3,6 +3,7 @@
 namespace App\Repositories;
 
 use App\Contracts\Repositories\OfficeOwnerRepositoryInterface;
+use App\DTOs\Office\NewOwnerDto;
 use App\Enums\ListingStatus;
 use App\Models\Owner;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -66,6 +67,20 @@ class OfficeOwnerRepository implements OfficeOwnerRepositoryInterface
         $owner->forceFill(['phone_verified_at' => Carbon::now()])->save();
     }
 
+    public function creer(NewOwnerDto $fiche, string $source): Owner
+    {
+        return Owner::create([
+            'name' => $fiche->name,
+            'phone' => $fiche->phone,
+            'email' => $fiche->email,
+            'city' => $fiche->city,
+            'access_key' => Owner::nouvelleCle(),
+            'access_key_set_at' => Carbon::now(),
+            'is_demo' => false,
+            'source' => $source,
+        ]);
+    }
+
     private function chercher(Builder $q, string $recherche): Builder
     {
         $motif = '%'.mb_strtolower($recherche).'%';
@@ -75,6 +90,7 @@ class OfficeOwnerRepository implements OfficeOwnerRepositoryInterface
             ->whereRaw('lower(name) like ?', [$motif])
             ->orWhereRaw('lower(email) like ?', [$motif])
             ->orWhereRaw('lower(city) like ?', [$motif])
+            ->orWhereRaw('lower(source) like ?', [$motif])
             ->when($chiffres !== '', fn (Builder $x) => $x->orWhere('phone', 'like', '%'.$chiffres.'%')));
     }
 }

@@ -46,8 +46,8 @@ import { portraitSrc, portraitSrcset } from '@/Support/portrait.js'
 import {
     ACTION_PROPRIETAIRE,
     RUBRIQUES_CLIENT,
-    RUBRIQUES_PROPRIETAIRE,
     liensDe,
+    rubriquesProprietaire,
 } from '@/Support/espaces.js'
 
 const page = usePage()
@@ -120,7 +120,7 @@ const espaces = computed(() => {
             cle: 'proprietaire',
             titre: 'Espace propriétaire',
             liens: [
-                ...liensDe(RUBRIQUES_PROPRIETAIRE).map((item) => ({ ...item, compteur: compteur(item) })),
+                ...liensDe(rubriquesProprietaire(page.props.lancement)).map((item) => ({ ...item, compteur: compteur(item) })),
                 ACTION_PROPRIETAIRE,
             ],
             sortie: {

@@ -45,8 +45,6 @@ const envoyer = () => form.post('/inscription')
 
             <!-- Le séparateur suit les boutons : seul, il annoncerait un choix
                  qui n'existe pas sur une installation sans fournisseur. -->
-            <p v-if="$page.props.social?.length" class="acces__ou" aria-hidden="true"><span>ou</span></p>
-
             <form class="acces__form" @submit.prevent="envoyer">
                 <div class="acces__field">
                     <label class="acces__label" for="email">Adresse e-mail</label>

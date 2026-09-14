@@ -182,7 +182,13 @@ const enregistrer = () => form.post('/proprietaire/compte', { preserveScroll: tr
                     <input id="address" v-model="form.address" type="text" class="acces__input"
                            autocomplete="street-address" maxlength="200"
                            placeholder="Lot II M 12 bis, Analamahitsy">
-                    <p class="acces__help">
+                    <!-- Pendant la collecte, la facture n'existe pas encore : l'adresse
+                         ne sert qu'à la vérification. -->
+                    <p v-if="page.props.lancement" class="acces__help">
+                        Facultatif, et <strong>jamais publié</strong>. Elle sert à la vérification&nbsp;:
+                        celui qui passe voir un logement doit savoir où aller.
+                    </p>
+                    <p v-else class="acces__help">
                         Facultatif, et <strong>jamais publié</strong>. Elle sert à deux choses&nbsp;:
                         votre facture de fin de mois, qui doit désigner quelqu'un pour être
                         payable, et la vérification — celui qui passe voir un logement doit
@@ -230,7 +236,11 @@ const enregistrer = () => form.post('/proprietaire/compte', { preserveScroll: tr
                 </div>
             </section>
 
-            <section class="cp__bloc">
+            <!-- Pendant la collecte des logements, aucune facture n'existe : parler
+                 de commission et de mobile money à quelqu'un qui décrit encore son
+                 logement répond à une question qu'il ne se pose pas. Les valeurs
+                 déjà saisies repartent telles quelles avec le formulaire. -->
+            <section v-if="!page.props.lancement" class="cp__bloc">
                 <h2 class="espace__section cp__h">Comment vous réglez la commission</h2>
                 <p class="cp__intro">
                     Vayla n'encaisse rien et ne prélève rien&nbsp;: c'est vous qui poussez

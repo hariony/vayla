@@ -62,7 +62,18 @@ const page = usePage()
 const racine = ref(null)
 const engage = ref(null)
 
-const fournisseurs = computed(() => page.props.social ?? [])
+/*
+ * **Google refuse de s'ouvrir dans le navigateur interne d'une application**
+ * — Facebook, Messenger, Instagram : il affiche « disallowed_useragent » au
+ * lieu de l'écran de connexion. Or c'est exactement là qu'arrive quelqu'un qui
+ * clique sur une publicité. On retire donc Google de ces navigateurs ; l'adresse
+ * et le code, eux, fonctionnent partout.
+ */
+const NAVIGATEUR_INTERNE = /FBAN|FBAV|FB_IAB|FBIOS|Messenger|Instagram/i
+const dansUneApplication = typeof navigator !== 'undefined' && NAVIGATEUR_INTERNE.test(navigator.userAgent)
+
+const fournisseurs = computed(() => (page.props.social ?? [])
+    .filter((f) => ! (dansUneApplication && f.cle === 'google')))
 
 /** Seul, il devient un vrai bouton ; à plusieurs, une barre segmentée. */
 const seul = computed(() => fournisseurs.value.length === 1)
@@ -115,11 +126,18 @@ useSocialMotion(racine)
                 </a>
             </template>
         </div>
+
+        <!-- Le « ou » vit avec les boutons, pas dans chaque page : dans le
+             navigateur de Facebook, où Google est retiré, il serait resté seul
+             au-dessus du formulaire, séparant l'adresse de rien. -->
+        <p class="acces__ou" aria-hidden="true"><span>ou</span></p>
     </div>
 </template>
 
 <style scoped>
 .soc { display: grid; gap: .6rem; }
+/* Le séparateur hérite de sa marge globale ; la grille ajoute déjà son écart. */
+.soc .acces__ou { margin-top: .5rem; }
 
 .soc__titre {
     margin: 0;

@@ -6,6 +6,7 @@ use App\Contracts\Repositories\PageRepositoryInterface;
 use App\Data\Content\ContentPageData;
 use App\Data\Content\FooterLinkData;
 use App\Data\Content\PublicPageData;
+use App\Enums\PageGroup;
 use App\Models\Page;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -56,6 +57,19 @@ final class SitePages
         $page = $this->pages->publiee($slug);
 
         return $page ? new ContentPageData(PublicPageData::fromModel($page, $this->rendu->rendre((string) $page->body))) : null;
+    }
+
+    /**
+     * Une page légale publiée. Pendant la collecte des logements, ce sont les
+     * seules pages éditoriales qui restent ouvertes : la loi les exige de toute
+     * page qui recueille un nom et un numéro, et les autres parlent d'un site
+     * que les voyageurs ne peuvent pas encore utiliser.
+     */
+    public function legalePubliee(string $slug): bool
+    {
+        $groupe = $this->pages->publiee($slug)?->footer_group;
+
+        return ($groupe instanceof PageGroup ? $groupe->value : $groupe) === PageGroup::Legal->value;
     }
 
     /** Après tout geste sur une page : le pied de page se relira. */

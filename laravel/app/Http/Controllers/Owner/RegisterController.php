@@ -7,6 +7,7 @@ use App\Exceptions\CodeThrottled;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\OwnerProfileRequest;
 use App\Http\Requests\RegisterOwnerRequest;
+use App\Http\Requests\SignupSourceRequest;
 use App\Http\Requests\VerificationCodeRequest;
 use App\Services\Auth\PendingRegistration;
 use App\Services\Owners\OwnerSignup;
@@ -69,8 +70,11 @@ class RegisterController extends Controller
         private OwnerSignup $signup,
     ) {}
 
-    public function form(): Response
+    public function form(SignupSourceRequest $request): Response
     {
+        // Un lien peut mener ici directement, sans passer par `/louer-mon-logement`.
+        $this->signup->retenirSource($request->source());
+
         return Inertia::render('Owner/Register');
     }
 

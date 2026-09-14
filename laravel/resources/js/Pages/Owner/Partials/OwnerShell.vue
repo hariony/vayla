@@ -29,14 +29,21 @@
  * y encastrer le moteur de recherche. Sans moteur à encastrer, elle laisse une
  * barre vide au premier défilement.
  */
+import { computed } from 'vue'
+import { usePage } from '@inertiajs/vue3'
+
 import SiteHeader from '@/Components/SiteHeader.vue'
 import SpaceShell from '@/Components/SpaceShell.vue'
-import { ACTION_PROPRIETAIRE, RUBRIQUES_PROPRIETAIRE } from '@/Support/espaces.js'
+import { ACTION_PROPRIETAIRE, rubriquesProprietaire } from '@/Support/espaces.js'
 
 defineProps({
     /** Le lien de retour, quand l'écran est en dessous d'une rubrique. */
     back: { type: Object, default: null },
 })
+
+// Pendant la collecte des logements, seulement la fiche et les informations.
+const page = usePage()
+const groupes = computed(() => rubriquesProprietaire(page.props.lancement))
 </script>
 
 <template>
@@ -44,7 +51,7 @@ defineProps({
 
     <SpaceShell
         espace="Espace propriétaire"
-        :groupes="RUBRIQUES_PROPRIETAIRE"
+        :groupes="groupes"
         :action="ACTION_PROPRIETAIRE"
         :back="back"
         garde="proprietaire"

@@ -52,8 +52,6 @@ const envoyer = () => form.post('/proprietaire/inscription')
         <div class="acces__panel" data-access-card>
             <SocialButtons espace="proprietaire" />
 
-            <p v-if="$page.props.social?.length" class="acces__ou" aria-hidden="true"><span>ou</span></p>
-
             <form class="acces__form" @submit.prevent="envoyer">
                 <div class="acces__field">
                     <label class="acces__label" for="email">Adresse e-mail</label>

@@ -33,7 +33,7 @@ class Owner extends Model implements Authenticatable
     protected $fillable = [
         'access_key', 'access_key_set_at', 'name', 'phone', 'phone_verified_at', 'email', 'email_verified_at', 'password',
         'password_set_at', 'last_login_at', 'city', 'address', 'portrait', 'mobile_money',
-        'mobile_money_operator', 'is_demo',
+        'mobile_money_operator', 'is_demo', 'source',
     ];
 
     /**

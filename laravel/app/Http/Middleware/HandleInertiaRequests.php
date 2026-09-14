@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\Content\Pages\SitePages;
 use App\Services\Content\Texts\SiteTexts;
 use App\Services\ConversationService;
+use App\Services\Support\LaunchMode;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -30,11 +31,20 @@ class HandleInertiaRequests extends Middleware
         private SitePages $pages,
         private ExchangeRateProvider $taux,
         private ConversationService $conversations,
+        private LaunchMode $lancement,
     ) {}
 
     public function share(Request $request): array
     {
         return array_merge(parent::share($request), [
+            /*
+             * **La collecte des logements**, avant l'ouverture. L'en-tête ne
+             * garde que la marque et le compte, et l'espace propriétaire que
+             * « Mes logements » et « Mes informations ». Le front ne décide
+             * rien seul : les routes fermées le sont côté serveur (`LaunchGate`),
+             * ce drapeau ne fait que retirer les liens qui y mèneraient.
+             */
+            'lancement' => $this->lancement->actif(),
             /*
              * Les fournisseurs d'identité **réellement configurés**.
              *

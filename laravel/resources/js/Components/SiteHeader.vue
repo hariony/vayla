@@ -68,6 +68,16 @@ const anchor = (hash) => (props.home ? `#${hash}` : `/#${hash}`)
 
 const page = usePage()
 
+/*
+ * **Pendant la collecte des logements, la barre ne garde que la marque et le
+ * compte.** Catalogue, confiance, destinations mèneraient à des pages fermées
+ * (`LaunchGate` les renvoie vers `/louer-mon-logement`) : des liens qui ne mènent
+ * nulle part sont un faux signal. Le tiroir tombe avec eux — il n'aurait plus
+ * rien à ranger — et « Connexion » reste donc visible à toutes les largeurs.
+ */
+const lancement = computed(() => Boolean(page.props.lancement))
+const accueil = computed(() => (lancement.value ? '/louer-mon-logement' : '/'))
+
 /**
  * **Connecté, « Connexion » devient la porte de son espace — il ne disparaît
  * pas.** Le retirer laisserait quelqu'un de connecté sans aucun chemin vers
@@ -91,11 +101,13 @@ const espace = computed(() => {
         return { href: '/mes-reservations', label: 'Mes réservations' }
     }
 
-    return { href: '/connexion', label: 'Connexion' }
+    // Pendant la collecte, la seule porte est celle des propriétaires : pas
+    // d'aiguillage entre deux espaces dont l'un n'existe pas encore.
+    return { href: lancement.value ? '/proprietaire/connexion' : '/connexion', label: 'Connexion' }
 })
 
 /** « Devenir hôte » n'a aucun sens pour quelqu'un qui l'est déjà. */
-const recrute = computed(() => ! page.props.auth?.owner)
+const recrute = computed(() => ! page.props.auth?.owner && ! lancement.value)
 
 /**
  * Connecté, le mot cède la place au compte.
@@ -106,7 +118,7 @@ const recrute = computed(() => ! page.props.auth?.owner)
  */
 const connecte = computed(() => Boolean(page.props.auth?.user || page.props.auth?.owner))
 
-const links = computed(() =>
+const links = computed(() => lancement.value ? [] :
     LINKS.map((l) => ({
         label: l.label,
         href: l.to ?? anchor(l.hash),
@@ -141,7 +153,7 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
                  elle ramène à l'accueil (visite Inertia). -->
             <component
                 :is="home ? 'a' : Link"
-                :href="home ? '#top' : '/'"
+                :href="home ? '#top' : accueil"
                 class="hdr__brand"
                 aria-label="Vayla, accueil"
             >
@@ -180,10 +192,11 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
                      et un simple lien vers son espace ne dit ni qui est
                      connecté ni comment sortir. -->
                 <AccountMenu v-if="connecte" />
-                <Link v-else :href="espace.href" class="hdr__login">{{ espace.label }}</Link>
+                <Link v-else :href="espace.href" class="hdr__login" :class="{ 'hdr__login--seul': lancement }">{{ espace.label }}</Link>
                 <a v-if="recrute" :href="proprietaires" class="btn btn--sm btn--ink hdr__host">Devenir hôte</a>
 
                 <button
+                    v-if="!lancement"
                     class="hdr__burger"
                     type="button"
                     :aria-expanded="menuOpen"
@@ -197,7 +210,7 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
             </div>
         </div>
 
-        <div id="hdr-drawer" class="hdr__drawer" :hidden="!menuOpen">
+        <div v-if="!lancement" id="hdr-drawer" class="hdr__drawer" :hidden="!menuOpen">
             <component
                 :is="l.page ? Link : 'a'"
                 v-for="l in links"
@@ -220,7 +233,8 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
         </div>
     </header>
 
-    <GoogleOneTap />
+    <!-- One Tap ouvre un compte voyageur : il n'existe pas pendant la collecte. -->
+    <GoogleOneTap v-if="!lancement" />
 </template>
 
 <style scoped>
@@ -349,6 +363,8 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
 @media (min-width: 461px) {
     .hdr__login { display: inline-flex; }
 }
+/* Sans tiroir pour prendre le relais, le mot reste à toutes les largeurs. */
+.hdr__login--seul { display: inline-flex; }
 
 .hdr__burger {
     display: grid;

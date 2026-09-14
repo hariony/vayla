@@ -21,6 +21,8 @@ final class OwnerSignup
 {
     private const ADRESSE_VERIFIEE = 'inscription.proprietaire.verifiee';
 
+    private const SOURCE = 'inscription.proprietaire.source';
+
     public function __construct(
         private OwnerRepositoryInterface $proprietaires,
         private PendingSocialIdentity $identites,
@@ -41,6 +43,19 @@ final class OwnerSignup
         }
 
         return $owner;
+    }
+
+    /**
+     * **La publicité ou le message qui a amené la personne.** Retenue à
+     * l'arrivée, écrite à la naissance du compte : entre les deux, il y a une
+     * adresse à taper et un code à aller lire. Une source déjà retenue n'est
+     * pas écrasée par une page rechargée sans paramètre.
+     */
+    public function retenirSource(?string $source): void
+    {
+        if ($source !== null) {
+            Session::put(self::SOURCE, $source);
+        }
     }
 
     /** L'adresse prouvée — par un code, ou par un fournisseur qui l'atteste. */
@@ -77,7 +92,7 @@ final class OwnerSignup
         }
 
         $owner = DB::transaction(function () use ($fiche, $email) {
-            $owner = $this->proprietaires->creerDepuisInscription($fiche, $email);
+            $owner = $this->proprietaires->creerDepuisInscription($fiche, $email, Session::get(self::SOURCE));
 
             if ($identite = $this->identites->reprendre()) {
                 $this->social->lier($owner, $identite);
@@ -86,7 +101,7 @@ final class OwnerSignup
             return $owner;
         });
 
-        Session::forget(self::ADRESSE_VERIFIEE);
+        Session::forget([self::ADRESSE_VERIFIEE, self::SOURCE]);
 
         return $owner;
     }

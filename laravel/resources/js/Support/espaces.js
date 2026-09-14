@@ -60,17 +60,33 @@ export const RUBRIQUES_PROPRIETAIRE = [
             { href: '/proprietaire', label: 'Demandes', icone: 'demandes' },
             { href: '/proprietaire/messages', label: 'Messages', icone: 'messages', compteur: 'ownerUnread' },
             { href: '/proprietaire/reservations', label: 'Réservations', icone: 'reservations' },
-            { href: '/proprietaire/logements', label: 'Mes logements', icone: 'logements' },
+            { href: '/proprietaire/logements', label: 'Mes logements', icone: 'logements', lancement: true },
         ],
     },
     {
         titre: 'Mon compte',
         items: [
             { href: '/proprietaire/facturation', label: 'Facturation', icone: 'facturation' },
-            { href: '/proprietaire/compte', label: 'Mes informations', icone: 'profil' },
+            { href: '/proprietaire/compte', label: 'Mes informations', icone: 'profil', lancement: true },
         ],
     },
 ]
+
+/**
+ * **Pendant la collecte des logements, l'espace n'a que deux rubriques** —
+ * celles marquées `lancement` : sa fiche, et ses informations. Les demandes,
+ * les messages, les réservations et la facturation n'ont rien à montrer tant
+ * qu'aucun voyageur ne peut réserver, et `LaunchGate` les ferme côté serveur ;
+ * ici on ne fait que retirer les liens qui y mèneraient. Les intitulés de
+ * groupe tombent avec : deux lignes n'ont pas besoin d'être rangées.
+ */
+export const rubriquesProprietaire = (lancement = false) => {
+    if (! lancement) {
+        return RUBRIQUES_PROPRIETAIRE
+    }
+
+    return [{ items: RUBRIQUES_PROPRIETAIRE.flatMap((groupe) => groupe.items.filter((item) => item.lancement)) }]
+}
 
 /**
  * **« Publier un logement » n'est pas une rubrique, c'est un geste.** Il est

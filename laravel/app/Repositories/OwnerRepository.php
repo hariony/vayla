@@ -98,7 +98,7 @@ class OwnerRepository implements OwnerRepositoryInterface
         return Owner::query()->where('email', $email)->first();
     }
 
-    public function creerDepuisInscription(OwnerProfileDto $fiche, string $email): Owner
+    public function creerDepuisInscription(OwnerProfileDto $fiche, string $email, ?string $source = null): Owner
     {
         $owner = Owner::create([
             'name' => $fiche->name,
@@ -107,6 +107,7 @@ class OwnerRepository implements OwnerRepositoryInterface
             'access_key' => Owner::nouvelleCle(),
             'access_key_set_at' => Carbon::now(),
             'is_demo' => false,
+            'source' => $source,
         ]);
 
         $owner->forceFill(['email_verified_at' => Carbon::now()])->save();

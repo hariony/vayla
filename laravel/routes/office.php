@@ -106,6 +106,8 @@ Route::domain(config('vayla.office.domaine'))
                 ->middleware('throttle:30,1')->name('bookings.cancel');
 
             Route::get('/proprietaires', [OwnerController::class, 'index'])->name('owners');
+            Route::post('/proprietaires', [OwnerController::class, 'store'])
+                ->middleware('throttle:30,1')->name('owners.store');
             Route::get('/proprietaires/{owner}', [OwnerController::class, 'show'])
                 ->whereNumber('owner')->name('owners.show');
             Route::post('/proprietaires/{owner}/verifier', [OwnerController::class, 'verify'])

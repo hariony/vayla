@@ -57,6 +57,10 @@
         <server name="DB_DATABASE" value=":memory:" force="true"/>
         <server name="DB_SCHEMA" value="" force="true"/>
         <server name="DB_URL" value="" force="true"/>
+        <!-- Le mode lancement se règle dans le .env de développement, que
+             docker-compose exporte comme vraie variable : la suite doit rester
+             sur le site ouvert. `LaunchModeTest` l'active lui-même, test par test. -->
+        <server name="VAYLA_LANCEMENT" value="false" force="true"/>
         <env name="DB_CONNECTION" value="sqlite" force="true"/>
         <env name="DB_DATABASE" value=":memory:" force="true"/>
         <env name="DB_SCHEMA" value="" force="true"/>

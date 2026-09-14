@@ -17,6 +17,7 @@ import { computed } from 'vue'
 import { Link, useForm } from '@inertiajs/vue3'
 
 import AccessShell from '@/Components/AccessShell.vue'
+import SocialButtons from '@/Components/SocialButtons.vue'
 import TrustGauge from '@/Components/TrustGauge.vue'
 
 const form = useForm({ email: '' })
@@ -54,6 +55,11 @@ const envoyer = () => form.post('/proprietaire/inscription')
             </aside>
 
             <div class="acces__panel" data-access-card>
+                <!-- Google en un geste : pas de code à aller lire dans sa boîte.
+                     Le compte naît quand même à la fiche, après, avec le numéro
+                     WhatsApp — voir `OwnerSignup`. -->
+                <SocialButtons espace="proprietaire" />
+
                 <form class="acces__form" @submit.prevent="envoyer">
                     <div class="acces__field">
                         <label class="acces__label" for="email">Adresse e-mail</label>

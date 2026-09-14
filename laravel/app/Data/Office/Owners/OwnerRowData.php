@@ -23,6 +23,8 @@ final class OwnerRowData extends Data
         public readonly int $enLigne,
         public readonly int $aVerifier,
         public readonly int $bookings,
+        // D'où il vient : la publicité, le message ou l'appel qui l'a inscrit.
+        public readonly ?string $source,
     ) {}
 
     public static function fromModel(Owner $o): self
@@ -33,6 +35,7 @@ final class OwnerRowData extends Data
             'enLigne' => (int) $o->en_ligne_count,
             'aVerifier' => (int) $o->a_verifier_count,
             'bookings' => (int) $o->bookings_count,
+            'source' => $o->source,
         ]);
     }
 }

@@ -1,0 +1,4 @@
+# La voix off neuronale, en local : Kokoro (Apache 2.0), sans compte ni clé.
+FROM python:3.12-slim
+RUN pip install --no-cache-dir kokoro-onnx soundfile
+WORKDIR /travail

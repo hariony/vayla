@@ -5,7 +5,7 @@
  * niveau 2 de toutes ses annonces.
  */
 import { ref } from 'vue'
-import { Head, Link } from '@inertiajs/vue3'
+import { Head, Link, useForm } from '@inertiajs/vue3'
 
 import OfficeShell from '@/Components/OfficeShell.vue'
 import OfficeHead from '@/Components/Office/OfficeHead.vue'
@@ -29,13 +29,66 @@ useOfficeMotion(racine)
 const initiales = (nom = '') => nom.trim().split(/\s+/).slice(0, 2).map((m) => m[0] ?? '').join('').toUpperCase()
 
 const params = props.filtre.onglet !== 'tous' ? { filtre: props.filtre.onglet } : {}
+
+/*
+ * **Inscrire un propriétaire au téléphone.** Le formulaire est replié : on
+ * l'ouvre pendant un appel, pas à chaque passage sur la liste. Il ne demande que
+ * ce qu'on obtient à voix haute — le nom, le numéro WhatsApp —, et l'adresse et
+ * la ville s'il les donne. Le lien d'accès part dans la file WhatsApp.
+ */
+const ajoutOuvert = ref(false)
+const ajout = useForm({ name: '', phone: '', email: '', city: '' })
+const inscrire = () => ajout.post('/proprietaires', { preserveScroll: true })
 </script>
 
 <template>
     <Head title="Propriétaires — Back-office" />
 
     <div ref="racine">
-        <OfficeHead kicker="Catalogue" titre="Propriétaires" lede="Le numéro WhatsApp est ce par quoi Vayla appelle. Il n'est tenu pour vérifié qu'après l'appel." />
+        <OfficeHead kicker="Catalogue" titre="Propriétaires" lede="Le numéro WhatsApp est ce par quoi Vayla appelle. Il n'est tenu pour vérifié qu'après l'appel.">
+            <template #actions>
+                <button type="button" class="btn btn--ink btn--sm" :aria-expanded="ajoutOuvert" aria-controls="pi-ajout"
+                        @click="ajoutOuvert = !ajoutOuvert">
+                    {{ ajoutOuvert ? 'Fermer' : 'Ajouter un propriétaire' }}
+                </button>
+            </template>
+        </OfficeHead>
+
+        <section v-show="ajoutOuvert" id="pi-ajout" class="of-card pi__ajout" aria-labelledby="pi-ajout-t">
+            <header class="of-card__h">
+                <h2 id="pi-ajout-t" class="of-card__t">Inscrire un propriétaire</h2>
+            </header>
+            <form class="of-card__b pi__form" @submit.prevent="inscrire">
+                <div class="of-field">
+                    <label class="of-label" for="pi-nom">Nom</label>
+                    <input id="pi-nom" v-model="ajout.name" class="of-input" maxlength="80" autocomplete="off" required>
+                    <p v-if="ajout.errors.name" class="of-err" role="alert">{{ ajout.errors.name }}</p>
+                </div>
+                <div class="of-field">
+                    <label class="of-label" for="pi-tel">Numéro WhatsApp</label>
+                    <input id="pi-tel" v-model="ajout.phone" class="of-input" type="tel" inputmode="tel" maxlength="40" autocomplete="off" required>
+                    <p class="of-help">Son lien d'accès part sur ce numéro.</p>
+                    <p v-if="ajout.errors.phone" class="of-err" role="alert">{{ ajout.errors.phone }}</p>
+                </div>
+                <div class="of-field">
+                    <label class="of-label" for="pi-mail">Adresse e-mail <span class="pi__option">facultatif</span></label>
+                    <input id="pi-mail" v-model="ajout.email" class="of-input" type="email" maxlength="190" autocomplete="off">
+                    <p class="of-help">Pour se connecter par code, le jour où il n'a plus son lien.</p>
+                    <p v-if="ajout.errors.email" class="of-err" role="alert">{{ ajout.errors.email }}</p>
+                </div>
+                <div class="of-field">
+                    <label class="of-label" for="pi-ville">Ville <span class="pi__option">facultatif</span></label>
+                    <input id="pi-ville" v-model="ajout.city" class="of-input" maxlength="80" autocomplete="off">
+                    <p v-if="ajout.errors.city" class="of-err" role="alert">{{ ajout.errors.city }}</p>
+                </div>
+                <div class="pi__envoi">
+                    <button type="submit" class="btn btn--ink" :disabled="ajout.processing || !ajout.name.trim() || !ajout.phone.trim()">
+                        Créer le compte et préparer son lien
+                    </button>
+                    <p class="of-help">Le compte naît au niveau 1, numéro à vérifier : créer n'est pas vérifier.</p>
+                </div>
+            </form>
+        </section>
 
         <div class="pi__outils">
             <OfficeTabs :onglets="onglets" :actif="filtre.onglet" base="/proprietaires" param="filtre" defaut="tous" :q="filtre.q" />
@@ -63,6 +116,7 @@ const params = props.filtre.onglet !== 'tous' ? { filtre: props.filtre.onglet } 
                             <span class="of-num"><strong>{{ p.enLigne }}</strong> en ligne</span>
                             <span v-if="p.aVerifier" class="of-chip of-chip--attente">{{ p.aVerifier }} à vérifier</span>
                             <span v-if="p.isDemo" class="of-chip of-chip--demo">Démo</span>
+                            <span v-if="p.source" class="of-chip pi__source" :title="`Inscrit via « ${p.source} »`">{{ p.source }}</span>
                         </span>
                     </Link>
                 </li>
@@ -92,7 +146,17 @@ const params = props.filtre.onglet !== 'tous' ? { filtre: props.filtre.onglet } 
 .pi__cpt { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: .3rem; font-size: .8rem; color: var(--text-2); }
 .pi__cpt strong { color: var(--ink); }
 
+/* Le formulaire d'inscription, sur deux colonnes : le nom et le numéro
+   d'abord, ce qui est facultatif ensuite. */
+.pi__ajout { margin-bottom: 1rem; }
+.pi__form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem 1.25rem; }
+.pi__envoi { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; }
+.pi__option { font-weight: 400; color: var(--text-3); }
+/* La source est une étiquette de suivi, pas un état : neutre. */
+.pi__source { color: var(--text-2); }
+
 @media (max-width: 860px) {
+    .pi__form { grid-template-columns: 1fr; }
     .pi__row { grid-template-columns: auto minmax(0, 1fr); }
     .pi__tel, .pi__cpt { grid-column: 2; }
     .pi__cpt { justify-content: flex-start; }

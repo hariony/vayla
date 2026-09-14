@@ -1776,6 +1776,66 @@ sécurité de l'espace. Une signature acceptant un identifiant de période nu pe
 le calendrier d'un confrère avec une clé valide et un identifiant deviné — `OwnerCalendarTest` le
 vérifie, comme il vérifie la borne « arriver le jour où la période précédente se libère ».
 
+### La collecte des logements, avant l'ouverture — `VAYLA_LANCEMENT`
+
+**Au lancement, le site n'a qu'un public : les propriétaires.** Une publicité Facebook (ou un
+message dans un groupe) mène à `/louer-mon-logement`, qui mène à l'inscription existante, qui dépose
+sur la fiche du logement. Le voyageur n'existe pas encore. Un seul interrupteur,
+`VAYLA_LANCEMENT` (défaut `false`), lu par une seule classe (`Services/Support/LaunchMode`).
+
+**Pas d'interface à part : l'espace propriétaire existant, réduit.** La fiche en cinq étapes, les
+photos et « Mes informations » existaient et étaient testés ; une copie aurait divergé, comme les
+huit écrans d'accès avant `AccessShell`.
+
+- **Ce qui reste ouvert est écrit par nom de route** (`LaunchMode::ROUTES_OUVERTES`) : la page
+  d'arrivée, la porte du propriétaire (connexion, inscription, code, fiche, lien d'accès, connexion
+  sociale), « Mes logements » entier, « Mes informations », les sorties et **les seules pages
+  légales publiées** (`SitePages::legalePubliee`). **Une route ajoutée plus tard est fermée par
+  défaut** pendant la collecte : on découvre qu'un écran manque, jamais qu'un écran a fui.
+- **`LaunchGate` ferme côté serveur**, pas seulement dans les menus : un écran fermé redirige vers
+  `/louer-mon-logement`, un geste fermé répond 404 (un POST renvoyé vers une page perdrait ce qu'il
+  portait), l'API répond 503. `/proprietaire` mène à « Mes logements » — c'est là qu'atterrit tout
+  propriétaire connecté. **Rien n'est indexé** pendant la collecte. Le back-office n'est pas touché.
+- **Le front ne décide rien seul** : la prop partagée `lancement` retire seulement les liens.
+  `rubriquesProprietaire()` (`Support/espaces.js`) garde les rubriques marquées `lancement` ;
+  `SiteHeader` ne garde que la marque (vers `/louer-mon-logement`) et le compte, sans tiroir ni One Tap.
+  Un test vérifie que **les rubriques marquées sont exactement celles que le serveur laisse
+  ouvertes**.
+- **`/louer-mon-logement` ne promet pas de clients** : le site n'est pas ouvert, et une marque dont
+  l'argument est la vérification ne commence pas par un chiffre qu'elle ne tient pas. Elle dit ce qui
+  est vrai — gratuit jusqu'au premier séjour confirmé, s'inscrire n'est pas publier. Ses arguments
+  reprennent les textes `accueil.proprietaires.*` du back-office. Elle vit dans `Pages/Owners/`, pas
+  `Pages/Owner/` : c'est une page de vente, et les règles de titres des espaces ne s'y appliquent pas.
+- **La source de chaque inscription** (`owners.source`) : `?source=facebook-nosybe` sur
+  `/louer-mon-logement` ou `/proprietaire/inscription`, retenu en session, écrit à la naissance du compte.
+  **Nettoyé, jamais refusé** (`SignupSourceRequest`) : un paramètre abîmé ne ferme pas la porte. Un
+  compte saisi par l'équipe porte `equipe`. La liste des propriétaires l'affiche et le cherche.
+- **L'équipe inscrit elle-même** ceux qui ne s'inscriront pas seuls (« Ajouter un propriétaire »,
+  `OwnerEnrollment`) : nom et numéro WhatsApp suffisent, le lien d'accès part dans la file WhatsApp
+  **après** la transaction. Créer n'est pas vérifier : le numéro reste à confirmer à l'appel.
+- **Google est retiré des boutons dans le navigateur interne de Facebook, Messenger et Instagram**
+  (`SocialButtons`) : il y refuse de s'ouvrir (`disallowed_useragent`), et c'est précisément là
+  qu'arrive un clic de publicité. L'adresse et le code marchent partout.
+
+**L'adresse est `/louer-mon-logement`**, la phrase d'un propriétaire plutôt qu'un nom de rubrique.
+`/proprietaires`, la première, est gardée en **redirection permanente, paramètres compris** : un
+lien déjà partagé ne tombe pas, et la source de la publicité suit.
+
+**`phpunit.xml` force `VAYLA_LANCEMENT=false` en `<server>`** : activé dans le `.env` de développement,
+le mode était exporté par docker-compose et la suite entière tournait site fermé (le même piège que
+`DB_CONNECTION`). `LaunchModeTest` l'active lui-même, test par test.
+
+**La page `/louer-mon-logement` montre plutôt qu'elle n'explique** (`Pages/Owners/Landing.vue`,
+`useLandingMotion`) : une fiche d'exemple sur une vraie photo créditée (une villa à Ampefy — **une villa, pas des
+bungalows d'hôtel**, qui diraient le contraire de la page —, posée sur le lac Itasy, fournis par
+`OwnerLandingQuery` ; le nom réel de la villa n'est jamais écrit sur la fiche), dont la jauge monte de
+« déclarée » à « visité » — jamais au niveau 4 ; la seule dalle terre où « 185 000 Ar » fond jusqu'à
+**0 Ar** ; un fil d'étapes qui se remplit au défilement ; et, au téléphone, le bouton collé en bas
+quand les deux autres sont hors de l'écran. Les libellés de niveau viennent de `TrustLevel`.
+
+Le jour de l'ouverture : `VAYLA_LANCEMENT=false`, `VAYLA_DEMO=false`, pages légales publiées, et
+`docker compose up -d --force-recreate app` (`env_file` fige le `.env` à la création du conteneur).
+
 ### Le back-office — `office.localhost:8070`
 
 **Un hôte à part, pas un préfixe `/admin`.** Un `/admin` à côté de `/logements` partagerait le

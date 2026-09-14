@@ -13,6 +13,19 @@ return [
     'demo' => (bool) env('VAYLA_DEMO', true),
 
     /*
+     * **La collecte des logements, avant l'ouverture.** Tant qu'il est actif,
+     * le site n'a qu'un public : les propriétaires. Seules restent ouvertes la
+     * page `/proprietaires` (celle où mène la publicité), leur inscription et
+     * leur espace réduit à « Mes logements » et « Mes informations ». Tout le
+     * reste — catalogue, fiches, réservation, demande de séjour, API — renvoie
+     * vers `/proprietaires`, hors index. Le back-office n'est pas touché.
+     *
+     * À false, le site ouvre, et les propriétaires retrouvent leur espace
+     * complet avec les fiches remplies pendant la collecte.
+     */
+    'lancement' => (bool) env('VAYLA_LANCEMENT', false),
+
+    /*
      * La commission, prélevée sur les séjours EFFECTUÉS — jamais sur les
      * réservations. Facturer une réservation reviendrait à facturer les
      * no-shows : le propriétaire refuserait de payer, et il aurait raison.

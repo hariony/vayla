@@ -18,6 +18,7 @@ enum AdminActionKind: string
     case TrustLevelChanged = 'trust_level_changed';
     case PhoneVerified = 'phone_verified';
     case AccessLinkSent = 'access_link_sent';
+    case OwnerCreated = 'owner_created';
     case BookingCancelled = 'booking_cancelled';
     case MessageWritten = 'message_written';
     case WhatsAppSent = 'whatsapp_sent';
@@ -55,6 +56,7 @@ enum AdminActionKind: string
             self::TrustLevelChanged => 'Niveau de confiance modifié',
             self::PhoneVerified => 'Numéro vérifié par appel',
             self::AccessLinkSent => "Lien d'accès renvoyé",
+            self::OwnerCreated => 'Propriétaire inscrit par l’équipe',
             self::BookingCancelled => 'Réservation annulée',
             self::MessageWritten => 'Message de Vayla dans un fil',
             self::WhatsAppSent => 'Message WhatsApp envoyé',
@@ -95,7 +97,7 @@ enum AdminActionKind: string
             self::AmenitySaved, self::AmenityDeleted, self::SettingChanged,
             self::PageSaved, self::PagePublished, self::PageUnpublished, self::PageDeleted, self::SiteTextsChanged,
             self::PhotoUploaded, self::PhotoEdited, self::PhotoDeleted => 'contenu',
-            self::PhoneVerified, self::AccessLinkSent => 'proprietaires',
+            self::PhoneVerified, self::AccessLinkSent, self::OwnerCreated => 'proprietaires',
             self::BookingCancelled, self::MessageWritten, self::StayRequestTaken, self::StayRequestClosed => 'reservations',
             self::WhatsAppSent => 'whatsapp',
             self::InvoiceSettled, self::InvoiceReopened => 'facturation',
